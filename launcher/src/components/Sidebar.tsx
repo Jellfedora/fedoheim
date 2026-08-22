@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import "./Sidebar.css";
 
 export type Page =
@@ -95,10 +97,16 @@ export function Sidebar({
   onLogout,
 }: SidebarProps) {
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const [version, setVersion] = useState("");
+
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => {});
+  }, []);
 
   return (
     <nav className="sidebar" aria-label="Navigation principale">
       <img className="sidebar__mark" src="/logo_fedoheim.png" alt="Fedoheim" title="Fedoheim" />
+      {version && <span className="sidebar__version">v{version}</span>}
 
       <ul className="sidebar__nav">
         {visibleItems.map((item) => {

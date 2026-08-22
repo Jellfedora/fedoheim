@@ -36,6 +36,11 @@ const SESSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 // session (l'admin peut redémarrer l'API pendant que le launcher reste ouvert).
 const API_HEALTH_CHECK_INTERVAL_MS = 15 * 1000;
 
+// Revérification d'une mise à jour du launcher — même cadence que le refresh de session,
+// pour qu'une release publiée pendant qu'un joueur a déjà le launcher ouvert finisse par
+// être détectée sans qu'il ait à le redémarrer.
+const APP_UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
 // Durée d'affichage du message "✓ Modpack à jour" après une synchronisation (voir
 // handleUpdate) avant de faire disparaître le bouton "Mettre à jour" — sans cette pause,
 // une mise à jour rapide (peu de mods à resynchroniser) fait passer instantanément de
@@ -244,11 +249,19 @@ function App() {
   }, []);
 
   useEffect(() => {
-    checkForAppUpdate()
-      .then((update) => {
-        if (update?.available) setAppUpdate(update);
-      })
-      .catch(() => {});
+    function check() {
+      checkForAppUpdate()
+        .then((update) => {
+          // `prev` non-null : on garde la première trouvée plutôt que de la remplacer par
+          // une nouvelle instance à chaque tick, ce qui interromprait un téléchargement en
+          // cours si le joueur a déjà cliqué "Mettre à jour".
+          setAppUpdate((prev) => prev ?? (update?.available ? update : null));
+        })
+        .catch(() => {});
+    }
+    check();
+    const interval = setInterval(check, APP_UPDATE_CHECK_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, []);
 
   const handleInstallAppUpdate = useCallback(async () => {

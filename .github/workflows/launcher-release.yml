@@ -35,6 +35,25 @@ jobs:
         working-directory: launcher
         run: npm ci
 
+      - name: Extract changelog section for this version
+        id: changelog
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#launcher-v}"
+          section="$(awk -v ver="$version" '
+            $0 ~ "^## " ver "$" { found=1; next }
+            found && /^## / { exit }
+            found { print }
+          ' launcher/CHANGELOG.md)"
+          if [ -z "$(echo "$section" | tr -d '[:space:]')" ]; then
+            section="Voir les changements pour cette version."
+          fi
+          {
+            echo "body<<CHANGELOG_EOF"
+            echo "$section"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -44,6 +63,6 @@ jobs:
           projectPath: launcher
           tagName: ${{ github.ref_name }}
           releaseName: 'Fedoheim Launcher ${{ github.ref_name }}'
-          releaseBody: 'Voir les changements pour cette version.'
+          releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: true
           prerelease: false

@@ -1,0 +1,170 @@
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  max-width: 1240px;
+}
+
+.home-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding-top: 1rem;
+}
+
+.home-hero__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.home-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 3.4rem;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  color: var(--text-primary);
+  text-shadow: 0 0 32px var(--accent-strong);
+}
+
+.home-hero__tagline {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: start;
+  gap: 1.5rem;
+}
+
+@media (max-width: 760px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.4rem;
+}
+
+/* Annonce mise en avant : c'est l'info la plus utile de l'accueil (état du serveur,
+   maintenance à venir...), elle prend le plus de place et se distingue visuellement
+   des cartes secondaires par sa bordure d'accent. */
+.home-card--announcement {
+  padding: 1.75rem 2rem;
+  border-left: 3px solid var(--accent);
+  box-shadow: 0 24px 48px -30px rgba(0, 0, 0, 0.6);
+}
+
+.home-card--announcement .home-card__header h2 {
+  font-size: 1.05rem;
+}
+
+.home-card--announcement .home-announcement__title {
+  font-size: 1.2rem;
+}
+
+.home-card--announcement .home-announcement__message {
+  font-size: 0.95rem;
+}
+
+.home-card--players {
+  align-self: start;
+}
+
+.home-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.home-card__header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.home-card__badge {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.home-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.home-players li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.home-players__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #23a55a;
+  box-shadow: 0 0 6px rgba(35, 165, 90, 0.7);
+}
+
+.home-announcement__title {
+  margin: 0 0 0.4rem;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.home-announcement__message {
+  margin: 0 0 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.home-announcement__images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.home-announcement__images img {
+  max-width: 160px;
+  max-height: 110px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+
+.home-announcement__meta {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.76rem;
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `announcements` ADD `discord_message_id` text;

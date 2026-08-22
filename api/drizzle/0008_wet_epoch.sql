@@ -1,0 +1,1 @@
+ALTER TABLE `rules_meta` ADD `discord_message_id` text;

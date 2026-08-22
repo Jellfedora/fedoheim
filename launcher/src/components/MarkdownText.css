@@ -1,0 +1,76 @@
+.markdown-spoiler {
+  background: var(--text-primary);
+  color: transparent;
+  border-radius: 3px;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.markdown-spoiler.is-revealed {
+  background: var(--bg-elevated-2);
+  color: inherit;
+  cursor: text;
+}
+
+.markdown-paragraph {
+  margin: 0 0 0.6em;
+}
+
+.markdown-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-heading {
+  margin: 0 0 0.5em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.markdown-heading--1 {
+  font-size: 1.3em;
+}
+
+.markdown-heading--2 {
+  font-size: 1.15em;
+}
+
+.markdown-heading--3 {
+  font-size: 1.05em;
+}
+
+.markdown-list {
+  margin: 0 0 0.6em;
+  padding-left: 1.2em;
+  list-style: disc;
+}
+
+.markdown-list:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-list li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-list li:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-quote {
+  margin: 0 0 0.6em;
+  padding: 0.1em 0 0.1em 0.75em;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+}
+
+.markdown-quote:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-hr {
+  margin: 0.75em 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}

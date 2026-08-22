@@ -1,0 +1,1 @@
+ALTER TABLE `modpacks` ADD `bepinex_version` text;

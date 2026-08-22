@@ -1,0 +1,327 @@
+.profiles-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.profiles-page__header h1 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.profiles-page__header p {
+  margin: 0 0 1.75rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.profiles-page__status {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.profiles-page__status.is-error {
+  color: var(--danger);
+}
+
+.profiles-page__status.is-success {
+  color: #23a55a;
+}
+
+.profiles-page__hint {
+  margin: 0.4rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.profiles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.profiles-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.profiles-list__item.is-active {
+  border-color: var(--accent);
+}
+
+.profiles-list__main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.profiles-list__name {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.profiles-list__rename-input {
+  padding: 0.3rem 0.5rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.profiles-list__slug {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.profiles-list__badge {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(148, 155, 164, 0.18);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.profiles-list__badge--accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.profiles-list__meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.profiles-list__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.profiles-list__delete {
+  color: var(--danger);
+}
+
+.profiles-list__color-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+}
+
+/* Tant qu'aucune couleur n'a été choisie : bordure en pointillés + libellé en muted,
+   pour ne jamais laisser croire qu'une couleur est déjà active (voir
+   UNSET_PICKER_COLOR côté TSX — la pastille du <input type="color"> seule ne suffit
+   pas à le distinguer d'une vraie couleur choisie). */
+.profiles-list__color-picker.is-unset {
+  border-style: dashed;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.profiles-list__color-picker input[type="color"] {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+}
+
+.profiles-copy {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.profiles-copy h2 {
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.profiles-copy__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+
+.profiles-copy__select {
+  flex: 1;
+  min-width: 160px;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.profiles-copy__arrow {
+  color: var(--text-faint);
+  font-size: 1.1rem;
+}
+
+/* Récapitulatif des changements avant copie — voir ProfilesPage::handlePreviewCopy. */
+.copy-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.copy-modal {
+  width: min(480px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.6);
+}
+
+.copy-modal h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.copy-modal__warning {
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0.7rem;
+  background: rgba(235, 148, 42, 0.12);
+  border-radius: var(--radius-sm);
+  color: #eb942a;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.copy-modal__hint {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.copy-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding-right: 0.25rem;
+  overflow-y: auto;
+}
+
+.copy-modal__entry {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.copy-modal__entry span {
+  color: var(--text-faint);
+}
+
+.copy-modal__entry.is-added {
+  color: #23a55a;
+}
+
+.copy-modal__entry.is-removed {
+  color: var(--danger);
+}
+
+.copy-modal__entry.is-updated {
+  color: var(--accent);
+}
+
+.copy-modal__entry.is-skipped {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+}
+
+.copy-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.profiles-create {
+  padding: 1.25rem 1.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.profiles-create h2 {
+  margin: 0 0 0.75rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.profiles-create__row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.profiles-create__input {
+  flex: 1;
+  min-width: 160px;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.profiles-create__input--slug {
+  font-family: var(--font-mono);
+  flex: 0.7;
+}
+
+.profiles-create__input:focus-visible {
+  border-color: var(--accent);
+}

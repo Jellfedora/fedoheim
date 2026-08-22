@@ -1,0 +1,89 @@
+.sidebar {
+  grid-area: sidebar;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 76px;
+  padding: 1rem 0.5rem;
+  background: var(--bg-deepest);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar__mark {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0.5rem;
+  object-fit: contain;
+}
+
+.sidebar__nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.sidebar__spacer {
+  flex: 1;
+}
+
+.sidebar__item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.25rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar__item svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar__label {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.sidebar__item:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.sidebar__item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sidebar__item:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.sidebar__support {
+  color: var(--text-muted);
+}
+
+.sidebar__support:hover {
+  background: rgba(255, 221, 0, 0.12);
+  color: var(--bmc-yellow);
+}
+
+.sidebar__logout:hover {
+  background: rgba(230, 70, 70, 0.12);
+  color: var(--danger);
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `mods` ADD `icon_url` text DEFAULT '' NOT NULL;

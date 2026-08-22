@@ -1,0 +1,132 @@
+.announcement-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.announcement-composer__title {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.announcement-composer__title:focus-visible,
+.announcement-composer__textarea:focus-visible {
+  border-color: var(--accent);
+}
+
+.announcement-composer__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.announcement-composer__toolbar-btn {
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated-2);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+}
+
+.announcement-composer__toolbar-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-strong);
+}
+
+.announcement-composer__textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 0.7rem 0.9rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.announcement-composer__counter {
+  margin: 0;
+  align-self: flex-end;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+
+.announcement-composer__counter.is-over {
+  color: var(--danger);
+}
+
+.announcement-composer__images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.announcement-composer__image {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.announcement-composer__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.announcement-composer__image-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+}
+
+.announcement-composer__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+.announcement-composer__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.announcement-composer__actions-right {
+  display: flex;
+  gap: 0.75rem;
+}

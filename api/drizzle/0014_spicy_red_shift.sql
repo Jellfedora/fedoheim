@@ -1,0 +1,1 @@
+ALTER TABLE `mods` ADD `dependencies` text DEFAULT '[]' NOT NULL;

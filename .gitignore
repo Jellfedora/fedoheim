@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Node / build output (safety net — chaque sous-projet a aussi le sien)
+node_modules/
+dist/
+dist-ssr/
+*.log
+
+# Rust / Tauri (safety net — launcher/src-tauri a aussi le sien)
+target/
+
+# Secrets
+.env
+.env.local

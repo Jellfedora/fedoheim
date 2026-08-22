@@ -1,0 +1,2 @@
+ALTER TABLE `settings` ADD `hero_eyebrow` text DEFAULT 'Serveur communautaire' NOT NULL;--> statement-breakpoint
+ALTER TABLE `settings` ADD `hero_tagline` text DEFAULT 'Le feu brûle, les portes sont ouvertes.' NOT NULL;

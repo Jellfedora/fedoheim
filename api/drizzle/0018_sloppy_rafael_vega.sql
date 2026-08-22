@@ -1,0 +1,1 @@
+ALTER TABLE `mods` ADD `admin_only` integer DEFAULT false NOT NULL;

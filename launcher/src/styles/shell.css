@@ -1,0 +1,420 @@
+.shell {
+  position: relative;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "banner banner"
+    "sidebar content"
+    "playbar playbar";
+  background: radial-gradient(
+      120% 90% at 15% -10%,
+      rgba(37, 211, 228, 0.16) 0%,
+      rgba(37, 211, 228, 0) 55%
+    ),
+    var(--bg-deepest);
+}
+
+.shell__banner {
+  grid-area: banner;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.7rem 2rem;
+  background: rgba(235, 148, 42, 0.12);
+  border-bottom: 1px solid rgba(235, 148, 42, 0.4);
+  color: #eb942a;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.shell__banner-countdown {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.shell__banner-icon {
+  font-size: 1rem;
+}
+
+/* Écrans d'onboarding (règlement / Steam ID) : pas de sidebar ni de playbar, donc pas
+   de grille — sinon le contenu se retrouve placé dans la colonne 76px de la sidebar. */
+.shell--onboarding {
+  display: block;
+}
+
+.shell__content {
+  grid-area: content;
+  position: relative;
+  z-index: 3;
+  overflow-y: auto;
+  padding: 2.5rem 3rem 2rem;
+}
+
+.shell__playbar {
+  grid-area: playbar;
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.9rem 1.75rem;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+}
+
+.shell__playbar-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.shell__playbar-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shell__playbar-detail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  max-width: 480px;
+  line-height: 1.35;
+}
+
+.shell__playbar-detail.is-error {
+  color: var(--danger);
+}
+
+/* Autorisation manquante (rôle Discord/ban) — voir App.tsx::AUTH_WARNING_PREFIX.
+   Même orange que les avertissements de la page Mods, pas le rouge de is-error : ce
+   n'est pas un bug, juste une autorisation à demander à un admin. */
+.shell__playbar-detail.is-warning {
+  color: #eb942a;
+}
+
+.shell__playbar-detail.is-success {
+  color: var(--accent);
+}
+
+/* Largeur fixe : la barre ne doit jamais faire bouger les boutons "Jouer"/"Mettre à
+   jour" à côté. */
+.shell__playbar-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 260px;
+}
+
+.shell__playbar-progress-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-deepest);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.shell__playbar-progress-fill {
+  position: relative;
+  height: 100%;
+  min-width: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #17a3b3, var(--accent));
+  box-shadow: 0 0 12px 1px var(--accent-strong), 0 0 3px var(--accent);
+  overflow: hidden;
+  transition: width 0.25s ease;
+}
+
+/* Balayage lumineux qui traverse la partie remplie en boucle — signale une opération
+   vivante plutôt qu'une barre figée, sans dépendre de la vitesse réelle du téléchargement
+   (qu'on ne mesure pas, voir CLAUDE.md — progression par étape, pas par octet). */
+.shell__playbar-progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.65) 45%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  animation: shell-playbar-progress-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shell-playbar-progress-shimmer {
+  to {
+    transform: translateX(220%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell__playbar-progress-fill::after {
+    animation: none;
+  }
+}
+
+.shell__playbar-progress-pct {
+  flex-shrink: 0;
+  min-width: 3em;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  text-shadow: 0 0 10px var(--accent-strong);
+}
+
+.shell__playbar-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.shell__playbar-avatar {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.shell__playbar-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shell__playbar-connected-as {
+  margin: 0;
+  font-size: 0.65rem;
+  color: var(--text-faint);
+}
+
+.shell__playbar-username {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shell__playbar-admin-badge {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.shell__playbar-actions-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.shell__playbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.shell__playbar-settings {
+  position: relative;
+}
+
+.shell__playbar-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.shell__playbar-settings-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.shell__playbar-settings-btn:not(:disabled):hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.shell__playbar-menu {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.shell__playbar-menu-item {
+  padding: 0.55rem 0.7rem;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+  transition: background 0.15s ease;
+}
+
+.shell__playbar-menu-item:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.shell__playbar-menu-item:not(:disabled):hover {
+  background: var(--accent-soft);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+  transition: transform 0.12s ease, filter 0.15s ease, background 0.15s ease;
+}
+
+.btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.btn:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+.btn:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.btn--ghost {
+  background: var(--bg-elevated-2);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.btn--accent {
+  background: var(--accent);
+  color: #08262b;
+  box-shadow: 0 0 0 1px rgba(37, 211, 228, 0.4), 0 8px 20px -8px var(--accent-strong);
+}
+
+.btn--discord {
+  background: var(--discord-brand);
+  color: #ffffff;
+}
+
+.btn--discord:not(:disabled):hover {
+  background: var(--discord-brand-hover);
+  filter: none;
+}
+
+/* Popup de choix Joueur/Admin avant de (re)synchroniser le modpack — voir
+   requestPrimaryAction dans App.tsx. */
+.mode-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.mode-modal {
+  width: min(360px, 90vw);
+  padding: 1.5rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.mode-modal h2 {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--text-primary);
+}
+
+.mode-modal__hint {
+  margin: 0 0 1.2rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.mode-modal__options {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.mode-modal__options .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.mode-modal__cancel {
+  margin-top: 1rem;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+}
+
+.mode-modal__cancel:hover {
+  color: var(--text-muted);
+}

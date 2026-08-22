@@ -4,6 +4,11 @@ Une entrée par version publiée du launcher. Le texte de chaque section est rep
 automatiquement comme description de la release GitHub correspondante (voir
 `.github/workflows/launcher-release.yml`).
 
+## 0.0.5
+
+- Le launcher retient maintenant la taille, la position et l'état agrandi/plein écran
+  de la fenêtre d'une ouverture à l'autre.
+
 ## 0.0.4
 
 - Correction : la fenêtre s'agrandit maintenant automatiquement quand un bandeau

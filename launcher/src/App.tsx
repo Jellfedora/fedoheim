@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { check as checkForAppUpdate, type Update } from "@tauri-apps/plugin-updater";
@@ -276,6 +277,33 @@ function App() {
       setInstallingAppUpdate(false);
     }
   }, [appUpdate]);
+
+  // Les bandeaux (API injoignable / mise à jour dispo) prennent de la place dans la
+  // grille (voir shell.css) — sans ça, leur apparition rognerait la hauteur du contenu
+  // au lieu d'agrandir la fenêtre, ce qui écraserait visuellement le reste de l'écran.
+  // On agrandit/rétrécit donc la fenêtre du delta exact de hauteur du bandeau plutôt que
+  // de viser une taille absolue, pour rester correct même si le joueur a déjà redimensionné
+  // la fenêtre manuellement.
+  const bannersRef = useRef<HTMLDivElement>(null);
+  const bannersHeightRef = useRef(0);
+
+  useEffect(() => {
+    const el = bannersRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const newHeight = Math.round(entries[0].contentRect.height);
+      const delta = newHeight - bannersHeightRef.current;
+      if (delta === 0) return;
+      bannersHeightRef.current = newHeight;
+      (async () => {
+        const win = getCurrentWindow();
+        const size = (await win.innerSize()).toLogical(await win.scaleFactor());
+        await win.setSize(new LogicalSize(size.width, size.height + delta));
+      })();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Un seul minuteur (tick à la seconde) qui sert à la fois de compte à rebours affiché
   // dans le bandeau et de déclencheur du ping réel une fois à zéro — évite deux
@@ -674,39 +702,37 @@ function App() {
         </div>
       )}
 
-      {(!apiReachable || appUpdate) && (
-        <div className="shell__banners">
-          {!apiReachable && (
-            <div className="shell__banner" role="alert">
-              <span className="shell__banner-icon" aria-hidden="true">
-                😅
-              </span>
-              Notre serveur ne répond pas pour le moment — quelqu'un a sûrement oublié de
-              payer la facture.
-              <span className="shell__banner-countdown">
-                Nouvelle tentative dans {secondsUntilCheck}s...
-              </span>
-            </div>
-          )}
+      <div className="shell__banners" ref={bannersRef}>
+        {!apiReachable && (
+          <div className="shell__banner" role="alert">
+            <span className="shell__banner-icon" aria-hidden="true">
+              😅
+            </span>
+            Notre serveur ne répond pas pour le moment — quelqu'un a sûrement oublié de
+            payer la facture.
+            <span className="shell__banner-countdown">
+              Nouvelle tentative dans {secondsUntilCheck}s...
+            </span>
+          </div>
+        )}
 
-          {appUpdate && (
-            <div className="shell__banner shell__banner--update" role="status">
-              <span className="shell__banner-icon" aria-hidden="true">
-                ✨
-              </span>
-              Nouvelle version du launcher disponible ({appUpdate.version}).
-              <button
-                type="button"
-                className="shell__banner-action"
-                onClick={handleInstallAppUpdate}
-                disabled={installingAppUpdate}
-              >
-                {installingAppUpdate ? "Installation..." : "Mettre à jour"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        {appUpdate && (
+          <div className="shell__banner shell__banner--update" role="status">
+            <span className="shell__banner-icon" aria-hidden="true">
+              ✨
+            </span>
+            Nouvelle version du launcher disponible ({appUpdate.version}).
+            <button
+              type="button"
+              className="shell__banner-action"
+              onClick={handleInstallAppUpdate}
+              disabled={installingAppUpdate}
+            >
+              {installingAppUpdate ? "Installation..." : "Mettre à jour"}
+            </button>
+          </div>
+        )}
+      </div>
 
       <Sidebar
         current={page}

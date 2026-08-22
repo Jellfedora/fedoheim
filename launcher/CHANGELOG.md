@@ -4,6 +4,11 @@ Une entrée par version publiée du launcher. Le texte de chaque section est rep
 automatiquement comme description de la release GitHub correspondante (voir
 `.github/workflows/launcher-release.yml`).
 
+## 0.0.4
+
+- Correction : la fenêtre s'agrandit maintenant automatiquement quand un bandeau
+  (API injoignable / mise à jour disponible) s'affiche, au lieu d'écraser le contenu.
+
 ## 0.0.3
 
 - Le numéro de version s'affiche maintenant sous le logo, dans la sidebar.

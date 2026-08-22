@@ -1,0 +1,1 @@
+ALTER TABLE `mods` ADD `enabled` integer DEFAULT true NOT NULL;

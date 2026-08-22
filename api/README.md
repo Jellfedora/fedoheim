@@ -41,6 +41,9 @@ Voir `/CLAUDE.md` (racine du repo) pour l'architecture générale et le flow d'a
   `/CLAUDE.md` section Modpacks.
 - `GET /modpacks/:slug/mods` (public) / `GET /modpacks/:slug/mods/full` (admin) /
   `PUT /modpacks/:slug/mods` (admin, remplacement complet) — CRUD de la liste de mods.
+  Un mod avec `enabled: false` (case "Activé" décochée dans l'éditeur) est absent de la
+  liste publique et du manifest (pour tout le monde, y compris `mode=admin`), mais reste
+  dans `mods/full` pour pouvoir être réactivé sans perdre sa fiche.
 - `GET /modpacks/:slug/bepinex` / `PUT /modpacks/:slug/bepinex` (admin) — config du
   package BepInEx du modpack (`{ url, sha256 }`), distincte des mods.
 - `POST /modpacks/files` (admin, multipart, 200 Mo max) — upload générique d'une
@@ -57,3 +60,16 @@ Voir `/CLAUDE.md` (racine du repo) pour l'architecture générale et le flow d'a
   l'annonce sur Discord si `DISCORD_ANNOUNCEMENT_CHANNEL_ID` est configuré.
 - `POST /announcements/images` — upload d'une image (multipart, admin), servie ensuite
   via `/uploads/<fichier>`.
+- `GET /modpacks/:slug/report-token` / `POST /modpacks/:slug/report-token/regenerate`
+  (admin) — jeton partagé avec le mod serveur FedoServerTools, à recopier dans son
+  `.cfg` (header `x-server-token`). `GET /modpacks` n'expose que `hasReportToken`
+  (booléen), jamais la valeur.
+- `POST /modpacks/online-players` — posté par FedoServerTools toutes les ~30s
+  (`x-server-token` requis, pas de `:slug` : le jeton identifie déjà le profil de façon
+  unique) : `{ players: { name: string, biome: string | null }[], online: boolean }` —
+  `biome` est le nom brut de l'enum `Heightmap.Biome` côté jeu (ex: `"Meadows"`), `null`
+  si le joueur a désactivé le partage de sa position. `GET
+  /modpacks/:slug/online-players` (public) renvoie `{ online, players, updatedAt }` —
+  état gardé en mémoire (pas en base), `online` repasse à `false` tout seul si aucun
+  rapport n'arrive plus depuis 90s (serveur crashé) ou immédiatement si le dernier
+  rapport reçu avait `online: false` (arrêt propre).

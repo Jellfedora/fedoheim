@@ -24,9 +24,12 @@ renommer ces occurrences-là, elles sont correctes telles quelles.
 - **`api/`** — Backend central (auth Discord, onboarding, manifests de modpacks, contenu
   admin-géré, repost Discord) qui sert de source de vérité pour le website + le launcher.
   Fonctionnel — voir `api/README.md`.
-- **Mods maison** — mods Valheim (BepInEx) développés en interne, distribués via l'API
-  et installés automatiquement par le launcher. Pas encore démarré (mais le launcher gère
-  déjà toute la mécanique de distribution/catégorisation des mods, prêt à en recevoir).
+- **Mods maison** (`mods/`) — mods Valheim (BepInEx) développés en interne, distribués via
+  l'API et installés automatiquement par le launcher. Sept mods écrits et buildés
+  (`HelloFedo`, `FedoDeath`, `FedoGoldRabbit`, `FedoGuardian`, `FedoDeathGif`,
+  `FedoDiscordLogs`, `FedoServerTools` — voir `mods/CLAUDE.md`), packagés en zips dans
+  `mods/dist/` prêts à être uploadés via l'éditeur du launcher ; aucun n'est encore
+  effectivement configuré dans un profil de modpack en base.
 
 ## Stack technique (décisions actées)
 
@@ -162,6 +165,15 @@ jamais réinitialisé en base, juste recalculé à la volée.
   la clé de liste React côté affichage public. Détecté dans l'éditeur (bordure orange,
   même code que les dépendances manquantes) et bloqué à l'enregistrement, pas juste un
   avertissement visuel.
+- **Mod désactivable sans le supprimer** (`mods.enabled`, case à cocher "Activé" dans
+  l'éditeur, `ModsPage.tsx`) : décoché, le mod disparaît du manifest (les deux modes,
+  voir `GET /modpacks/:slug/manifest`) et de la liste publique — donc désinstallé chez
+  tout le monde au prochain sync, `sync_mods` nettoyant déjà tout dossier absent du
+  manifest reçu, aucun code dédié côté launcher — mais reste visible dans l'éditeur
+  admin (bordure en pointillés) et dans la vue liste d'un admin (badge "Désactivé",
+  assourdi) pour pouvoir le réactiver sans reperdre sa fiche (description, catégorie,
+  dépendances, zip déjà importé). Distinct d'`adminOnly` : `enabled` filtre pour tout le
+  monde y compris un admin, `adminOnly` ne filtre que pour un joueur normal.
 - **Fichiers uploadés jamais utilisés, nettoyables** : un zip/une icône est uploadé à
   l'API dès la sélection (`pick_zip_and_upload`), *avant* que la fiche du mod soit
   enregistrée — si l'admin clique "Annuler", ces fichiers restent orphelins côté
@@ -319,6 +331,67 @@ le vrai serveur — sans jamais risquer l'expérience des joueurs normaux :
   aucune route API dédiée, juste `fetch_mods_full`/`fetch_bepinex`/`save_mods`/
   `save_bepinex` déjà existants appelés sur les deux slugs.
 
+## Joueurs en ligne (FedoServerTools)
+
+Le mod maison `mods/FedoServerTools` (server-side, pas de mécanique de jeu) tourne sur le
+serveur Valheim lui-même (dédié, ou l'hôte d'une partie solo/co-op) et poste toutes les
+`ReportIntervalSeconds` (30s par défaut) la liste des joueurs connectés à
+`POST /modpacks/online-players`, authentifié par un jeton partagé (`modpacks.reportToken`,
+header `x-server-token`) plutôt qu'une session Discord — ce mod n'a pas d'identité
+joueur. La liste elle-même vient de `ZNet.GetPlayerList()` (l'API du jeu utilisée par son
+propre panneau "joueurs"), pas d'un suivi maison des connexions/déconnexions — elle
+inclut donc l'hôte en partie solo, pas seulement les pairs distants.
+
+- **Jeton par profil, pas global, et pas de slug à configurer côté mod** : chaque profil
+  de modpack (voir section Modpacks) a son propre `reportToken`, généré/régénéré par un
+  admin depuis la page "Profils" (`GET`/`POST /modpacks/:slug/report-token[/regenerate]`,
+  admin uniquement). Le jeton identifiant déjà le profil de façon unique, `POST
+  /modpacks/online-players` ne prend pas de `:slug` — l'API retrouve le profil en
+  comparant le jeton reçu à chaque `reportToken` en base (`findModpackByToken`, en temps
+  constant par ligne), pas en le demandant en plus au `.cfg` du mod. Seul `GET
+  /modpacks/:slug/online-players` (lu par le launcher, sans jeton) reste scopé par slug.
+  `GET /modpacks` n'expose jamais la valeur du jeton, seulement `hasReportToken` — la
+  valeur en clair n'est révélée qu'à la demande explicite d'un admin, pour la recopier
+  dans le `.cfg` de FedoServerTools sur le serveur Valheim concerné. Régénérer invalide
+  immédiatement l'ancien jeton (le mod continue de reporter avec jusqu'à mise à jour de
+  son `.cfg`, ses rapports étant alors rejetés entre-temps).
+- **État en mémoire côté API, pas en base** (`modpacks/onlinePlayers.ts`) : "qui est en
+  ligne maintenant" n'a pas besoin de survivre à un redémarrage de l'API, le prochain
+  rapport du mod (au plus ~30s après) reconstruit l'état tout seul — pas de migration
+  dédiée pour ça.
+- **Biome de chaque joueur, nom configurable dans le `.cfg` du mod** : chaque entrée
+  rapportée est `{ name, biome }`, `biome` résolu via `Heightmap.FindBiome(player.
+  m_position)` puis traduit en texte final par le mod lui-même, via un `ConfigEntry<string>`
+  par biome (`fedo.servertools.cfg`, section `[Biomes]`, ex: `MeadowsName`), par défaut en
+  anglais (`Meadows`, `Black Forest`...) — même convention que les autres textes affichés
+  au joueur dans ce repo (voir `mods/CLAUDE.md`) : éditer le `.cfg` généré pour y mettre sa
+  propre traduction (ex: `MeadowsName = Prairies`). L'API et le launcher affichent cette
+  valeur telle quelle, sans mapping ni connaissance des biomes du jeu.
+- **`ForcePublicPosition` (`.cfg`, section `[Players]`, activé par défaut)** : la position
+  d'un joueur n'est normalement exploitable que s'il a lui-même activé "Position publique"
+  (Options > Jeu, décoché par défaut chez à peu près tout le monde) — un réglage stocké
+  dans ses préférences locales, que ce mod ne peut pas changer depuis le serveur. Un
+  Harmony postfix sur `ZNet.GetPlayerList()` (`ForcePublicPositionPatch.cs`) force donc
+  `PlayerInfo.m_publicPosition` à `true` pour chaque joueur listé, uniquement dans ce que
+  ce serveur voit — pas une modification du réglage réel côté client. Désactivable pour
+  respecter le choix de chacun, auquel prix le biome ne remonte plus que pour les joueurs
+  ayant explicitement coché ce réglage eux-mêmes.
+- **`online` = fraîcheur ET dernier statut envoyé**, pas juste l'un des deux : le mod
+  envoie `online:true` à chaque rapport périodique et, en best-effort, un dernier rapport
+  `online:false` sur un arrêt propre du serveur (`ZNet.OnDestroy`, même limite que
+  `FedoDiscordLogs.OnServerStopped` — pas garanti si le process est tué brutalement). Un
+  arrêt propre repasse donc `online` à `false` immédiatement ; un crash (pas de dernier
+  rapport `false`) est rattrapé par la péremption du timestamp côté API (90s, 3x
+  l'intervalle de rapport) — `GET /modpacks/:slug/online-players` (public, comme
+  `/health`) combine les deux.
+- **`GET /modpacks/:slug/online-players` public, pas de session requise** : cohérent avec
+  le reste du contenu en lecture publique (règlement/FAQ/annonces/statut BepInEx), et
+  nécessaire puisque ce sera à terme un mod *serveur* qui alimente cette donnée, pas un
+  joueur connecté. `HomePage.tsx` l'interroge au montage puis toutes les 30s (même
+  cadence que le mod), scopé sur `effectiveModpackSlug` (donc la production pour un
+  joueur normal, le profil actif pour un admin en train d'en tester un autre) — voir
+  App.tsx.
+
 ## Contenu géré par les admins
 
 Règlement, FAQ, mods et annonces sont tous en base (Drizzle/SQLite), avec le même
@@ -375,14 +448,15 @@ messages" + "Intégrer des liens" sur ce salon précis.
   mécanismes n'ont pu être vérifiés que par lecture de code source (Gale pour Windows,
   macheim pour macOS), pas par un test réel avec Steam + Valheim installés — à faire en
   priorité sur chaque plateforme avant de considérer cette partie fiable.
-- Migrations Drizzle à jour jusqu'à `0020_careless_annihilus` (voir
+- Migrations Drizzle à jour jusqu'à `0023_mature_boomer` (voir
   `api/drizzle/`) — toujours générer via `db:generate` + appliquer via `db:migrate`, ne
   jamais éditer une migration déjà appliquée.
 - **Pas encore fait** :
   - `website/` — à construire en réutilisant `api/` (voir Vue d'ensemble ci-dessus),
     pas en dupliquant la logique règlement/FAQ/mods/annonces/settings.
-  - Mods maison (BepInEx) — le launcher est prêt à les distribuer (packaging + sync),
-    mais aucun mod réel n'existe encore, ni en DB ni en code.
+  - Mods maison (BepInEx) écrits mais pas encore configurés dans un profil de modpack en
+    base — un admin doit encore uploader les zips de `mods/dist/` via l'éditeur du
+    launcher pour qu'ils soient réellement distribués aux joueurs.
   - UI admin pour bannir/débannir (`PATCH /admin/users/:discordId/ban` existe côté API,
     pas encore appelé depuis le launcher).
   - Barre de progression fine (par octet téléchargé) — la progression actuelle de

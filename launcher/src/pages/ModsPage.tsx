@@ -16,6 +16,9 @@ interface ModInfo {
   // seulement quand la liste est chargée via fetch_mods_full pour un admin, voir
   // loadMods ci-dessous.
   adminOnly?: boolean;
+  // Idem : un mod désactivé n'apparaît jamais dans la réponse publique (voir
+  // ModWrite.enabled), donc toujours `true`/absent ici sauf via fetch_mods_full.
+  enabled?: boolean;
 }
 
 interface ModWrite {
@@ -30,6 +33,9 @@ interface ModWrite {
   // Réservé au modpack "Admin" (voir CLAUDE.md) — invisible du modpack "Joueur" et de
   // la liste publique quand coché.
   adminOnly: boolean;
+  // Décoché = désactivé pour tout le monde (joueur comme admin) : absent du manifest et
+  // de la liste publique, mais la fiche reste en base pour être réactivée plus tard.
+  enabled: boolean;
   // Gérés par l'API, jamais saisis à la main — voir CLAUDE.md. `null` pour un mod pas
   // encore enregistré (vient d'être ajouté dans ce brouillon).
   createdAt: string | null;
@@ -129,6 +135,7 @@ const EMPTY_MOD: ModWrite = {
   dependencies: [],
   iconUrl: "",
   adminOnly: false,
+  enabled: true,
   createdAt: null,
   updatedAt: null,
 };
@@ -231,10 +238,6 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
   const [configFileContentState, setConfigFileContentState] = useState<
     { kind: "idle" } | { kind: "loading" } | { kind: "saving" } | { kind: "error"; message: string }
   >({ kind: "idle" });
-
-  useEffect(() => {
-    onDirtyChange(editing);
-  }, [editing, onDirtyChange]);
 
   const [bepinex, setBepinex] = useState<BepinexConfig | null>(null);
   const [bepinexStatus, setBepinexStatus] = useState<BepinexStatus | null>(null);
@@ -523,6 +526,12 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
     );
   }
 
+  function toggleEnabled(index: number) {
+    setDraft((prev) =>
+      prev.map((mod, i) => (i === index ? { ...mod, enabled: !mod.enabled } : mod)),
+    );
+  }
+
   async function removeDraftEntry(index: number) {
     const name = draft[index]?.name.trim();
     const confirmed = await confirm(
@@ -653,6 +662,14 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
     () => JSON.stringify(configFiles) !== JSON.stringify(initialConfigFiles),
     [configFiles, initialConfigFiles],
   );
+
+  // Reflète les vrais changements non enregistrés, pas juste "l'éditeur est ouvert" —
+  // "Enregistrer" ne ferme pas l'éditeur (voir handleSaveMods/handleSaveConfig, pour
+  // pouvoir continuer sur l'autre onglet), donc `editing` seul resterait `true` après un
+  // enregistrement réussi et redemanderait confirmation avant de quitter pour rien.
+  useEffect(() => {
+    onDirtyChange(editing && (modsDirty || configDirty));
+  }, [editing, modsDirty, configDirty, onDirtyChange]);
 
   // N'écrit que les mods — ne touche jamais aux fichiers de config, même si l'autre
   // onglet a des changements non enregistrés en attente. Reste dans l'éditeur après
@@ -791,45 +808,51 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
                 </button>
               </div>
 
-              <div
-                className={`mods-editor__card ${!bepinexConfigured ? "mods-editor__card--warning" : ""}`}
-              >
-                <div className="mods-editor__row">
-                  {bepinexIconUrl && (
-                    <img
-                      className="mods-editor__icon"
-                      src={`${apiBaseUrl}${bepinexIconUrl}`}
-                      alt=""
-                    />
+              {(!editorSearch.trim() ||
+                "bepinex".includes(editorSearch.trim().toLowerCase())) && (
+                <div
+                  className={`mods-editor__card ${!bepinexConfigured ? "mods-editor__card--warning" : ""}`}
+                >
+                  <div className="mods-editor__row">
+                    {bepinexIconUrl && (
+                      <img
+                        className="mods-editor__icon"
+                        src={`${apiBaseUrl}${bepinexIconUrl}`}
+                        alt=""
+                      />
+                    )}
+                    <span className="mods-editor__bepinex-name">BepInEx</span>
+                    {bepinexVersion && (
+                      <span className="mods-list__version">v{bepinexVersion}</span>
+                    )}
+                  </div>
+                  {!bepinexConfigured ? (
+                    <p className="mods-page__warning">
+                      Non configuré — "Jouer" refusera de lancer le jeu tant que ce n'est pas
+                      fait.
+                    </p>
+                  ) : (
+                    <p className="mods-list__description">{bepinexDescription}</p>
                   )}
-                  <span className="mods-editor__bepinex-name">BepInEx</span>
-                  {bepinexVersion && <span className="mods-list__version">v{bepinexVersion}</span>}
+                  <div className="mods-editor__row">
+                    <button
+                      type="button"
+                      className="btn btn--ghost"
+                      onClick={handlePickBepinex}
+                      disabled={bepinexState.kind === "uploading"}
+                    >
+                      {bepinexState.kind === "uploading"
+                        ? "Import..."
+                        : bepinexConfigured
+                          ? "Mettre à jour"
+                          : "Choisir le zip"}
+                    </button>
+                    {bepinexState.kind === "error" && (
+                      <span className="mods-page__error">{bepinexState.message}</span>
+                    )}
+                  </div>
                 </div>
-                {!bepinexConfigured ? (
-                  <p className="mods-page__warning">
-                    Non configuré — "Jouer" refusera de lancer le jeu tant que ce n'est pas fait.
-                  </p>
-                ) : (
-                  <p className="mods-list__description">{bepinexDescription}</p>
-                )}
-                <div className="mods-editor__row">
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    onClick={handlePickBepinex}
-                    disabled={bepinexState.kind === "uploading"}
-                  >
-                    {bepinexState.kind === "uploading"
-                      ? "Import..."
-                      : bepinexConfigured
-                        ? "Mettre à jour"
-                        : "Choisir le zip"}
-                  </button>
-                  {bepinexState.kind === "error" && (
-                    <span className="mods-page__error">{bepinexState.message}</span>
-                  )}
-                </div>
-              </div>
+              )}
 
               {draft.map((mod, i) => {
                 if (
@@ -842,7 +865,7 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
                 const isDuplicate = duplicateNameKeys.has(normalizePackageName(mod.name));
                 return (
                   <div
-                    className={`mods-editor__card ${missingDeps.length > 0 || isDuplicate ? "mods-editor__card--warning" : ""}`}
+                    className={`mods-editor__card ${missingDeps.length > 0 || isDuplicate ? "mods-editor__card--warning" : ""} ${!mod.enabled ? "mods-editor__card--disabled" : ""}`}
                     key={i}
                   >
                     <div className="mods-editor__row">
@@ -887,6 +910,14 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
                         onChange={() => toggleAdminOnly(i)}
                       />
                       Réservé aux admins (invisible du modpack Joueur)
+                    </label>
+                    <label className="mods-editor__checkbox">
+                      <input
+                        type="checkbox"
+                        checked={mod.enabled}
+                        onChange={() => toggleEnabled(i)}
+                      />
+                      Activé (décoché = désactivé pour tout le monde, sans supprimer la fiche)
                     </label>
                     <div className="mods-editor__row">
                       <button
@@ -1135,7 +1166,10 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
               </li>
             )}
             {visibleMods.map((mod) => (
-              <li key={mod.name} className="mods-list__item">
+              <li
+                key={mod.name}
+                className={`mods-list__item ${mod.enabled === false ? "mods-list__item--disabled" : ""}`}
+              >
                 <div className="mods-list__main">
                   {mod.iconUrl && (
                     <img className="mods-list__icon" src={`${apiBaseUrl}${mod.iconUrl}`} alt="" />
@@ -1143,6 +1177,11 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
                   <span className="mods-list__name">{mod.name}</span>
                   <span className="mods-list__version">v{mod.version}</span>
                   {mod.adminOnly && <span className="mods-list__admin-badge">Admin</span>}
+                  {mod.enabled === false && (
+                    <span className="mods-list__admin-badge mods-list__admin-badge--disabled">
+                      Désactivé
+                    </span>
+                  )}
                 </div>
                 <p className="mods-list__description">{mod.description}</p>
                 <span className={`mods-list__tag ${CATEGORY_CLASS[mod.category] ?? "is-serveur"}`}>

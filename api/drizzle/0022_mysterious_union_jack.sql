@@ -1,0 +1,1 @@
+ALTER TABLE `modpacks` ADD `report_token` text;

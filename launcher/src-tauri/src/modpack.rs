@@ -96,6 +96,12 @@ pub struct ModWrite {
     // pas. Affichage seulement, jamais utilisé pour l'installation.
     #[serde(rename = "iconUrl", default)]
     pub icon_url: String,
+    // Réservé au modpack "Admin" — voir schema.ts::mods.adminOnly côté API.
+    #[serde(rename = "adminOnly")]
+    pub admin_only: bool,
+    // Décoché par un admin pour désactiver ce mod pour tout le monde sans perdre sa
+    // fiche — voir schema.ts::mods.enabled côté API.
+    pub enabled: bool,
     // Gérés par l'API (voir routes.ts), jamais fixés par le launcher — présents dans la
     // réponse de fetch_mods_full, absents/ignorés pour un mod pas encore enregistré.
     #[serde(rename = "createdAt", default)]
@@ -366,6 +372,10 @@ pub struct ModpackProfile {
     // launcher — `None` tant qu'aucune n'a été choisie. Toujours `None`/ignorée pour
     // le profil production, voir schema.ts::modpacks.color côté API.
     pub color: Option<String>,
+    // Jamais la valeur du jeton lui-même (voir fetch_report_token/regenerate_report_token
+    // ci-dessous) — juste de quoi savoir si ce profil en a déjà un configuré.
+    #[serde(rename = "hasReportToken")]
+    pub has_report_token: bool,
     #[serde(rename = "modCount")]
     pub mod_count: i64,
     #[serde(rename = "updatedAt")]
@@ -446,6 +456,78 @@ pub async fn rename_modpack(
 
 // `color` à `None` réinitialise (retour à l'apparence par défaut) — voir
 // routes.ts::updateModpackSchema, qui distingue explicitement `null` d'absent.
+// Jeton partagé donné au mod serveur FedoServerTools (voir /mods/FedoServerTools) pour
+// qu'il puisse poster qui est en ligne sur ce profil précis — révélé ici en clair, un
+// admin devant le recopier dans le `.cfg` du mod sur le serveur Valheim concerné.
+pub async fn fetch_report_token(
+    http: &reqwest::Client,
+    token: &str,
+    slug: &str,
+) -> Result<Option<String>, String> {
+    #[derive(Deserialize)]
+    struct ReportTokenResponse {
+        #[serde(rename = "reportToken")]
+        report_token: Option<String>,
+    }
+
+    let res = http
+        .get(format!(
+            "{}/modpacks/{slug}/report-token",
+            config::api_base_url()
+        ))
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| config::describe_request_error(&e))?;
+
+    if !res.status().is_success() {
+        return Err(format!(
+            "Failed to fetch report token ({}): {}",
+            res.status(),
+            res.text().await.unwrap_or_default()
+        ));
+    }
+
+    let parsed: ReportTokenResponse = res.json().await.map_err(|e| e.to_string())?;
+    Ok(parsed.report_token)
+}
+
+// Génère un nouveau jeton (et invalide l'ancien, s'il existait) — le mod continuera de
+// reporter avec l'ancien jusqu'à ce que son `.cfg` soit mis à jour, ses rapports étant
+// alors rejetés par l'API entre-temps.
+pub async fn regenerate_report_token(
+    http: &reqwest::Client,
+    token: &str,
+    slug: &str,
+) -> Result<String, String> {
+    #[derive(Deserialize)]
+    struct ReportTokenResponse {
+        #[serde(rename = "reportToken")]
+        report_token: String,
+    }
+
+    let res = http
+        .post(format!(
+            "{}/modpacks/{slug}/report-token/regenerate",
+            config::api_base_url()
+        ))
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| config::describe_request_error(&e))?;
+
+    if !res.status().is_success() {
+        return Err(format!(
+            "Failed to regenerate report token ({}): {}",
+            res.status(),
+            res.text().await.unwrap_or_default()
+        ));
+    }
+
+    let parsed: ReportTokenResponse = res.json().await.map_err(|e| e.to_string())?;
+    Ok(parsed.report_token)
+}
+
 pub async fn set_modpack_color(
     http: &reqwest::Client,
     token: &str,

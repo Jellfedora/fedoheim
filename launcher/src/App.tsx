@@ -746,7 +746,11 @@ function App() {
 
       <main className="shell__content">
         {page === "home" && (
-          <HomePage heroEyebrow={settings.heroEyebrow} heroTagline={settings.heroTagline} />
+          <HomePage
+            heroEyebrow={settings.heroEyebrow}
+            heroTagline={settings.heroTagline}
+            slug={effectiveModpackSlug}
+          />
         )}
         {page === "announcements" && <AnnouncementsPage isAdmin={user?.isAdmin ?? false} />}
         {page === "mods" && (

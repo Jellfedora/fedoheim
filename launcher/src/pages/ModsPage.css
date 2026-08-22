@@ -122,6 +122,17 @@
   letter-spacing: 0.03em;
 }
 
+.mods-list__admin-badge--disabled {
+  background: rgba(148, 155, 164, 0.18);
+  color: var(--text-muted);
+}
+
+/* Mod désactivé (voir ModWrite.enabled) : jamais installé, mais gardé visible dans la
+   vue admin (contrairement à un mod supprimé) — juste assourdi, pas une erreur. */
+.mods-list__item--disabled {
+  opacity: 0.55;
+}
+
 .mods-list__description {
   margin: 0;
   color: var(--text-muted);
@@ -177,6 +188,14 @@
 
 .mods-editor__card--warning {
   border-color: #eb942a;
+}
+
+/* Mod décoché "Activé" : reste pleinement éditable (pas d'opacité réduite comme dans la
+   liste, un admin doit continuer à bien voir ce qu'il édite), juste une bordure en
+   pointillés pour rappeler qu'il n'est actuellement installé pour personne. */
+.mods-editor__card--disabled {
+  border-style: dashed;
+  border-color: var(--text-faint);
 }
 
 .mods-page__warning {

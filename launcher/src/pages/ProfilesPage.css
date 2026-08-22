@@ -119,6 +119,30 @@
   flex-wrap: wrap;
 }
 
+.profiles-list__report-token {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.profiles-list__report-token-label {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+}
+
+.profiles-list__report-token-value {
+  flex: 1;
+  min-width: 220px;
+  padding: 0.35rem 0.55rem;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
 .profiles-list__delete {
   color: var(--danger);
 }

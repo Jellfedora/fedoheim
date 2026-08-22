@@ -75,5 +75,8 @@ sur les vraies commandes Rust.
   externe (BepInEx + mods, hors de l'install Steam), lancement via Steam avec arguments
   Doorstop (Windows).
 - `modpack.rs` — packaging admin (zip d'un dossier + upload), synchronisation BepInEx et
-  mods dans le profil (téléchargement/vérification/extraction).
+  mods dans le profil (téléchargement/vérification/extraction), jeton de rapport
+  FedoServerTools par profil (`fetch_report_token`/`regenerate_report_token`).
+- `online.rs` — lecture publique de qui est en ligne (`fetch_online_players`), alimentée
+  par le mod serveur FedoServerTools (voir `/mods/FedoServerTools`).
 - `lib.rs` — commandes Tauri exposées au frontend React (`invoke(...)`).

@@ -15,6 +15,10 @@ interface ModpackProfile {
   // playbar, cette page) — `null` tant qu'aucune n'a été choisie. Toujours ignorée
   // pour le profil production, qui n'expose de toute façon jamais le sélecteur.
   color: string | null;
+  // Le mod serveur FedoServerTools a-t-il déjà un jeton pour ce profil (voir bloc
+  // "Jeton serveur" ci-dessous) — jamais la valeur elle-même, révélée séparément via
+  // fetch_report_token/regenerate_report_token.
+  hasReportToken: boolean;
   modCount: number;
   updatedAt: string;
 }
@@ -152,6 +156,16 @@ export function ProfilesPage({ activeSlug, onSelect, onModpackUpdated }: Profile
   const [toSlug, setToSlug] = useState("");
   const [copyState, setCopyState] = useState<CopyState>({ kind: "idle" });
 
+  // Jeton révélé (voir "Voir le jeton"/"Régénérer") — gardé seulement en mémoire, pas
+  // rechargé automatiquement : un admin qui quitte cette page et y revient doit le
+  // redemander explicitement, comme un secret de type "vu une seule fois".
+  const [revealedTokens, setRevealedTokens] = useState<Record<string, string>>({});
+  const [tokenBusySlug, setTokenBusySlug] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  // Retour visuel "Copié !" sur le bouton, effacé après un court délai — voir
+  // handleCopyToken.
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+
   function loadProfiles() {
     setState({ kind: "loading" });
     invoke<ModpackProfile[]>("list_modpacks")
@@ -245,6 +259,55 @@ export function ProfilesPage({ activeSlug, onSelect, onModpackUpdated }: Profile
       setActionState({ kind: "idle" });
     } catch (err) {
       setActionState({ kind: "error", message: String(err) });
+    }
+  }
+
+  async function handleRevealToken(slug: string) {
+    setTokenBusySlug(slug);
+    setTokenError(null);
+    try {
+      const token = await invoke<string | null>("fetch_report_token", { slug });
+      if (token) {
+        setRevealedTokens((prev) => ({ ...prev, [slug]: token }));
+      } else {
+        setTokenError("Aucun jeton généré pour ce profil pour l'instant.");
+      }
+    } catch (err) {
+      setTokenError(String(err));
+    } finally {
+      setTokenBusySlug(null);
+    }
+  }
+
+  async function handleCopyToken(slug: string) {
+    const token = revealedTokens[slug];
+    if (!token) return;
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopiedSlug(slug);
+      setTimeout(() => setCopiedSlug((prev) => (prev === slug ? null : prev)), 2000);
+    } catch (err) {
+      setTokenError(String(err));
+    }
+  }
+
+  async function handleRegenerateToken(profile: ModpackProfile) {
+    const message = profile.hasReportToken
+      ? `Régénérer le jeton du profil "${profile.name}" ? L'ancien cessera immédiatement de fonctionner -- il faudra le remettre à jour dans le .cfg de FedoServerTools sur ce serveur.`
+      : `Générer un jeton pour le profil "${profile.name}" ?`;
+    const confirmed = await confirm(message);
+    if (!confirmed) return;
+
+    setTokenBusySlug(profile.slug);
+    setTokenError(null);
+    try {
+      const token = await invoke<string>("regenerate_report_token", { slug: profile.slug });
+      setRevealedTokens((prev) => ({ ...prev, [profile.slug]: token }));
+      loadProfiles();
+    } catch (err) {
+      setTokenError(String(err));
+    } finally {
+      setTokenBusySlug(null);
     }
   }
 
@@ -359,6 +422,48 @@ export function ProfilesPage({ activeSlug, onSelect, onModpackUpdated }: Profile
                   {formatDate(profile.updatedAt)}
                 </p>
 
+                <div className="profiles-list__report-token">
+                  <span className="profiles-list__report-token-label">
+                    Jeton serveur : {profile.hasReportToken ? "configuré" : "aucun"}
+                  </span>
+                  {revealedTokens[profile.slug] ? (
+                    <>
+                      <input
+                        className="profiles-list__report-token-value"
+                        readOnly
+                        value={revealedTokens[profile.slug]}
+                        onFocus={(e) => e.target.select()}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => handleCopyToken(profile.slug)}
+                      >
+                        {copiedSlug === profile.slug ? "Copié !" : "Copier"}
+                      </button>
+                    </>
+                  ) : (
+                    profile.hasReportToken && (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => handleRevealToken(profile.slug)}
+                        disabled={tokenBusySlug === profile.slug}
+                      >
+                        Voir le jeton
+                      </button>
+                    )
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn--ghost"
+                    onClick={() => handleRegenerateToken(profile)}
+                    disabled={tokenBusySlug === profile.slug}
+                  >
+                    {profile.hasReportToken ? "Régénérer le jeton" : "Générer un jeton"}
+                  </button>
+                </div>
+
                 <div className="profiles-list__actions">
                   {renamingSlug === profile.slug ? (
                     <>
@@ -447,6 +552,7 @@ export function ProfilesPage({ activeSlug, onSelect, onModpackUpdated }: Profile
       {actionState.kind === "error" && (
         <p className="profiles-page__status is-error">{actionState.message}</p>
       )}
+      {tokenError && <p className="profiles-page__status is-error">{tokenError}</p>}
 
       {state.kind === "loaded" && profiles.length >= 2 && (
         <div className="profiles-copy">

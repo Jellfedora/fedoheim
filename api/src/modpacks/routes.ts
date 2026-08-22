@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -66,6 +67,9 @@ const modBodySchema = z.object({
   iconUrl: z.string().trim().default(""),
   // Coché par un admin dans l'éditeur — voir schema.ts::mods.adminOnly.
   adminOnly: z.boolean().default(false),
+  // Décoché par un admin pour désactiver ce mod pour tout le monde — voir
+  // schema.ts::mods.enabled.
+  enabled: z.boolean().default(true),
 });
 
 const modsBodySchema = z.object({
@@ -113,6 +117,7 @@ export default async function modpackRoutes(app: FastifyInstance) {
           version: m.version,
           isDefault: m.isDefault,
           color: m.color,
+          hasReportToken: Boolean(m.reportToken),
           modCount: countByModpackId.get(m.id) ?? 0,
           updatedAt: m.updatedAt,
         })),
@@ -225,8 +230,8 @@ export default async function modpackRoutes(app: FastifyInstance) {
 
   // Liste publique des mods pour affichage (page "Mods" du launcher) : pas de
   // downloadUrl/sha256 ici, contrairement au manifest ci-dessous qui est protégé. Les
-  // mods "admin only" en sont toujours absents, y compris pour un admin qui consulte
-  // cette liste hors édition — invisibles ici, gérés via GET /mods/full.
+  // mods "admin only" ou désactivés en sont toujours absents, y compris pour un admin
+  // qui consulte cette liste hors édition — invisibles ici, gérés via GET /mods/full.
   app.get("/modpacks/:slug/mods", async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
@@ -238,7 +243,7 @@ export default async function modpackRoutes(app: FastifyInstance) {
     const modList = db
       .select()
       .from(mods)
-      .where(and(eq(mods.modpackId, modpack.id), eq(mods.adminOnly, false)))
+      .where(and(eq(mods.modpackId, modpack.id), eq(mods.adminOnly, false), eq(mods.enabled, true)))
       .all();
 
     return reply.send(
@@ -279,6 +284,7 @@ export default async function modpackRoutes(app: FastifyInstance) {
           dependencies: m.dependencies,
           iconUrl: m.iconUrl,
           adminOnly: m.adminOnly,
+          enabled: m.enabled,
           createdAt: m.createdAt,
           updatedAt: m.updatedAt,
         })),
@@ -375,13 +381,16 @@ export default async function modpackRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: "Modpack not found" });
       }
 
+      // `enabled` filtre toujours, quel que soit `mode` -- un mod désactivé ne doit être
+      // installé par personne, joueur comme admin (contrairement à `adminOnly`, qui ne
+      // filtre qu'en mode joueur).
       const modList = db
         .select()
         .from(mods)
         .where(
           mode === "admin"
-            ? eq(mods.modpackId, modpack.id)
-            : and(eq(mods.modpackId, modpack.id), eq(mods.adminOnly, false)),
+            ? and(eq(mods.modpackId, modpack.id), eq(mods.enabled, true))
+            : and(eq(mods.modpackId, modpack.id), eq(mods.adminOnly, false), eq(mods.enabled, true)),
         )
         .all();
 
@@ -498,6 +507,45 @@ export default async function modpackRoutes(app: FastifyInstance) {
         .run();
 
       return reply.send({ ok: true });
+    },
+  );
+
+  // Jeton partagé donné au mod serveur FedoServerTools (voir mods/FedoServerTools) pour
+  // qu'il puisse poster qui est en ligne sur ce profil précis — voir onlinePlayers.ts.
+  // Révélé tel quel à un admin qui doit le recopier dans le .cfg du mod ; pas exposé
+  // dans GET /modpacks (seulement `hasReportToken`, voir ci-dessus).
+  app.get(
+    "/modpacks/:slug/report-token",
+    { preHandler: [app.requireAuth, app.requireAdmin] },
+    async (req, reply) => {
+      const { slug } = req.params as { slug: string };
+      const modpack = db.select().from(modpacks).where(eq(modpacks.slug, slug)).get();
+      if (!modpack) {
+        return reply.code(404).send({ error: "Modpack not found" });
+      }
+      return reply.send({ reportToken: modpack.reportToken });
+    },
+  );
+
+  // Génère un nouveau jeton (et invalide l'ancien, s'il existait) — à recopier dans le
+  // `.cfg` de FedoServerTools sur le serveur Valheim de ce profil.
+  app.post(
+    "/modpacks/:slug/report-token/regenerate",
+    { preHandler: [app.requireAuth, app.requireAdmin] },
+    async (req, reply) => {
+      const { slug } = req.params as { slug: string };
+      const modpack = db.select().from(modpacks).where(eq(modpacks.slug, slug)).get();
+      if (!modpack) {
+        return reply.code(404).send({ error: "Modpack not found" });
+      }
+
+      const reportToken = crypto.randomBytes(24).toString("hex");
+      db.update(modpacks)
+        .set({ reportToken, updatedAt: new Date() })
+        .where(eq(modpacks.id, modpack.id))
+        .run();
+
+      return reply.send({ reportToken });
     },
   );
 }

@@ -4,6 +4,7 @@ mod auth;
 mod config;
 mod content;
 mod modpack;
+mod online;
 mod session;
 mod settings;
 mod valheim;
@@ -15,6 +16,7 @@ use modpack::{
     BepinexStatus, BepinexWrite, BulkUpload, ConfigFileUpload, ConfigFileWrite, FileUpload,
     ModInfo, ModWrite, ModpackProfile,
 };
+use online::OnlinePlayers;
 use serde::Serialize;
 use session::{Session, UserInfo};
 use settings::Settings;
@@ -604,6 +606,34 @@ async fn fetch_bepinex_status(
     modpack::fetch_bepinex_status(&state.http, &slug).await
 }
 
+// Pas d'auth requise : qui est en ligne doit être visible sans compte, comme le statut
+// BepInEx ci-dessus (voir CLAUDE.md, ce sera à terme un mod serveur qui l'alimente).
+#[tauri::command]
+async fn fetch_online_players(
+    state: State<'_, AppState>,
+    slug: String,
+) -> Result<OnlinePlayers, String> {
+    online::fetch_online_players(&state.http, &slug).await
+}
+
+#[tauri::command]
+async fn fetch_report_token(
+    state: State<'_, AppState>,
+    slug: String,
+) -> Result<Option<String>, String> {
+    let token = current_token(&state)?;
+    modpack::fetch_report_token(&state.http, &token, &slug).await
+}
+
+#[tauri::command]
+async fn regenerate_report_token(
+    state: State<'_, AppState>,
+    slug: String,
+) -> Result<String, String> {
+    let token = current_token(&state)?;
+    modpack::regenerate_report_token(&state.http, &token, &slug).await
+}
+
 // Nettoyage des fichiers importés (zip/icône) qui ne seront finalement pas utilisés —
 // voir le bouton "Annuler" de l'éditeur de mods.
 #[tauri::command]
@@ -777,6 +807,9 @@ pub fn run() {
             rename_modpack,
             delete_modpack,
             set_modpack_color,
+            fetch_online_players,
+            fetch_report_token,
+            regenerate_report_token,
             load_active_profile,
             save_active_profile,
             fetch_rules,

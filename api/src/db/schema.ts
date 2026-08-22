@@ -45,6 +45,11 @@ export const modpacks = sqliteTable("modpacks", {
   // Ignorée pour le profil production (isDefault), qui garde toujours l'apparence
   // standard — le sélecteur de couleur n'est de toute façon jamais proposé pour lui.
   color: text("color"),
+  // Secret partagé avec le mod serveur FedoServerTools (header `x-server-token` sur
+  // POST /modpacks/:slug/online-players), généré/régénéré par un admin depuis la page
+  // Profils — voir modpacks/routes.ts. `null` tant qu'aucun n'a été généré : le serveur
+  // Valheim de ce profil n'a alors aucun moyen de poster qui est en ligne.
+  reportToken: text("report_token"),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
@@ -75,6 +80,12 @@ export const mods = sqliteTable("mods", {
   // des joueurs normaux : absent de la liste publique (GET /mods) et du manifest en mode
   // "player". Coché par un admin dans l'éditeur, jamais déduit automatiquement.
   adminOnly: integer("admin_only", { mode: "boolean" }).notNull().default(false),
+  // Coché par un admin pour désactiver ce mod pour tout le monde (joueur comme admin)
+  // sans perdre sa fiche (description, catégorie, dépendances, zip déjà importé) —
+  // absent du manifest (voir routes.ts::GET /modpacks/:slug/manifest, filtré quel que
+  // soit `mode`) et de la liste publique tant qu'il est décoché, mais toujours visible
+  // dans l'éditeur admin pour pouvoir le réactiver.
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   // Gérés par l'API, jamais par le client (voir routes.ts) : createdAt est préservé
   // d'une sauvegarde à l'autre (match par nom, la liste étant remplacée en bloc à
   // chaque PUT) ; updatedAt ne bouge que si downloadUrl/sha256 changent réellement,

@@ -1,0 +1,10 @@
+{
+  "name": "FedoGuardian",
+  "author": "Fedo",
+  "version_number": "1.0.0",
+  "website_url": "",
+  "description": "A summoning wand lets you call a permanent guard that fights hostile creatures for you. Equip it with your own spare gear, and take it back any time.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}

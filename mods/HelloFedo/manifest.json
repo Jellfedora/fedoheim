@@ -1,0 +1,10 @@
+{
+  "name": "HelloFedo",
+  "author": "Fedo",
+  "version_number": "1.0.0",
+  "website_url": "",
+  "description": "Minimal test mod — displays a 'Hello Fedo' banner on screen. Used to verify that BepInEx and the modpack are correctly installed, nothing more.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}

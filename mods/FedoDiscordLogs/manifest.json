@@ -1,0 +1,10 @@
+{
+  "name": "FedoDiscordLogs",
+  "author": "Fedo",
+  "version_number": "1.0.0",
+  "website_url": "",
+  "description": "Posts server/session events (player connect/disconnect/death, server start/stop, world saved) to a Discord webhook. Works as a server mod, a client mod, or both.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}

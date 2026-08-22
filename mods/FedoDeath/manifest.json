@@ -1,0 +1,10 @@
+{
+  "name": "FedoDeath",
+  "author": "Fedo",
+  "version_number": "1.0.0",
+  "website_url": "",
+  "description": "On death, a hostile guardian creature spawns and guards your loot instead of an immediate tombstone. Kill it to reveal your grave where it fell.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}

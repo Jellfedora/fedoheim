@@ -1,0 +1,10 @@
+{
+  "name": "FedoGoldRabbit",
+  "author": "Fedo",
+  "version_number": "1.0.0",
+  "website_url": "",
+  "description": "A rare Gold Rabbit roams every biome. It flees, shouting excuses about being late, drops coins as it runs, and pays out a big pile of coins when killed. Not caught in time? It vanishes in a puff of smoke, loot and all.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}

@@ -1,0 +1,4 @@
+# Sortie de build .NET (régénérée par `dotnet build`)
+bin/
+obj/
+*.user

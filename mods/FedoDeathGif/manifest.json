@@ -1,0 +1,10 @@
+{
+  "name": "FedoDeathGif",
+  "author": "Fedo",
+  "version_number": "1.0.1",
+  "website_url": "",
+  "description": "Captures the seconds before your death as a gif and posts it to a Discord webhook, with a chat line and an on-screen message.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}

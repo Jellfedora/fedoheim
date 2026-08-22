@@ -3,6 +3,22 @@
 App desktop (Tauri + React) : login Discord, mise à jour du modpack, lancement du jeu.
 Voir `/CLAUDE.md` (racine du repo) pour l'architecture générale et le flow d'auth complet.
 
+## Installation (joueurs)
+
+Builds disponibles sur la page [Releases](https://github.com/Jellfedora/fedoheim/releases)
+du repo. Les builds ne sont pas signés (pas de compte Apple Developer / certificat
+Windows) — premier lancement bloqué par défaut sur les deux OS :
+
+- **macOS** : `.dmg` téléchargé → glisser l'app dans `Applications` (pas la lancer
+  directement depuis le volume monté, en lecture seule) → macOS affiche "l'app est
+  endommagée" (Gatekeeper, pas un vrai problème). Dans un terminal :
+  ```bash
+  xattr -cr "/Applications/Fedoheim Launcher.app"
+  ```
+  puis relancer l'app normalement.
+- **Windows** : SmartScreen affiche "Windows a protégé votre ordinateur" au premier
+  lancement de l'installeur → "Informations complémentaires" → "Exécuter quand même".
+
 ## Setup
 
 1. `nvm use 22` (le launcher lui-même n'a pas besoin de Node en prod, mais le tooling

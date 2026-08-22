@@ -7,6 +7,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using ServerSync;
 using UnityEngine;
 
 namespace FedoServerTools
@@ -26,7 +27,7 @@ namespace FedoServerTools
 
         private ConfigEntry<string> _apiBaseUrl;
         private ConfigEntry<string> _serverToken;
-        private ConfigEntry<float> _reportIntervalSeconds;
+        private ConfigEntry<float> _syncIntervalSeconds;
 
         private ConfigEntry<string> _biomeMeadows;
         private ConfigEntry<string> _biomeBlackForest;
@@ -39,11 +40,13 @@ namespace FedoServerTools
         private ConfigEntry<string> _biomeMistlands;
 
         private ConfigEntry<bool> _forcePublicPosition;
+        private bool ForcePublicPosition => _forcePublicPosition.Value;
 
-        // Lu par ForcePublicPositionPatch (classe statique) -- voir ce fichier pour le
-        // pourquoi (le réglage "Position publique" est côté client, ce mod ne peut pas le
-        // changer, seulement neutraliser son effet sur ce que ce serveur voit).
-        public bool ForcePublicPosition => _forcePublicPosition.Value;
+        // ServerSync (voir mods/_shared/ConfigSync.cs) : ForcePublicPosition est
+        // volontairement le seul réglage inscrit ici. Jamais ServerToken -- AddConfigEntry
+        // diffuse la valeur à chaque client connecté dès qu'elle change, ce qui enverrait
+        // le vrai jeton du serveur à tout le monde.
+        private readonly ConfigSync _configSync = new ConfigSync(PluginGuid) { DisplayName = PluginName, CurrentVersion = PluginVersion };
 
         private Harmony _harmony;
         private Coroutine _reportLoop;
@@ -65,12 +68,12 @@ namespace FedoServerTools
                 "",
                 "Shared secret for this modpack profile (Profiles page in the launcher, admin only -- 'Regenerate token'). Identifies which profile this server reports as, so no separate slug setting is needed here. Reports are rejected without it. Keep it secret.");
 
-            _reportIntervalSeconds = Config.Bind(
+            _syncIntervalSeconds = Config.Bind(
                 "Api",
-                "ReportIntervalSeconds",
+                "SyncIntervalSeconds",
                 30f,
                 new ConfigDescription(
-                    "How often (in seconds) to report the connected player list to the API.",
+                    "How often (in seconds) this mod talks to the API -- reporting the connected player list today, and in the future also picking up anything the API needs to tell the game (this mod isn't just a player-list reporter).",
                     new AcceptableValueRange<float>(10f, 300f)));
 
             // Nom envoyé pour chaque biome, affiché tel quel par le launcher -- éditer ce
@@ -90,7 +93,13 @@ namespace FedoServerTools
                 "Players",
                 "ForcePublicPosition",
                 true,
-                "Treat every player's position as public on this server, regardless of their own 'Public position' setting (Options > Game) -- that setting is stored locally on each player's machine and can't be changed from the server, so this only overrides what this server itself sees. Needed for biome to be reported for every player without asking each of them to enable that setting themselves.");
+                "Forces every connected player's 'Public position' setting on for this session (Options > Game), so they show up on each other's map and a biome can be reported for everyone -- their own local setting is left untouched, this only affects what this server sees for as long as they're connected here. Locked: a connecting player can't override this from their own .cfg, only the server admin controls it.");
+            _configSync.AddConfigEntry(_forcePublicPosition);
+            // Toujours verrouillé, pas une option -- un joueur ne doit jamais pouvoir
+            // désactiver ça pour lui-même depuis son propre .cfg local. N'affecte pas
+            // l'admin du serveur lui-même (ConfigSync.IsAdmin reste vrai côté serveur,
+            // qui fait toujours autorité sur sa propre valeur).
+            _configSync.IsLocked = true;
 
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
@@ -111,11 +120,14 @@ namespace FedoServerTools
             _reportLoop = StartCoroutine(ReportLoop());
         }
 
-        // Fire-and-forget comme les autres événements de fin de vie du serveur (voir
-        // FedoDiscordLogs.OnServerStopped) : ZNet.OnDestroy peut survenir pendant de
-        // simples transitions de menu, et rien ne garantit que ce dernier rapport parte
-        // réellement si le process est tué brutalement -- la péremption du dernier
-        // rapport côté API (voir onlinePlayers.ts) rattrape ce cas-là.
+        // Contrairement à Report() ci-dessous (fire-and-forget, adapté aux rapports
+        // périodiques tant que le process continue de tourner), celui-ci est attendu de
+        // façon bloquante (voir ReportBlocking) : le process peut se terminer dans les
+        // instants qui suivent OnDestroy, ce qui tuerait une tâche encore en vol avant
+        // qu'elle n'atteigne l'API -- observé en pratique même sur un arrêt propre du
+        // jeu, pas seulement un crash. La péremption du dernier rapport côté API (voir
+        // onlinePlayers.ts) reste le filet de sécurité si même ça échoue (vrai crash,
+        // coupure réseau...).
         public void OnServerStopping()
         {
             if (_reportLoop != null)
@@ -124,12 +136,30 @@ namespace FedoServerTools
                 _reportLoop = null;
             }
 
-            Report(new List<PlayerReport>(), online: false);
+            ReportBlocking(new List<PlayerReport>(), online: false);
+        }
+
+        // Appelé côté client uniquement (voir ClientPublicPositionPatch) -- reproduit un
+        // vrai clic sur la case "Position publique" des options du jeu via l'API publique
+        // de Minimap, pour passer par le chemin normal du jeu (RPC, diffusion aux autres
+        // clients...) plutôt que d'espérer qu'un champ forcé côté serveur suffise.
+        public void ForceOwnPublicPosition()
+        {
+            if (!ForcePublicPosition || Minimap.instance == null || Minimap.instance.m_publicPosition == null)
+            {
+                return;
+            }
+
+            if (!Minimap.instance.m_publicPosition.isOn)
+            {
+                Minimap.instance.m_publicPosition.isOn = true;
+                Minimap.instance.OnTogglePublicPosition();
+            }
         }
 
         private IEnumerator ReportLoop()
         {
-            var wait = new WaitForSecondsRealtime(Mathf.Max(1f, _reportIntervalSeconds.Value));
+            var wait = new WaitForSecondsRealtime(Mathf.Max(1f, _syncIntervalSeconds.Value));
             while (true)
             {
                 Report(GetConnectedPlayers(), online: true);
@@ -148,34 +178,79 @@ namespace FedoServerTools
                 return new List<PlayerReport>();
             }
 
-            var result = new List<PlayerReport>();
-            foreach (var player in ZNet.instance.GetPlayerList())
+            if (Instance.ForcePublicPosition)
             {
-                if (string.IsNullOrEmpty(player.m_name))
+                ForcePublicPositionOnPeers();
+            }
+
+            // Player.GetAllPlayers() donne les instances réellement simulées côté serveur
+            // (armure calculée depuis leur équipement synchronisé) -- indexées par nom,
+            // qui est déjà ce qu'on utilise pour identifier un joueur dans PlayerInfo.
+            var playersByName = new Dictionary<string, Player>();
+            foreach (var p in Player.GetAllPlayers())
+            {
+                string name = p.GetPlayerName();
+                if (!string.IsNullOrEmpty(name))
+                {
+                    playersByName[name] = p;
+                }
+            }
+
+            var result = new List<PlayerReport>();
+            foreach (var info in ZNet.instance.GetPlayerList())
+            {
+                if (string.IsNullOrEmpty(info.m_name))
                 {
                     continue;
                 }
 
-                result.Add(new PlayerReport(player.m_name, GetBiomeName(player)));
+                playersByName.TryGetValue(info.m_name, out var player);
+                result.Add(new PlayerReport(info.m_name, GetBiomeName(info), GetArmor(player)));
             }
 
             return result;
         }
 
-        // `m_publicPosition` est le même réglage que celui qui décide si un joueur
-        // apparaît sur la carte des autres (voir CrossNetworkUserInfo côté jeu) -- on ne
-        // calcule/rapporte le biome que si le joueur a lui-même choisi de partager sa
-        // position, pour ne jamais contourner ce choix via cette autre voie.
+        // Écrit directement `m_publicRefPos` (le champ réel du jeu, public -- voir
+        // Minimap.OnTogglePublicPosition côté client) sur chaque pair actuellement
+        // connecté, pour de vrai cette fois : contrairement à l'ancienne version qui
+        // patchait GetPlayerList() en Harmony pour réécrire sa liste de retour (risque
+        // de corrompre une liste partagée avec d'autres systèmes, voir CHANGELOG), on
+        // modifie ici un champ précis sur un objet précis, à l'origine de la donnée --
+        // ça a un vrai effet en jeu (le joueur apparaît sur la carte des autres), pas
+        // seulement sur ce que ce mod rapporte. Rappelé à chaque cycle (pas juste à la
+        // connexion) pour absorber tout pair rejoint entre deux appels.
+        private static void ForcePublicPositionOnPeers()
+        {
+            foreach (var peer in ZNet.instance.GetPeers())
+            {
+                peer.m_publicRefPos = true;
+            }
+        }
+
         private static string GetBiomeName(ZNet.PlayerInfo player)
         {
-            if (!player.m_publicPosition)
+            if (!player.m_publicPosition || WorldGenerator.instance == null)
             {
                 return null;
             }
 
             try
             {
-                return ResolveBiomeName(Heightmap.FindBiome(player.m_position));
+                // Heightmap.FindBiome en priorité : c'est le biome réellement affiché au
+                // joueur (post-lissage des bordures de la zone déjà chargée), mais renvoie
+                // silencieusement `None` si cette zone n'est pas chargée en mémoire à cet
+                // instant. Secours sur WorldGenerator.GetBiome (calcul procédural brut,
+                // celui qui a servi à générer le terrain) dans ce cas -- toujours
+                // disponible, mais peut se tromper près d'une côte (une bordure de plage
+                // en Forêt Noire peut y être classée Océan avant lissage).
+                var biome = Heightmap.FindBiome(player.m_position);
+                if (biome == Heightmap.Biome.None)
+                {
+                    biome = WorldGenerator.instance.GetBiome(player.m_position);
+                }
+
+                return biome != Heightmap.Biome.None ? ResolveBiomeName(biome) : null;
             }
             catch (Exception e)
             {
@@ -184,10 +259,28 @@ namespace FedoServerTools
             }
         }
 
+        private static int? GetArmor(Player player)
+        {
+            if (player == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return Mathf.RoundToInt(player.GetBodyArmor());
+            }
+            catch (Exception e)
+            {
+                Log?.LogWarning($"FedoServerTools: failed to resolve armor for {player.GetPlayerName()}: {e.Message}");
+                return null;
+            }
+        }
+
         // Le texte envoyé vient directement du .cfg (voir Awake) -- le launcher affiche
         // cette valeur telle quelle, il n'y a pas de traduction/mapping côté API ou
-        // launcher. `Heightmap.Biome` est un [Flags] mais `FindBiome` ne renvoie jamais
-        // qu'une seule valeur de la liste ci-dessous (ou `None`, couvert par le défaut).
+        // launcher. `Heightmap.Biome` est un [Flags] mais un point du monde n'appartient
+        // jamais qu'à une seule des valeurs ci-dessous (`None` est filtré par l'appelant).
         private static string ResolveBiomeName(Heightmap.Biome biome)
         {
             switch (biome)
@@ -229,6 +322,32 @@ namespace FedoServerTools
                     logger.LogError($"FedoServerTools: failed to report online players: {e}");
                 }
             });
+        }
+
+        // Utilisé uniquement pour le tout dernier rapport (arrêt du serveur) : bloque le
+        // thread principal le temps de l'appel (borné par le timeout HTTP côté
+        // OnlinePlayersReporter, quelques secondes) plutôt que de lancer une tâche en
+        // fire-and-forget qui pourrait ne jamais s'exécuter si le process se termine
+        // juste après OnDestroy -- acceptable ici puisque le jeu est de toute façon en
+        // train de s'arrêter.
+        private void ReportBlocking(List<PlayerReport> players, bool online)
+        {
+            string apiBaseUrl = _apiBaseUrl.Value;
+            string serverToken = _serverToken.Value;
+
+            if (string.IsNullOrWhiteSpace(serverToken))
+            {
+                return;
+            }
+
+            try
+            {
+                OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, online).GetAwaiter().GetResult();
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"FedoServerTools: failed to report server stopping: {e}");
+            }
         }
     }
 }

@@ -12,11 +12,13 @@ const STALE_AFTER_MS = 90_000;
 
 interface OnlinePlayerReport {
   name: string;
-  // Nom brut de l'enum `Heightmap.Biome` côté jeu (ex: "Meadows", "BlackForest"), pas
-  // traduit ici — au launcher de l'afficher en français. `null` si le joueur a désactivé
-  // le partage de sa position (`ZNet.PlayerInfo.m_publicPosition`, voir le mod) : on ne
-  // calcule/expose pas son biome dans ce cas, pour respecter ce choix.
+  // Texte final déjà traduit par le mod (voir fedo.servertools.cfg, section [Biomes]) —
+  // affiché tel quel, aucun mapping ici. `null` si le joueur a désactivé le partage de
+  // sa position et que ForcePublicPosition ne le contourne pas (voir le mod).
   biome: string | null;
+  // Armure totale actuelle (Humanoid.GetBodyArmor(), arrondie côté mod) — `null` si le
+  // personnage n'a pas pu être retrouvé côté serveur au moment du rapport.
+  armor: number | null;
 }
 
 interface OnlineReport {
@@ -40,6 +42,7 @@ const reportBodySchema = z.object({
       z.object({
         name: z.string().trim().min(1),
         biome: z.string().trim().nullable().default(null),
+        armor: z.number().nullable().default(null),
       }),
     )
     .max(500),

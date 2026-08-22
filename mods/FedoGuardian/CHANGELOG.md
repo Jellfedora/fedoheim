@@ -9,3 +9,5 @@
 - Right-click to dress the guard in your currently worn gear; alt + right-click to take it back.
 - Guard state (position, equipment, owner) persists across disconnects, zone reloads, and server
   restarts.
+- All settings are synced from the server and locked ([ServerSync](https://github.com/blaxxun-boop/ServerSync))
+  -- a connecting player can't override them from their own local `.cfg`.

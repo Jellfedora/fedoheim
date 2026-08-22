@@ -10,3 +10,4 @@
 - Despawns in a puff of smoke with no loot if not killed within a configurable time limit.
 - On-screen message and sound when one spawns nearby (configurable).
 - Registers a dedicated always-golden prefab (`Fedo_GoldRabbit`) spawnable on demand via the console or a prefab-listing mod like Easy Spawner, for testing.
+- All settings are synced from the server and locked ([ServerSync](https://github.com/blaxxun-boop/ServerSync)) -- a connecting player can't override them from their own local `.cfg`.

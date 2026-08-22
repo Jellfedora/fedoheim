@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,7 +9,11 @@ namespace FedoServerTools
 {
     public static class OnlinePlayersReporter
     {
-        private static readonly HttpClient Http = new HttpClient();
+        // Timeout court : le rapport d'arrêt du serveur (voir
+        // FedoServerToolsPlugin.ReportBlocking) attend cet appel de façon bloquante,
+        // il ne doit jamais retarder la fermeture du jeu de plus de quelques secondes
+        // si l'API est injoignable.
+        private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
         public static async Task ReportAsync(
             string apiBaseUrl,
@@ -56,6 +61,8 @@ namespace FedoServerTools
                 }
                 sb.Append("{\"name\":").Append(JsonEscape(players[i].Name)).Append(",\"biome\":");
                 sb.Append(players[i].Biome != null ? JsonEscape(players[i].Biome) : "null");
+                sb.Append(",\"armor\":");
+                sb.Append(players[i].Armor.HasValue ? players[i].Armor.Value.ToString(CultureInfo.InvariantCulture) : "null");
                 sb.Append('}');
             }
             sb.Append(']');

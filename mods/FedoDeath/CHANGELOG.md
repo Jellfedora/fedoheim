@@ -9,3 +9,4 @@
 - Defeating the guardian spawns the tombstone, with the player's items, where it died.
 - A removable map pin tracks the guardian and follows it if it moves.
 - On-screen messages for guardian spawn/defeat (configurable).
+- All settings are synced from the server and locked ([ServerSync](https://github.com/blaxxun-boop/ServerSync)) -- a connecting player can't override them from their own local `.cfg`.

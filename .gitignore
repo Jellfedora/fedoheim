@@ -18,6 +18,7 @@ dist-ssr/
 # directement depuis le repo sans avoir à rebuilder.
 !mods/dist/
 !mods/dist/**
+mods/dist/.DS_Store
 
 # Rust / Tauri (safety net — launcher/src-tauri a aussi le sien)
 target/

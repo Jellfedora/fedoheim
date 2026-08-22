@@ -22,6 +22,29 @@ interface OnlinePlayer {
   // "Prairies" pour Meadows) — déjà traduit côté mod, affiché tel quel ici, pas de
   // mapping à faire. `null` si le joueur a désactivé le partage de sa position.
   biome: string | null;
+  // Armure totale actuelle, arrondie côté mod. `null` si le personnage n'a pas pu être
+  // retrouvé côté serveur au moment du rapport.
+  armor: number | null;
+}
+
+// Icône bouclier minimale, en `currentColor` pour hériter de la couleur du texte
+// environnant plutôt que d'ajouter une dépendance à une librairie d'icônes pour un
+// seul usage.
+function ShieldIcon() {
+  return (
+    <svg
+      className="home-players__shield-icon"
+      viewBox="0 0 16 16"
+      width="12"
+      height="12"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M8 1 2.5 3v4.2c0 3.4 2.2 6.2 5.5 7.3 3.3-1.1 5.5-3.9 5.5-7.3V3L8 1Z"
+      />
+    </svg>
+  );
 }
 
 interface OnlinePlayers {
@@ -119,7 +142,15 @@ export function HomePage({ heroEyebrow, heroTagline, slug }: HomePageProps) {
               <ul className="home-players">
                 {onlinePlayers.players.map((player) => (
                   <li key={player.name} className="home-players__item">
-                    <span>{player.name}</span>
+                    <span className="home-players__name-group">
+                      <span>{player.name}</span>
+                      {player.armor !== null && (
+                        <span className="home-players__armor" title="Armure">
+                          <ShieldIcon />
+                          {player.armor}
+                        </span>
+                      )}
+                    </span>
                     {player.biome && <span className="home-players__biome">{player.biome}</span>}
                   </li>
                 ))}

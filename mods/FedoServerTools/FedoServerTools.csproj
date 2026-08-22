@@ -12,6 +12,13 @@
     <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoServerTools</ValheimPluginsDir>
   </PropertyGroup>
 
+  <!-- UnityEngine.CoreModule fournit déjà PublicAPIAttribute/UsedImplicitlyAttribute
+       (mêmes types que le package NuGet JetBrains.Annotations), pas besoin de l'ajouter :
+       ça créerait un conflit de type (CS0433) avec ConfigSync.cs ci-dessous. -->
+  <ItemGroup>
+    <Compile Include="../_shared/ConfigSync.cs" Link="ConfigSync.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <Reference Include="BepInEx">
       <HintPath>$(ValheimBepInExCore)/BepInEx.dll</HintPath>
@@ -31,6 +38,18 @@
     </Reference>
     <Reference Include="assembly_valheim">
       <HintPath>$(ValheimManagedDir)/assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>$(ValheimManagedDir)/assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(ValheimManagedDir)/Unity.TextMeshPro.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

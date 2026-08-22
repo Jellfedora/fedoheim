@@ -3,6 +3,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using ServerSync;
 using UnityEngine;
 
 namespace FedoDeath
@@ -32,6 +33,12 @@ namespace FedoDeath
         public ConfigEntry<string> SpawnMessageText;
         public ConfigEntry<string> DefeatMessageText;
 
+        // ServerSync (voir mods/_shared/ConfigSync.cs) : tous les réglages ci-dessus
+        // affectent ce que voit/vit tout le monde sur ce serveur (le gardien de n'importe
+        // quel joueur), donc verrouillés -- un joueur ne doit pas pouvoir les changer
+        // localement pour lui-même.
+        private readonly ConfigSync _configSync = new ConfigSync(PluginGuid) { DisplayName = PluginName, CurrentVersion = PluginVersion };
+
         private Harmony _harmony;
 
         private void Awake()
@@ -39,44 +46,53 @@ namespace FedoDeath
             Instance = this;
             Log = Logger;
 
-            CreaturePrefab = Config.Bind(
+            CreaturePrefab = SyncedConfig(
                 "Guardian",
                 "CreaturePrefab",
                 "Skeleton",
                 "Name of the creature prefab spawned to guard your grave (must be a valid ZNetScene prefab name, e.g. Skeleton, Wraith, Troll...).");
 
-            GuardianNameTemplate = Config.Bind(
+            GuardianNameTemplate = SyncedConfig(
                 "Guardian",
                 "GuardianNameTemplate",
                 "Dead {player}",
                 "Display name given to the guardian creature. {player} is replaced with the name of the player who died.");
 
-            ActivationRange = Config.Bind(
+            ActivationRange = SyncedConfig(
                 "Guardian",
                 "ActivationRange",
                 20f,
                 "Distance (in meters) a player must come within before the guardian wakes up and starts hunting. Until then, it stays completely still and won't engage anything.");
 
-            ShowMessages = Config.Bind(
+            ShowMessages = SyncedConfig(
                 "Guardian",
                 "ShowMessages",
                 true,
                 "Shows an on-screen message when the guardian spawns and when it is defeated.");
 
-            SpawnMessageText = Config.Bind(
+            SpawnMessageText = SyncedConfig(
                 "Guardian",
                 "SpawnMessageText",
                 "A guardian rises to protect your grave!",
                 "On-screen message shown when the guardian spawns.");
 
-            DefeatMessageText = Config.Bind(
+            DefeatMessageText = SyncedConfig(
                 "Guardian",
                 "DefeatMessageText",
                 "The guardian has fallen. Your grave is safe.",
                 "On-screen message shown when the guardian is defeated and the grave appears.");
 
+            _configSync.IsLocked = true;
+
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
+        }
+
+        private ConfigEntry<T> SyncedConfig<T>(string section, string key, T value, string description)
+        {
+            var entry = Config.Bind(section, key, value, description);
+            _configSync.AddConfigEntry(entry);
+            return entry;
         }
 
         private void OnDestroy()

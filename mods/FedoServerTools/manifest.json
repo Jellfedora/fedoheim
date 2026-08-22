@@ -3,7 +3,7 @@
   "author": "Fedo",
   "version_number": "1.0.0",
   "website_url": "",
-  "description": "Server-side mod: reports the list of currently connected players to the Fedoheim API every ~30s, so the launcher can display who's online. Works on a dedicated server as well as a hosted/solo game.",
+  "description": "Mostly server-side: reports connected players (with biome/armor) to the Fedoheim API every ~30s so the launcher can show who's online, and forces 'Public position' on for everyone. If distributed through a player modpack, ServerToken must stay blank in that shared .cfg -- fill it in only on the actual dedicated server, installed manually.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2333"
   ]

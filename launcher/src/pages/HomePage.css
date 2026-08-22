@@ -129,6 +129,25 @@
   justify-content: space-between;
 }
 
+.home-players__name-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.home-players__armor {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.home-players__shield-icon {
+  flex-shrink: 0;
+}
+
 .home-players__biome {
   color: var(--text-faint);
   font-size: 0.78rem;

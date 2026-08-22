@@ -7,6 +7,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using ServerSync;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -62,6 +63,11 @@ namespace FedoGoldRabbit
         public ConfigEntry<float> SpawnSoundMaxDistance;
         public ConfigEntry<bool> TintFurGolden;
 
+        // ServerSync (voir mods/_shared/ConfigSync.cs) : tous ces réglages affectent le
+        // monde partagé (spawn, loot, difficulté), verrouillés pour que tout le monde
+        // joue avec les mêmes valeurs, pas celles que chacun aurait dans son .cfg local.
+        private readonly ConfigSync _configSync = new ConfigSync(PluginGuid) { DisplayName = PluginName, CurrentVersion = PluginVersion };
+
         private const string CustomSpawnSoundFileName = "rabbit_spawn.mp3";
 
         private Harmony _harmony;
@@ -74,143 +80,145 @@ namespace FedoGoldRabbit
             Instance = this;
             Log = Logger;
 
-            GoldenName = Config.Bind(
+            GoldenName = SyncedConfig(
                 "GoldRabbit",
                 "GoldenName",
                 "Gold Rabbit",
                 "Display name given to a Gold Rabbit.");
 
-            SpawnMaxPerZone = Config.Bind(
+            SpawnMaxPerZone = SyncedConfig(
                 "GoldRabbit",
                 "SpawnMaxPerZone",
                 1,
                 "Maximum number of Gold Rabbits allowed at once in a given zone (a zone is roughly a 64x64m area of the world).");
 
-            SpawnIntervalSeconds = Config.Bind(
+            SpawnIntervalSeconds = SyncedConfig(
                 "GoldRabbit",
                 "SpawnIntervalSeconds",
                 4000f,
                 "How often (in seconds) the game rolls a chance to spawn a Gold Rabbit in a zone. Higher = rarer.");
 
-            SpawnChancePercent = Config.Bind(
+            SpawnChancePercent = SyncedConfig(
                 "GoldRabbit",
                 "SpawnChancePercent",
                 3f,
                 "Chance (0-100) of actually spawning a Gold Rabbit each time the spawn interval rolls, in any biome.");
 
-            SpawnRadiusMin = Config.Bind(
+            SpawnRadiusMin = SyncedConfig(
                 "GoldRabbit",
                 "SpawnRadiusMin",
                 5f,
                 "Minimum distance (in meters) from a player at which a Gold Rabbit can spawn.");
 
-            SpawnRadiusMax = Config.Bind(
+            SpawnRadiusMax = SyncedConfig(
                 "GoldRabbit",
                 "SpawnRadiusMax",
                 15f,
                 "Maximum distance (in meters) from a player at which a Gold Rabbit can spawn -- kept short so you actually have a chance to notice and catch it.");
 
-            CoinPrefabName = Config.Bind(
+            CoinPrefabName = SyncedConfig(
                 "GoldRabbit",
                 "CoinPrefabName",
                 "Coins",
                 "Name of the item prefab dropped as currency (must be a valid ZNetScene prefab name).");
 
-            CoinDropIntervalMin = Config.Bind(
+            CoinDropIntervalMin = SyncedConfig(
                 "GoldRabbit",
                 "CoinDropIntervalMin",
                 2f,
                 "Minimum delay (in seconds) between two coin drops while the Gold Rabbit is alive.");
 
-            CoinDropIntervalMax = Config.Bind(
+            CoinDropIntervalMax = SyncedConfig(
                 "GoldRabbit",
                 "CoinDropIntervalMax",
                 3f,
                 "Maximum delay (in seconds) between two coin drops while the Gold Rabbit is alive.");
 
-            CoinDropAmountMin = Config.Bind(
+            CoinDropAmountMin = SyncedConfig(
                 "GoldRabbit",
                 "CoinDropAmountMin",
                 1,
                 "Minimum amount of coins dropped on each periodic drop while the Gold Rabbit is alive.");
 
-            CoinDropAmountMax = Config.Bind(
+            CoinDropAmountMax = SyncedConfig(
                 "GoldRabbit",
                 "CoinDropAmountMax",
                 3,
                 "Maximum amount of coins dropped on each periodic drop while the Gold Rabbit is alive.");
 
-            DeathCoinAmountMin = Config.Bind(
+            DeathCoinAmountMin = SyncedConfig(
                 "GoldRabbit",
                 "DeathCoinAmountMin",
                 75,
                 "Minimum amount of coins dropped when the Gold Rabbit is killed (replaces its normal meat/pelt loot entirely).");
 
-            DeathCoinAmountMax = Config.Bind(
+            DeathCoinAmountMax = SyncedConfig(
                 "GoldRabbit",
                 "DeathCoinAmountMax",
                 200,
                 "Maximum amount of coins dropped when the Gold Rabbit is killed (replaces its normal meat/pelt loot entirely).");
 
-            LifetimeSeconds = Config.Bind(
+            LifetimeSeconds = SyncedConfig(
                 "GoldRabbit",
                 "LifetimeSeconds",
                 30f,
                 "Time (in seconds) a Gold Rabbit stays in the world before despawning in a puff of smoke (like any dying creature) if it hasn't been killed yet. No loot is dropped when this happens.");
 
-            FleeShoutText = Config.Bind(
+            FleeShoutText = SyncedConfig(
                 "GoldRabbit",
                 "FleeShoutText",
                 "I'm late, I'm late, for a very important date!",
                 "Speech bubble text shown above the Gold Rabbit when it notices a player and starts fleeing.");
 
-            FleeShoutCooldown = Config.Bind(
+            FleeShoutCooldown = SyncedConfig(
                 "GoldRabbit",
                 "FleeShoutCooldown",
                 20f,
                 "Minimum delay (in seconds) between two flee shouts from the same Gold Rabbit.");
 
-            DespawnShoutText = Config.Bind(
+            DespawnShoutText = SyncedConfig(
                 "GoldRabbit",
                 "DespawnShoutText",
                 "Ah, found my burrow!",
                 "Speech bubble text shown right before the Gold Rabbit despawns without loot, if nobody caught it in time.");
 
-            ShowSpawnMessage = Config.Bind(
+            ShowSpawnMessage = SyncedConfig(
                 "GoldRabbit",
                 "ShowSpawnMessage",
                 true,
                 "Shows an on-screen message (with the vanilla notification sound) when a Gold Rabbit spawns nearby.");
 
-            SpawnMessageText = Config.Bind(
+            SpawnMessageText = SyncedConfig(
                 "GoldRabbit",
                 "SpawnMessageText",
                 "A Gold Rabbit is bolting nearby!",
                 "On-screen message shown when a Gold Rabbit spawns.");
 
-            ShowGoldenAura = Config.Bind(
+            ShowGoldenAura = SyncedConfig(
                 "GoldRabbit",
                 "ShowGoldenAura",
                 true,
                 "Adds a small golden sparkle aura around the Gold Rabbit so it stands out from a normal Hare.");
 
-            SpawnSoundVolume = Config.Bind(
+            SpawnSoundVolume = SyncedConfig(
                 "GoldRabbit",
                 "SpawnSoundVolume",
                 2f,
                 "Volume of the custom spawn sound (rabbit_spawn.mp3). Still a normal 3D positional sound that fades with distance (important on multiplayer servers, so distant players don't hear it) -- this only boosts how loud it is up close. 1 = normal, higher = louder.");
 
-            SpawnSoundMaxDistance = Config.Bind(
+            SpawnSoundMaxDistance = SyncedConfig(
                 "GoldRabbit",
                 "SpawnSoundMaxDistance",
                 30f,
                 "Maximum distance (in meters) at which the spawn sound can be heard at all. Keep this low on multiplayer servers so players far away don't hear it.");
 
-            TintFurGolden = Config.Bind(
+            TintFurGolden = SyncedConfig(
                 "GoldRabbit",
                 "TintFurGolden",
                 true,
                 "Tints the Gold Rabbit's fur gold instead of the normal Hare color.");
+
+            _configSync.IsLocked = true;
 
             _harmony = new Harmony(PluginGuid);
             try
@@ -228,6 +236,13 @@ namespace FedoGoldRabbit
             Log.LogInfo($"FedoGoldRabbit: patched ZNetScene methods -> [{znetScenePatches}]");
 
             StartCoroutine(LoadCustomSpawnClip());
+        }
+
+        private ConfigEntry<T> SyncedConfig<T>(string section, string key, T value, string description)
+        {
+            var entry = Config.Bind(section, key, value, description);
+            _configSync.AddConfigEntry(entry);
+            return entry;
         }
 
         // Le mp3 est déployé à côté de la DLL par le .csproj (CopyToPlugins) -- on le charge de

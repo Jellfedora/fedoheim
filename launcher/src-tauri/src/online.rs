@@ -1,13 +1,16 @@
 use crate::config;
 use serde::{Deserialize, Serialize};
 
-// Nom brut de l'enum `Heightmap.Biome` côté jeu (ex: "Meadows", "BlackForest"), pas
-// traduit ici — voir HomePage.tsx pour l'affichage en français. `None` si le joueur a
-// désactivé le partage de sa position (`ZNet.PlayerInfo.m_publicPosition` côté mod).
+// `biome` est déjà le texte final tel que configuré dans le .cfg du mod (voir
+// fedo.servertools.cfg, section [Biomes]) -- affiché tel quel, pas de traduction ici.
+// `None` si le joueur n'a pas de position exploitable pour ce rapport. `armor` est le
+// total actuel (Humanoid.GetBodyArmor(), arrondi côté mod), `None` si le personnage
+// n'a pas pu être retrouvé côté serveur.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OnlinePlayer {
     pub name: String,
     pub biome: Option<String>,
+    pub armor: Option<i64>,
 }
 
 // Alimenté par le mod serveur FedoServerTools (voir /mods/FedoServerTools), qui poste

@@ -2,6 +2,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using ServerSync;
 using UnityEngine;
 
 namespace FedoGuardian
@@ -33,6 +34,11 @@ namespace FedoGuardian
         public ConfigEntry<float> SummonWandCooldownSeconds;
         public ConfigEntry<float> SummonDistance;
 
+        // ServerSync (voir mods/_shared/ConfigSync.cs) : réglages du gardien/de la
+        // baguette partagés par tout le monde sur ce serveur, verrouillés pour éviter
+        // qu'un joueur les change localement pour lui-même.
+        private readonly ConfigSync _configSync = new ConfigSync(PluginGuid) { DisplayName = PluginName, CurrentVersion = PluginVersion };
+
         private Harmony _harmony;
 
         private void Awake()
@@ -45,50 +51,59 @@ namespace FedoGuardian
             root.SetActive(false);
             TemplateRoot = root.transform;
 
-            DetectionRange = Config.Bind(
+            DetectionRange = SyncedConfig(
                 "Guardian",
                 "DetectionRange",
                 15f,
                 "Distance (in meters) within which the guardian will notice and engage hostile creatures.");
 
-            GuardianNameTemplate = Config.Bind(
+            GuardianNameTemplate = SyncedConfig(
                 "Guardian",
                 "GuardianNameTemplate",
                 "Guardian",
                 "Display name shown when hovering over the guardian.");
 
-            HoverHintText = Config.Bind(
+            HoverHintText = SyncedConfig(
                 "Guardian",
                 "HoverHintText",
                 "[Use] Equip currently worn gear\n[Alt+Use] Take back guardian's equipment",
                 "Hint shown under the guardian's name when hovering over it.");
 
-            SummonWandSourceItem = Config.Bind(
+            SummonWandSourceItem = SyncedConfig(
                 "SummonWand",
                 "SummonWandSourceItem",
                 "Club",
                 "Name of the vanilla item prefab used as a visual/base for the summoning wand (placeholder until a custom model is made).");
 
-            SummonWandName = Config.Bind(
+            SummonWandName = SyncedConfig(
                 "SummonWand",
                 "SummonWandName",
                 "Enslavement Wand",
                 "Display name of the summoning wand item.");
 
-            SummonWandCooldownSeconds = Config.Bind(
+            SummonWandCooldownSeconds = SyncedConfig(
                 "SummonWand",
                 "SummonWandCooldownSeconds",
                 1.5f,
                 "Minimum delay (in seconds) between two guardian summons with the wand.");
 
-            SummonDistance = Config.Bind(
+            SummonDistance = SyncedConfig(
                 "SummonWand",
                 "SummonDistance",
                 2f,
                 "Distance (in meters) in front of the player at which the guardian is summoned.");
 
+            _configSync.IsLocked = true;
+
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
+        }
+
+        private ConfigEntry<T> SyncedConfig<T>(string section, string key, T value, string description)
+        {
+            var entry = Config.Bind(section, key, value, description);
+            _configSync.AddConfigEntry(entry);
+            return entry;
         }
 
         private void OnDestroy()

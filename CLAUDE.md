@@ -334,13 +334,22 @@ le vrai serveur — sans jamais risquer l'expérience des joueurs normaux :
 ## Joueurs en ligne (FedoServerTools)
 
 Le mod maison `mods/FedoServerTools` (server-side, pas de mécanique de jeu) tourne sur le
-serveur Valheim lui-même (dédié, ou l'hôte d'une partie solo/co-op) et poste toutes les
-`ReportIntervalSeconds` (30s par défaut) la liste des joueurs connectés à
-`POST /modpacks/online-players`, authentifié par un jeton partagé (`modpacks.reportToken`,
-header `x-server-token`) plutôt qu'une session Discord — ce mod n'a pas d'identité
-joueur. La liste elle-même vient de `ZNet.GetPlayerList()` (l'API du jeu utilisée par son
-propre panneau "joueurs"), pas d'un suivi maison des connexions/déconnexions — elle
-inclut donc l'hôte en partie solo, pas seulement les pairs distants.
+serveur Valheim lui-même (dédié, ou l'hôte d'une partie solo/co-op) et parle à l'API
+toutes les `SyncIntervalSeconds` (30s par défaut, renommé depuis `ReportIntervalSeconds`
+— ce mod est prévu pour devenir le canal général avec l'API, pas juste un rapporteur de
+joueurs : à terme l'API pourra aussi demander des choses au jeu, ex. déclencher un
+événement — toujours en sondage depuis le mod, jamais l'inverse, le jeu n'exposant
+aucun serveur qu'on pourrait interroger de l'extérieur). Aujourd'hui ça se limite à
+poster la liste des joueurs connectés à `POST /modpacks/online-players`, authentifié
+par un jeton
+partagé (`modpacks.reportToken`, header `x-server-token`) plutôt qu'une session Discord
+— ce mod n'a pas d'identité joueur. La liste elle-même vient de `ZNet.GetPlayerList()`
+(l'API du jeu utilisée par son propre panneau "joueurs"), pas d'un suivi maison des
+connexions/déconnexions — elle inclut donc l'hôte en partie solo, pas seulement les
+pairs distants. Chaque entrée est `{ name, biome, armor }` : `armor` vient de
+`Humanoid.GetBodyArmor()` (arrondi), lu sur l'instance `Player` correspondante
+(retrouvée via `Player.GetAllPlayers()`, indexé par nom — `null` si introuvable côté
+serveur au moment du rapport).
 
 - **Jeton par profil, pas global, et pas de slug à configurer côté mod** : chaque profil
   de modpack (voir section Modpacks) a son propre `reportToken`, généré/régénéré par un
@@ -355,35 +364,73 @@ inclut donc l'hôte en partie solo, pas seulement les pairs distants.
   dans le `.cfg` de FedoServerTools sur le serveur Valheim concerné. Régénérer invalide
   immédiatement l'ancien jeton (le mod continue de reporter avec jusqu'à mise à jour de
   son `.cfg`, ses rapports étant alors rejetés entre-temps).
+- **`ServerToken` ne doit jamais partir rempli dans le modpack des joueurs** — voir
+  README de FedoServerTools. Le `.cfg` (donc le jeton) est resynchronisé à l'identique
+  chez tout le monde dès qu'un mod fait partie du modpack ; un joueur hébergeant sa
+  propre partie solo/coop devient un serveur lui aussi (`ZNet.IsServer()` vrai chez lui),
+  et posterait alors sous le jeton de la vraie communauté, polluant "qui est en ligne"
+  avec sa session privée. `ServerToken` vide (le défaut) rend le rapport inoffensif
+  (juste sauté, avec un avertissement en log local) — seule la copie installée à la main
+  sur le vrai serveur dédié doit avoir la valeur réelle. Reste vrai même si ce mod
+  finissait un jour dans le modpack joueur pour une fonctionnalité côté client qui n'a,
+  elle, besoin d'aucun secret (ex: forcer sa propre "Position publique" depuis le client
+  lui-même, si le forçage serveur seul ne suffit pas — pas encore vérifié).
 - **État en mémoire côté API, pas en base** (`modpacks/onlinePlayers.ts`) : "qui est en
   ligne maintenant" n'a pas besoin de survivre à un redémarrage de l'API, le prochain
   rapport du mod (au plus ~30s après) reconstruit l'état tout seul — pas de migration
   dédiée pour ça.
-- **Biome de chaque joueur, nom configurable dans le `.cfg` du mod** : chaque entrée
-  rapportée est `{ name, biome }`, `biome` résolu via `Heightmap.FindBiome(player.
-  m_position)` puis traduit en texte final par le mod lui-même, via un `ConfigEntry<string>`
-  par biome (`fedo.servertools.cfg`, section `[Biomes]`, ex: `MeadowsName`), par défaut en
-  anglais (`Meadows`, `Black Forest`...) — même convention que les autres textes affichés
-  au joueur dans ce repo (voir `mods/CLAUDE.md`) : éditer le `.cfg` généré pour y mettre sa
-  propre traduction (ex: `MeadowsName = Prairies`). L'API et le launcher affichent cette
-  valeur telle quelle, sans mapping ni connaissance des biomes du jeu.
-- **`ForcePublicPosition` (`.cfg`, section `[Players]`, activé par défaut)** : la position
-  d'un joueur n'est normalement exploitable que s'il a lui-même activé "Position publique"
-  (Options > Jeu, décoché par défaut chez à peu près tout le monde) — un réglage stocké
-  dans ses préférences locales, que ce mod ne peut pas changer depuis le serveur. Un
-  Harmony postfix sur `ZNet.GetPlayerList()` (`ForcePublicPositionPatch.cs`) force donc
-  `PlayerInfo.m_publicPosition` à `true` pour chaque joueur listé, uniquement dans ce que
-  ce serveur voit — pas une modification du réglage réel côté client. Désactivable pour
-  respecter le choix de chacun, auquel prix le biome ne remonte plus que pour les joueurs
-  ayant explicitement coché ce réglage eux-mêmes.
+- **Biome de chaque joueur, résolution à deux niveaux, nom configurable dans le `.cfg`
+  du mod** : `Heightmap.FindBiome(player.m_position)` en priorité — le biome réellement
+  affiché au joueur (post-lissage des bordures de la zone déjà chargée) — mais elle
+  renvoie silencieusement `None` si cette zone n'est pas chargée en mémoire à cet
+  instant (observé en pratique même avec une position publique et valide). Secours sur
+  `WorldGenerator.instance.GetBiome(player.m_position)` (calcul procédural brut, celui
+  qui a servi à générer le terrain) dans ce cas — toujours disponible, mais peut se
+  tromper près d'une côte (observé : une bordure de plage en Forêt Noire classée Océan
+  avant lissage). `None` est filtré côté mod dans tous les cas (jamais envoyé comme
+  texte). Le résultat est ensuite traduit en texte final par le mod lui-même, via un
+  `ConfigEntry<string>` par biome (`fedo.servertools.cfg`, section `[Biomes]`, ex:
+  `MeadowsName`), par défaut en anglais (`Meadows`, `Black Forest`...) — même convention
+  que les autres textes affichés au joueur dans ce repo (voir `mods/CLAUDE.md`) : éditer
+  le `.cfg` généré pour y mettre sa propre traduction (ex: `MeadowsName = Prairies`).
+  L'API et le launcher affichent cette valeur telle quelle, sans mapping ni connaissance
+  des biomes du jeu.
+- **`ForcePublicPosition` (`.cfg`, section `[Players]`, activé par défaut) force le vrai
+  réglage, des deux côtés à la fois** : la position d'un joueur n'est normalement
+  exploitable que s'il a lui-même activé "Position publique" (Options > Jeu, décoché par
+  défaut chez à peu près tout le monde). Ce mod force ce réglage pour de vrai (le joueur
+  apparaît sur la carte des autres, pas seulement un effet interne à ce mod), en
+  cumulant deux mécanismes complémentaires :
+  - **Côté serveur** : écrit directement `ZNetPeer.m_publicRefPos` (champ public,
+    canonique) à `true` pour chaque pair connecté, à chaque cycle (`GetConnectedPlayers`)
+    — jamais en réécrivant le retour d'une méthode partagée. Une première version
+    patchait `ZNet.GetPlayerList()` en Harmony pour forcer `PlayerInfo.m_publicPosition`
+    dans sa liste de retour — risque réel de corrompre une liste utilisée par d'autres
+    systèmes du jeu (une boucle de `NullReferenceException` dans `ZNetScene.
+    CreateDestroyObjects`/`RemoveObjects` a été observée avec cette approche) ; retirée.
+  - **Côté client** (`ClientPublicPositionPatch.cs`, patch sur `Game.Start`, actif
+    seulement si `!ZNet.instance.IsServer()`) : simule un vrai clic sur la case en jeu
+    (`Minimap.instance.OnTogglePublicPosition()`, méthode publique) pour passer par le
+    chemin normal du jeu plutôt que d'espérer que l'écriture côté serveur seule suffise
+    à déclencher la diffusion aux autres clients — sans certitude à ce sujet faute de
+    pouvoir décompiler. C'est le seul morceau de ce mod qui a un effet côté client et qui
+    ne nécessite aucun jeton — voir plus haut, sans danger à distribuer dans le modpack
+    joueur.
+  **Synchronisé et verrouillé via ServerSync** (`mods/_shared/ConfigSync.cs`,
+  `ConfigSync.IsLocked = true`) : seul le `.cfg` du serveur (source de vérité, `IsAdmin`
+  toujours vrai côté serveur) contrôle ce réglage — un joueur ne peut plus le désactiver
+  en éditant son propre `.cfg` local, sa valeur y est écrasée dès la connexion. Voir
+  section "ServerSync" plus bas.
 - **`online` = fraîcheur ET dernier statut envoyé**, pas juste l'un des deux : le mod
-  envoie `online:true` à chaque rapport périodique et, en best-effort, un dernier rapport
-  `online:false` sur un arrêt propre du serveur (`ZNet.OnDestroy`, même limite que
-  `FedoDiscordLogs.OnServerStopped` — pas garanti si le process est tué brutalement). Un
-  arrêt propre repasse donc `online` à `false` immédiatement ; un crash (pas de dernier
-  rapport `false`) est rattrapé par la péremption du timestamp côté API (90s, 3x
-  l'intervalle de rapport) — `GET /modpacks/:slug/online-players` (public, comme
-  `/health`) combine les deux.
+  envoie `online:true` à chaque rapport périodique et, à l'arrêt du serveur
+  (`ZNet.OnDestroy`), un dernier rapport `online:false` — **attendu de façon bloquante**
+  (borné par un timeout HTTP court côté mod), pas fire-and-forget : une version
+  fire-and-forget se faisait tuer par la fin du process juste après `OnDestroy`, y
+  compris sur un arrêt propre du jeu (pas seulement un crash), laissant le launcher
+  afficher "en ligne" jusqu'à péremption (~90s plus tard) au lieu d'un passage immédiat à
+  `false`. Un vrai crash (process tué avant même d'atteindre `OnDestroy`) reste rattrapé
+  par la péremption du timestamp côté API (90s, 3x l'intervalle de synchronisation) —
+  `GET /modpacks/:slug/online-players` (public, comme `/health`) combine les deux.
 - **`GET /modpacks/:slug/online-players` public, pas de session requise** : cohérent avec
   le reste du contenu en lecture publique (règlement/FAQ/annonces/statut BepInEx), et
   nécessaire puisque ce sera à terme un mod *serveur* qui alimente cette donnée, pas un
@@ -391,6 +438,36 @@ inclut donc l'hôte en partie solo, pas seulement les pairs distants.
   cadence que le mod), scopé sur `effectiveModpackSlug` (donc la production pour un
   joueur normal, le profil actif pour un admin en train d'en tester un autre) — voir
   App.tsx.
+
+## ServerSync (synchronisation de config entre serveur et clients)
+
+`mods/_shared/ConfigSync.cs` — librairie communautaire standard du modding Valheim
+(blaxxun-boop, très largement réutilisée dans l'écosystème BepInEx/Thunderstore),
+intégrée telle quelle en fichier source partagé (`<Compile Include="../_shared/
+ConfigSync.cs" />` dans le `.csproj` de chaque mod qui l'utilise, pas un DLL séparé —
+voir `mods/_shared/README.md` pour la provenance/version exacte). Elle patche elle-même
+`ZNet`/`ZRpc` en Harmony pour ajouter sa propre RPC de poignée de main : à la connexion
+d'un client, le serveur lui pousse la valeur actuelle de chaque `ConfigEntry` enregistré
+via `configSync.AddConfigEntry(...)`, appliquée en mémoire côté client (jamais écrite
+dans son `.cfg` local). Avec `configSync.IsLocked = true`, un client connecté ne peut
+plus du tout modifier localement un réglage enregistré — seul le serveur (source de
+vérité, `ConfigSync.IsAdmin` toujours vrai côté serveur) fait autorité.
+
+- **Ne jamais enregistrer un secret** (`ServerToken` de FedoServerTools par exemple) :
+  `AddConfigEntry` diffuse la valeur à tous les clients connectés dès qu'elle change —
+  l'inverse exact de ce qu'on veut pour un jeton.
+- Dépendance NuGet nécessaire dans chaque `.csproj` : **aucune** — `PublicAPIAttribute`/
+  `UsedImplicitlyAttribute` (utilisés par `[PublicAPI]` dans `ConfigSync.cs`) sont déjà
+  fournis par `UnityEngine.CoreModule` (déjà référencé par tous les mods) ; ajouter le
+  package NuGet `JetBrains.Annotations` provoque un conflit de type (`CS0433`). Le
+  fichier a aussi besoin de références déjà présentes dans certains mods mais pas tous :
+  `assembly_utils`, `UnityEngine.UI`, `Unity.TextMeshPro` — à ajouter au `.csproj` de
+  chaque mod qui l'intègre s'il ne les a pas déjà.
+- Utilisé aujourd'hui uniquement par `FedoServerTools` (`ForcePublicPosition`, voir
+  section précédente). Objectif à terme : l'étendre aux réglages de gameplay des autres
+  mods maison (portée de détection, taux de spawn...) pour que tous les joueurs d'un
+  même modpack jouent avec les mêmes valeurs, peu importe ce que chacun a dans son
+  `.cfg` local.
 
 ## Contenu géré par les admins
 

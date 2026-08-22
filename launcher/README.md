@@ -19,6 +19,23 @@ Windows) — premier lancement bloqué par défaut sur les deux OS :
 - **Windows** : SmartScreen affiche "Windows a protégé votre ordinateur" au premier
   lancement de l'installeur → "Informations complémentaires" → "Exécuter quand même".
 
+### Mise à jour automatique
+
+Le launcher vérifie une nouvelle version disponible au démarrage (`tauri-plugin-updater`)
+contre le `latest.json` de la dernière release GitHub **publiée** (pas les drafts) —
+bandeau "Mettre à jour" en haut de l'écran si une version plus récente existe, sans
+attendre ni bloquer le reste de l'app en cas d'échec (offline, pas encore de release
+publiée...). Signé avec une clé Ed25519 propre à Tauri (gratuite, sans rapport avec un
+certificat Apple/Windows) — la clé privée et son mot de passe vivent uniquement dans les
+secrets GitHub Actions du repo (`TAURI_SIGNING_PRIVATE_KEY`/`_PASSWORD`), jamais commités.
+**Si ces secrets sont perdus**, il faut régénérer une paire de clés
+(`npx tauri signer generate`) et mettre à jour `pubkey` dans `tauri.conf.json` — les
+installs existantes ne pourront plus vérifier les futures mises à jour tant qu'elles
+n'auront pas réinstallé manuellement une version portant la nouvelle clé.
+
+Ne fonctionne que pour les installs déjà buildées **avec** le plugin (0.0.2 et
+suivantes) — les joueurs encore sur 0.0.1 doivent réinstaller une fois manuellement.
+
 ## Setup
 
 1. `nvm use 22` (le launcher lui-même n'a pas besoin de Node en prod, mais le tooling

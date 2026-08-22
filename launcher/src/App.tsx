@@ -4,6 +4,8 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { check as checkForAppUpdate, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { CursorWisp } from "./components/CursorWisp";
 import { ParticleField } from "./components/ParticleField";
 import { Sidebar, type Page } from "./components/Sidebar";
@@ -96,6 +98,13 @@ function App() {
   // Pessimiste (false) par défaut : évite d'afficher "Jouer" puis de basculer sur
   // "Télécharger" une fois la vraie réponse arrivée (effet de clignotement).
   const [hasLocalManifest, setHasLocalManifest] = useState(false);
+  // Mise à jour du launcher lui-même (pas du modpack, voir `updateAvailable` plus bas) —
+  // détectée une fois au démarrage via le plugin updater Tauri, contre le manifest signé
+  // (`latest.json`) publié sur la dernière release GitHub. `null` tant qu'aucune mise à
+  // jour n'est disponible ou que la vérification a échoué (offline, pas encore de
+  // release publiée...) — best-effort, ne bloque jamais le lancement du jeu.
+  const [appUpdate, setAppUpdate] = useState<Update | null>(null);
+  const [installingAppUpdate, setInstallingAppUpdate] = useState(false);
   // Mods/BepInEx différents côté API par rapport à la dernière install locale — fait
   // apparaître "Mettre à jour" à côté de "Jouer" plutôt qu'un seul bouton qui
   // resynchroniserait en silence à chaque clic (voir `check_update_available`).
@@ -233,6 +242,27 @@ function App() {
       .then(setHasLocalManifest)
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    checkForAppUpdate()
+      .then((update) => {
+        if (update?.available) setAppUpdate(update);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleInstallAppUpdate = useCallback(async () => {
+    if (!appUpdate) return;
+    setInstallingAppUpdate(true);
+    try {
+      await appUpdate.downloadAndInstall();
+      await relaunch();
+    } catch {
+      // Best-effort : si le téléchargement/l'install échoue (réseau coupé en cours de
+      // route...), on retombe simplement sur le bandeau tel quel, réessayable au clic.
+      setInstallingAppUpdate(false);
+    }
+  }, [appUpdate]);
 
   // Un seul minuteur (tick à la seconde) qui sert à la fois de compte à rebours affiché
   // dans le bandeau et de déclencheur du ping réel une fois à zéro — évite deux
@@ -631,16 +661,37 @@ function App() {
         </div>
       )}
 
-      {!apiReachable && (
-        <div className="shell__banner" role="alert">
-          <span className="shell__banner-icon" aria-hidden="true">
-            😅
-          </span>
-          Notre serveur ne répond pas pour le moment — quelqu'un a sûrement oublié de
-          payer la facture.
-          <span className="shell__banner-countdown">
-            Nouvelle tentative dans {secondsUntilCheck}s...
-          </span>
+      {(!apiReachable || appUpdate) && (
+        <div className="shell__banners">
+          {!apiReachable && (
+            <div className="shell__banner" role="alert">
+              <span className="shell__banner-icon" aria-hidden="true">
+                😅
+              </span>
+              Notre serveur ne répond pas pour le moment — quelqu'un a sûrement oublié de
+              payer la facture.
+              <span className="shell__banner-countdown">
+                Nouvelle tentative dans {secondsUntilCheck}s...
+              </span>
+            </div>
+          )}
+
+          {appUpdate && (
+            <div className="shell__banner shell__banner--update" role="status">
+              <span className="shell__banner-icon" aria-hidden="true">
+                ✨
+              </span>
+              Nouvelle version du launcher disponible ({appUpdate.version}).
+              <button
+                type="button"
+                className="shell__banner-action"
+                onClick={handleInstallAppUpdate}
+                disabled={installingAppUpdate}
+              >
+                {installingAppUpdate ? "Installation..." : "Mettre à jour"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

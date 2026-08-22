@@ -12,6 +12,8 @@
     },
     "dialog:default",
     "dialog:allow-confirm",
-    "core:window:allow-destroy"
+    "core:window:allow-destroy",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

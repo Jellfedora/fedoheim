@@ -16,9 +16,14 @@
     var(--bg-deepest);
 }
 
-.shell__banner {
+.shell__banners {
   grid-area: banner;
   z-index: 6;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell__banner {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,6 +46,28 @@
 
 .shell__banner-icon {
   font-size: 1rem;
+}
+
+.shell__banner--update {
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--accent-strong);
+  color: var(--accent);
+}
+
+.shell__banner-action {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.shell__banner-action:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* Écrans d'onboarding (règlement / Steam ID) : pas de sidebar ni de playbar, donc pas

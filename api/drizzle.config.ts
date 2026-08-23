@@ -6,6 +6,8 @@ export default {
   out: "./drizzle",
   dialect: "sqlite",
   dbCredentials: {
-    url: "./data.sqlite",
+    // Même variable que config.ts (DB_PATH) — sinon `db:migrate` appliquerait les
+    // migrations à un fichier différent de celui réellement ouvert par l'API en Docker.
+    url: process.env.DB_PATH ?? "./data.sqlite",
   },
 } satisfies Config;

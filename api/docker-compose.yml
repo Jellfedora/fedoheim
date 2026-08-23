@@ -1,0 +1,25 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      # Ajuster le port hôte si un reverse proxy (nginx/caddy déjà en place pour tes
+      # autres sites) doit pointer vers un port précis, ex: "3001:3000".
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Toujours forcés ici, indépendamment de ce que .env contient (utile si le même
+      # .env sert aussi en dev local) : logs JSON en prod, DB + uploads dans le volume
+      # persistant plutôt que dans le conteneur jetable.
+      NODE_ENV: production
+      DB_PATH: /data/data.sqlite
+      UPLOADS_DIR: /data/uploads
+    volumes:
+      - /mnt/disk3/fedoheim:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

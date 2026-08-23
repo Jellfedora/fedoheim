@@ -3,10 +3,11 @@ import fs from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
+import { config } from "../config.js";
 
-// Relatif au cwd du process (comme data.sqlite, voir db/client.ts), pas au fichier
-// source — le process est toujours lancé depuis api/.
-export const UPLOADS_DIR = path.resolve("uploads");
+// Relatif au cwd du process par défaut (comme data.sqlite, voir db/client.ts et
+// config.ts), pas au fichier source — le process est toujours lancé depuis api/.
+export const UPLOADS_DIR = path.resolve(config.UPLOADS_DIR);
 
 // Extension dérivée du mimetype validé, jamais du nom de fichier envoyé par le client
 // (évite tout risque de traversée de chemin ou d'extension usurpée).

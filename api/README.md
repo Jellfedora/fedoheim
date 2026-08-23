@@ -28,6 +28,24 @@ Voir `/CLAUDE.md` (racine du repo) pour l'architecture générale et le flow d'a
 4. `npm run db:generate && npm run db:migrate` pour créer `data.sqlite`.
 5. `npm run dev`
 
+## Déploiement (Docker)
+
+Sans CI : image construite et lancée directement sur le serveur.
+
+1. `cp .env.example .env` puis remplir (mêmes variables qu'en dev, voir Setup ci-dessus) —
+   `PUBLIC_API_URL` doit pointer vers l'URL publique réelle (ex: `https://api.fedoheim.example.com`)
+   pour que Discord puisse intégrer les images d'annonces. Ne pas remplir `DB_PATH`/
+   `UPLOADS_DIR`, déjà fixés par `docker-compose.yml`.
+2. `docker compose up -d --build`
+
+Le conteneur applique automatiquement les migrations en attente à chaque démarrage
+(`docker-entrypoint.sh`, avant de lancer le serveur) — pas d'étape `db:migrate` séparée à
+faire à la main. `data.sqlite` et `uploads/` vivent dans `/mnt/disk3/fedoheim` sur l'hôte
+(monté en volume, voir `docker-compose.yml`), donc survivent à un
+`docker compose up -d --build` de mise à jour ; pense à sauvegarder ce dossier.
+
+Pour déployer une mise à jour : `git pull && docker compose up -d --build`.
+
 ## Endpoints
 
 - `GET /health` — ping.

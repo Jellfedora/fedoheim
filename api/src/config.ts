@@ -11,6 +11,12 @@ const envSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
+  // Par défaut, chemins relatifs au cwd du process (comme en dev, lancé depuis api/) —
+  // en Docker, pointés vers un volume monté (ex: /data/data.sqlite) pour survivre au
+  // remplacement du conteneur, voir docker-compose.yml.
+  DB_PATH: z.string().default("data.sqlite"),
+  UPLOADS_DIR: z.string().default("uploads"),
+
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
 
   DISCORD_CLIENT_ID: z.string().min(1),

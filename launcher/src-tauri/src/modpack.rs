@@ -1394,6 +1394,16 @@ pub struct ConfigFileUpload {
     pub filename: String,
 }
 
+// Résultat de l'envoi en masse de plusieurs fichiers de config d'un coup (voir
+// `pick_config_files_and_upload`) — même principe que `BulkUpload` pour les zips de
+// mods : chaque fichier est uploadé l'un après l'autre, un échec sur l'un n'annule pas
+// les autres, juste remonté dans `errors`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfigFileBulkUpload {
+    pub uploads: Vec<ConfigFileUpload>,
+    pub errors: Vec<String>,
+}
+
 // Partagé entre `upload_config_file` (fichier choisi sur disque) et
 // `upload_config_file_text` (contenu édité directement dans le launcher, voir
 // `fetch_config_file_content`) — seule la provenance des octets diffère.

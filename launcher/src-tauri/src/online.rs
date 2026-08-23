@@ -53,3 +53,42 @@ pub async fn fetch_online_players(
 
     res.json().await.map_err(|e| e.to_string())
 }
+
+// Dernier état connu d'un joueur pour ce profil (voir player_stats côté API) — reste
+// affiché (biome/armure/dernière connexion) même une fois déconnecté, contrairement à
+// OnlinePlayer ci-dessus qui ne représente qu'un joueur actuellement en ligne.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlayerStat {
+    pub name: String,
+    pub biome: Option<String>,
+    pub armor: Option<i64>,
+    pub online: bool,
+    #[serde(rename = "lastSeenAt")]
+    pub last_seen_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlayerStatsResponse {
+    pub players: Vec<PlayerStat>,
+}
+
+// Public comme fetch_online_players ci-dessus — page "Joueurs" du launcher.
+pub async fn fetch_player_stats(
+    http: &reqwest::Client,
+    slug: &str,
+) -> Result<PlayerStatsResponse, String> {
+    let res = http
+        .get(format!(
+            "{}/modpacks/{slug}/player-stats",
+            config::api_base_url()
+        ))
+        .send()
+        .await
+        .map_err(|e| config::describe_request_error(&e))?;
+
+    if !res.status().is_success() {
+        return Err(format!("Failed to fetch player stats ({})", res.status()));
+    }
+
+    res.json().await.map_err(|e| e.to_string())
+}

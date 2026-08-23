@@ -1,0 +1,84 @@
+.players-page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.players-page__header h1 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.players-page__header p {
+  margin: 0 0 1.75rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.players-page__status {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.players-page__status.is-error {
+  color: var(--danger);
+}
+
+.players-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.players-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.75rem 1.1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+}
+
+.players-list__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.players-list__dot.is-online {
+  background: #23a55a;
+  box-shadow: 0 0 6px rgba(35, 165, 90, 0.7);
+}
+
+.players-list__name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.players-list__armor {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.players-list__biome {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+}
+
+.players-list__seen {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}

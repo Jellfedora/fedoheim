@@ -55,6 +55,11 @@ interface ConfigFileUpload {
   filename: string;
 }
 
+interface ConfigFileBulkUpload {
+  uploads: ConfigFileUpload[];
+  errors: string[];
+}
+
 interface FileUpload {
   url: string;
   sha256: string;
@@ -415,25 +420,29 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
     }
   }
 
-  // Sélecteur de fichier natif (pas de zip, un fichier brut déjà prêt à être copié dans
-  // BepInEx/config/) — même principe que handlePickModFiles, mais sans notion de zip ni
-  // de mod associé.
+  // Sélecteur de fichier natif multi-sélection (pas de zip, des fichiers bruts déjà
+  // prêts à être copiés dans BepInEx/config/) — même principe que handleAddMods : chaque
+  // fichier est uploadé l'un après l'autre côté Rust (voir pick_config_files_and_upload),
+  // un échec sur l'un n'annule pas les autres, juste remonté dans `errors`.
   async function handleAddConfigFile() {
     setPickingConfigFile(true);
     setEditLoadError(null);
     try {
-      const upload = await invoke<ConfigFileUpload | null>("pick_config_file_and_upload");
-      if (upload) {
+      const result = await invoke<ConfigFileBulkUpload>("pick_config_files_and_upload");
+      if (result.uploads.length > 0) {
         setConfigFiles((prev) => [
           ...prev,
-          {
+          ...result.uploads.map((upload) => ({
             filename: upload.filename,
             downloadUrl: upload.url,
             sha256: upload.sha256,
             updatedAt: null,
-          },
+          })),
         ]);
-        setSessionConfigFileUploads((prev) => [...prev, upload.url]);
+        setSessionConfigFileUploads((prev) => [...prev, ...result.uploads.map((u) => u.url)]);
+      }
+      if (result.errors.length > 0) {
+        setEditLoadError(result.errors.join("\n"));
       }
     } catch (err) {
       setEditLoadError(String(err));

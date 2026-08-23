@@ -15,7 +15,7 @@ import { SteamIdGate } from "./components/onboarding/SteamIdGate";
 import { PRODUCTION_MODPACK_SLUG } from "./data/mock";
 import { hexToRgba } from "./utils/color";
 import { HomePage } from "./pages/HomePage";
-import { AnnouncementsPage } from "./pages/AnnouncementsPage";
+import { PlayersPage } from "./pages/PlayersPage";
 import { ModsPage } from "./pages/ModsPage";
 import { RulesPage } from "./pages/RulesPage";
 import { FaqPage } from "./pages/FaqPage";
@@ -750,9 +750,10 @@ function App() {
             heroEyebrow={settings.heroEyebrow}
             heroTagline={settings.heroTagline}
             slug={effectiveModpackSlug}
+            isAdmin={user?.isAdmin ?? false}
           />
         )}
-        {page === "announcements" && <AnnouncementsPage isAdmin={user?.isAdmin ?? false} />}
+        {page === "players" && <PlayersPage slug={effectiveModpackSlug} />}
         {page === "mods" && (
           <ModsPage
             slug={effectiveModpackSlug}

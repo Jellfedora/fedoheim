@@ -9,14 +9,14 @@ mod session;
 mod settings;
 mod valheim;
 
-use announcements::{Announcement, AnnouncementDraft};
+use announcements::{Announcement, AnnouncementDraft, AnnouncementPage};
 use auth::PendingLogin;
 use content::FaqEntry;
 use modpack::{
-    BepinexStatus, BepinexWrite, BulkUpload, ConfigFileUpload, ConfigFileWrite, FileUpload,
-    ModInfo, ModWrite, ModpackProfile,
+    BepinexStatus, BepinexWrite, BulkUpload, ConfigFileBulkUpload, ConfigFileUpload,
+    ConfigFileWrite, FileUpload, ModInfo, ModWrite, ModpackProfile,
 };
-use online::OnlinePlayers;
+use online::{OnlinePlayers, PlayerStatsResponse};
 use serde::Serialize;
 use session::{Session, UserInfo};
 use settings::Settings;
@@ -330,8 +330,12 @@ async fn save_faq(state: State<'_, AppState>, faq: Vec<FaqEntry>) -> Result<(), 
 }
 
 #[tauri::command]
-async fn fetch_announcements(state: State<'_, AppState>) -> Result<Vec<Announcement>, String> {
-    announcements::fetch_announcements(&state.http).await
+async fn fetch_announcements(
+    state: State<'_, AppState>,
+    limit: Option<u32>,
+    offset: u32,
+) -> Result<AnnouncementPage, String> {
+    announcements::fetch_announcements(&state.http, limit, offset).await
 }
 
 #[tauri::command]
@@ -544,6 +548,53 @@ async fn pick_config_file_and_upload(
     Ok(Some(upload))
 }
 
+// Même sélecteur que `pick_config_file_and_upload` ci-dessus, mais multi-sélection —
+// même principe que `pick_zips_and_upload` pour les mods : chaque fichier est uploadé
+// l'un après l'autre, un échec sur l'un n'annule pas les autres (voir
+// `ConfigFileBulkUpload`).
+#[tauri::command]
+async fn pick_config_files_and_upload(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<ConfigFileBulkUpload, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog().file().pick_files(move |files| {
+        let _ = tx.send(files);
+    });
+
+    let picked = rx.await.map_err(|e| e.to_string())?;
+    let Some(files) = picked else {
+        return Ok(ConfigFileBulkUpload {
+            uploads: Vec::new(),
+            errors: Vec::new(),
+        });
+    };
+
+    let token = current_token(&state)?;
+    let mut uploads = Vec::with_capacity(files.len());
+    let mut errors = Vec::new();
+    for file in files {
+        let path = match file.into_path() {
+            Ok(p) => p,
+            Err(e) => {
+                errors.push(e.to_string());
+                continue;
+            }
+        };
+        let label = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.to_string_lossy().into_owned());
+        match modpack::upload_config_file(&state.http, &token, path).await {
+            Ok(upload) => uploads.push(upload),
+            Err(e) => errors.push(format!("{label} : {e}")),
+        }
+    }
+    Ok(ConfigFileBulkUpload { uploads, errors })
+}
+
 // Récupère le contenu texte d'un fichier de config déjà uploadé, pour préremplir la
 // zone d'édition inline (voir ModsPage "Éditer") — pas besoin de token, voir
 // `modpack::fetch_config_file_content`.
@@ -614,6 +665,15 @@ async fn fetch_online_players(
     slug: String,
 ) -> Result<OnlinePlayers, String> {
     online::fetch_online_players(&state.http, &slug).await
+}
+
+// Pas d'auth requise, même principe que fetch_online_players ci-dessus (page "Joueurs").
+#[tauri::command]
+async fn fetch_player_stats(
+    state: State<'_, AppState>,
+    slug: String,
+) -> Result<PlayerStatsResponse, String> {
+    online::fetch_player_stats(&state.http, &slug).await
 }
 
 #[tauri::command]
@@ -796,6 +856,7 @@ pub fn run() {
             fetch_bepinex,
             fetch_bepinex_status,
             pick_config_file_and_upload,
+            pick_config_files_and_upload,
             fetch_config_file_content,
             save_config_file_text,
             fetch_config_files_full,
@@ -808,6 +869,7 @@ pub fn run() {
             delete_modpack,
             set_modpack_color,
             fetch_online_players,
+            fetch_player_stats,
             fetch_report_token,
             regenerate_report_token,
             load_active_profile,

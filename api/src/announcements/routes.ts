@@ -10,6 +10,15 @@ import {
   deleteAnnouncementOnDiscord,
 } from "./discord.js";
 
+// Page d'accueil du launcher : 3 annonces chargées au départ, puis le reste par lots au
+// scroll (voir HomePage.tsx) -- pas de valeur par défaut ici, `limit` absent renvoie tout
+// (utilisé par rien aujourd'hui côté launcher, mais évite de casser un futur appelant
+// qui ne penserait pas à paginer, ex: le site web prévu -- voir CLAUDE.md).
+const listQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
 const announcementBodySchema = z.object({
   title: z.string().trim().max(200).optional(),
   // 4096 = limite réelle de Discord pour la description d'un embed (voir
@@ -43,9 +52,17 @@ function serializeAnnouncement(a: typeof announcements.$inferSelect) {
 // CHANNEL_ID (voir ./discord.ts) — best-effort, ne bloque jamais la requête API.
 // `images` référence des fichiers uploadés via POST /announcements/images.
 export default async function announcementRoutes(app: FastifyInstance) {
-  app.get("/announcements", async (_req, reply) => {
-    const rows = db.select().from(announcements).orderBy(desc(announcements.createdAt)).all();
-    return reply.send(rows.map(serializeAnnouncement));
+  app.get("/announcements", async (req, reply) => {
+    const parsed = listQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.flatten() });
+    }
+    const { limit, offset } = parsed.data;
+
+    const all = db.select().from(announcements).orderBy(desc(announcements.createdAt)).all();
+    const page = limit !== undefined ? all.slice(offset, offset + limit) : all.slice(offset);
+
+    return reply.send({ items: page.map(serializeAnnouncement), total: all.length });
   });
 
   app.post(

@@ -24,10 +24,31 @@ pub struct AnnouncementDraft {
     pub images: Vec<String>,
 }
 
-// Lecture publique, pas d'auth requise — comme le règlement et la FAQ.
-pub async fn fetch_announcements(http: &reqwest::Client) -> Result<Vec<Announcement>, String> {
+// `total` permet à la page d'accueil de savoir s'il reste des annonces plus anciennes à
+// charger (voir HomePage.tsx, chargement par lots au scroll) sans avoir à deviner depuis
+// la seule taille de `items`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnnouncementPage {
+    pub items: Vec<Announcement>,
+    pub total: i64,
+}
+
+// Lecture publique, pas d'auth requise — comme le règlement et la FAQ. `limit` absent
+// renvoie tout ; sinon une page de `limit` annonces à partir de `offset` (les plus
+// récentes d'abord).
+pub async fn fetch_announcements(
+    http: &reqwest::Client,
+    limit: Option<u32>,
+    offset: u32,
+) -> Result<AnnouncementPage, String> {
+    let mut query = vec![("offset".to_string(), offset.to_string())];
+    if let Some(limit) = limit {
+        query.push(("limit".to_string(), limit.to_string()));
+    }
+
     let res = http
         .get(format!("{}/announcements", config::api_base_url()))
+        .query(&query)
         .send()
         .await
         .map_err(|e| config::describe_request_error(&e))?;

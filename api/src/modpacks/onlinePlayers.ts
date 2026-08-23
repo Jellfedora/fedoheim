@@ -1,9 +1,9 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { modpacks } from "../db/schema.js";
+import { modpacks, playerStats } from "../db/schema.js";
 
 // Considéré périmé si aucun rapport reçu depuis plus longtemps que 3x l'intervalle de
 // rapport du mod FedoServerTools (~30s) — large marge pour absorber un rapport manqué
@@ -91,6 +91,34 @@ function findModpackByToken(token: string) {
   return candidates.find((m) => m.reportToken !== null && timingSafeEqual(token, m.reportToken));
 }
 
+// Historique persistant "dernier état connu" par joueur (voir player_stats dans
+// schema.ts) -- contrairement à reportsBySlug ci-dessus (en mémoire, périmé après 90s),
+// une ligne ici survit à une déconnexion : un joueur qui se déconnecte garde son dernier
+// biome/armure connu plutôt que de disparaître de la page "Joueurs" du launcher. Select
+// puis update-ou-insert plutôt qu'un vrai upsert SQL : ce dépôt n'utilise `onConflict`
+// nulle part ailleurs, et le volume (quelques joueurs par rapport, un rapport toutes les
+// ~30s) rend la différence de perf non pertinente ici.
+function upsertPlayerStats(modpackId: number, players: OnlinePlayerReport[], now: Date) {
+  for (const player of players) {
+    const existing = db
+      .select()
+      .from(playerStats)
+      .where(and(eq(playerStats.modpackId, modpackId), eq(playerStats.name, player.name)))
+      .get();
+
+    if (existing) {
+      db.update(playerStats)
+        .set({ biome: player.biome, armor: player.armor, lastSeenAt: now })
+        .where(eq(playerStats.id, existing.id))
+        .run();
+    } else {
+      db.insert(playerStats)
+        .values({ modpackId, name: player.name, biome: player.biome, armor: player.armor, lastSeenAt: now })
+        .run();
+    }
+  }
+}
+
 export default async function onlinePlayersRoutes(app: FastifyInstance) {
   // Posté par le mod serveur FedoServerTools toutes les ~30s (et une dernière fois à
   // l'arrêt du serveur, `online:false`) depuis le serveur Valheim lui-même (dédié ou
@@ -113,12 +141,21 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: parsed.error.flatten() });
     }
 
+    const now = new Date();
     reportsBySlug.set(modpack.slug, {
       players: parsed.data.players,
       status: parsed.data.status,
       season: parsed.data.season,
-      reportedAt: Date.now(),
+      reportedAt: now.getTime(),
     });
+
+    // Seuls les rapports "online" portent une vraie liste de joueurs ("starting"/
+    // "stopping" sont envoyés avec une liste vide, voir FedoServerToolsPlugin) -- pas la
+    // peine de faire une requête pour rien dans ces deux cas.
+    if (parsed.data.players.length > 0) {
+      upsertPlayerStats(modpack.id, parsed.data.players, now);
+    }
+
     return reply.send({ ok: true });
   });
 
@@ -155,5 +192,44 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
       season: online ? (report?.season ?? null) : null,
       updatedAt: report ? new Date(report.reportedAt).toISOString() : null,
     });
+  });
+
+  // Public, même principe que GET /modpacks/:slug/online-players ci-dessus (page
+  // "Joueurs" du launcher) -- mais renvoie TOUS les joueurs déjà vus sur ce profil, pas
+  // seulement ceux actuellement connectés : `online` est calculé en croisant avec le
+  // rapport en mémoire (même fraîcheur que ci-dessus), `biome`/`armor`/`lastSeenAt`
+  // viennent eux de player_stats et restent affichés même une fois le joueur déconnecté
+  // (dernières valeurs connues, pas remises à null).
+  app.get("/modpacks/:slug/player-stats", async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+
+    const modpack = db.select().from(modpacks).where(eq(modpacks.slug, slug)).get();
+    if (!modpack) {
+      return reply.code(404).send({ error: "Modpack not found" });
+    }
+
+    const report = reportsBySlug.get(slug);
+    const fresh = report !== undefined && Date.now() - report.reportedAt < STALE_AFTER_MS;
+    const online = fresh && report?.status === "online";
+    const onlineNames = new Set(online ? (report?.players ?? []).map((p) => p.name) : []);
+
+    const rows = db.select().from(playerStats).where(eq(playerStats.modpackId, modpack.id)).all();
+
+    const players = rows
+      .map((row) => ({
+        name: row.name,
+        biome: row.biome,
+        armor: row.armor,
+        online: onlineNames.has(row.name),
+        lastSeenAt: row.lastSeenAt.toISOString(),
+      }))
+      // En ligne d'abord, puis par dernière activité décroissante -- l'ordre le plus
+      // utile pour un admin qui veut voir qui joue en ce moment sans avoir à trier.
+      .sort((a, b) => {
+        if (a.online !== b.online) return a.online ? -1 : 1;
+        return b.lastSeenAt.localeCompare(a.lastSeenAt);
+      });
+
+    return reply.send({ players });
   });
 }

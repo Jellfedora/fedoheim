@@ -3,14 +3,7 @@ import type { ReactElement } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import "./Sidebar.css";
 
-export type Page =
-  | "home"
-  | "announcements"
-  | "mods"
-  | "rules"
-  | "faq"
-  | "profiles"
-  | "settings";
+export type Page = "home" | "players" | "mods" | "rules" | "faq" | "profiles" | "settings";
 
 interface NavItem {
   page: Page;
@@ -28,10 +21,10 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    page: "announcements",
-    label: "Annonces",
+    page: "players",
+    label: "Joueurs",
     icon: (
-      <path d="M3 11v2a2 2 0 0 0 2 2h1l3 5 1-1-2-4h3l7 4V6l-7 4H6a2 2 0 0 0-2 2Zm14-6.5v13" />
+      <path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 1a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM2 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M15 20v-.5a4 4 0 0 0-2.5-3.7" />
     ),
   },
   {

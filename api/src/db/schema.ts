@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -110,6 +110,28 @@ export const configFiles = sqliteTable("config_files", {
   sha256: text("sha256").notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
+
+// Dernier état connu de chaque joueur ayant déjà été rapporté par FedoServerTools pour
+// ce profil de modpack (voir modpacks/onlinePlayers.ts) — contrairement au rapport en
+// mémoire (`reportsBySlug`, périmé après 90s), une ligne ici survit à une déconnexion ou
+// à un redémarrage de l'API : c'est un historique "dernier biome/armure vus", pas "en
+// ligne maintenant" (dérivé séparément en croisant avec le rapport en mémoire). `name`
+// est le pseudo Valheim tel que rapporté par le mod, pas un compte Discord — ce mod n'a
+// aucune notion d'identité joueur (voir CLAUDE.md).
+export const playerStats = sqliteTable(
+  "player_stats",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    modpackId: integer("modpack_id")
+      .notNull()
+      .references(() => modpacks.id),
+    name: text("name").notNull(),
+    biome: text("biome"),
+    armor: integer("armor"),
+    lastSeenAt: integer("last_seen_at", { mode: "timestamp" }).notNull(),
+  },
+  (table) => [uniqueIndex("player_stats_modpack_name_idx").on(table.modpackId, table.name)],
+);
 
 export const rules = sqliteTable("rules", {
   id: integer("id").primaryKey({ autoIncrement: true }),

@@ -2,10 +2,13 @@ using System;
 using System.Reflection;
 using HarmonyLib;
 
-namespace FedoDiscordLogs
+namespace FedoServerTools
 {
+    // Fait partie de l'intégration Discord (voir DiscordWebhook.cs), pas du reporting
+    // vers l'API Fedoheim -- ce patch tourne côté client (voir Player.m_localPlayer
+    // ci-dessous), là où le reste de ce mod ne fait rien tant que ServerToken est vide.
     [HarmonyPatch(typeof(Player), "OnDeath")]
-    internal static class PlayerDeathLogPatch
+    internal static class PlayerDeathAnnouncePatch
     {
         // Character.m_lastHit est protégé, donc on passe par AccessTools pour le lire.
         private static readonly FieldInfo LastHitField = AccessTools.Field(typeof(Character), "m_lastHit");
@@ -21,11 +24,11 @@ namespace FedoDiscordLogs
 
                 var lastHit = (HitData)LastHitField?.GetValue(__instance);
                 string cause = DescribeCause(lastHit);
-                FedoDiscordLogsPlugin.Instance.OnPlayerDied(__instance.GetPlayerName(), cause);
+                FedoServerToolsPlugin.Instance.AnnouncePlayerDied(__instance.GetPlayerName(), cause);
             }
             catch (Exception e)
             {
-                FedoDiscordLogsPlugin.Log?.LogError($"FedoDiscordLogs: OnDeath patch failed: {e}");
+                FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: OnDeath patch failed: {e}");
             }
         }
 

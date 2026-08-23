@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FedoDiscordLogs
+namespace FedoServerTools
 {
     public static class DiscordWebhook
     {
@@ -13,7 +13,7 @@ namespace FedoDiscordLogs
         {
             if (string.IsNullOrWhiteSpace(webhookUrl))
             {
-                throw new InvalidOperationException("Discord webhook not configured (see fedo.discordlogs.cfg).");
+                throw new InvalidOperationException("Discord webhook not configured (see fedo.servertools.cfg).");
             }
 
             string payload = "{\"content\":" + JsonEscape(message) + "}";

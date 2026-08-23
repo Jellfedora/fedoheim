@@ -57,3 +57,10 @@
   error/warning is now logged once, with a terse reminder every 20 consecutive failures
   for the API case (and a one-line info log once it recovers), instead of a fresh full
   exception on every single attempt.
+- Absorbed the former standalone `FedoDiscordLogs` mod: posts player connect/disconnect/
+  death, server start/stop, and world-saved events to a Discord webhook (`[Discord]`
+  section, `WebhookUrl`) -- entirely independent of the API-reporting feature above (no
+  `ServerToken` involved). Unlike `ServerToken`, `WebhookUrl` is meant to be filled in on
+  every installation (including players') if you want death events -- which only fire on
+  that player's own client -- to be logged for everyone; see the README. Each event has
+  its own on/off toggle and customizable message template, same as the old mod.

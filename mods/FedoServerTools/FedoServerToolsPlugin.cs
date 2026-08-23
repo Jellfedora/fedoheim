@@ -63,6 +63,33 @@ namespace FedoServerTools
         private ConfigEntry<bool> _forcePublicPosition;
         private bool ForcePublicPosition => _forcePublicPosition.Value;
 
+        // Intégration Discord (voir DiscordWebhook.cs) -- indépendante du reporting vers
+        // l'API Fedoheim ci-dessus : un webhook Discord, pas un jeton d'API. Jamais dans
+        // ServerSync, même raison que ServerToken (voir mods/CLAUDE.md) : AddConfigEntry
+        // diffuse la valeur à chaque client connecté dès qu'elle change. Contrairement à
+        // ServerToken cependant, un admin peut choisir de la renseigner sur toutes les
+        // installations (y compris joueur) pour que les morts, qui ne se déclenchent que
+        // côté client (voir PlayerDeathAnnouncePatch), soient elles aussi loguées -- voir
+        // le README pour la distinction avec ServerToken.
+        private ConfigEntry<string> _discordWebhookUrl;
+
+        private ConfigEntry<bool> _logPlayerConnected;
+        private ConfigEntry<string> _playerConnectedTemplate;
+        private ConfigEntry<bool> _logPlayerDisconnected;
+        private ConfigEntry<string> _playerDisconnectedTemplate;
+        private ConfigEntry<bool> _logPlayerDeath;
+        private ConfigEntry<string> _playerDeathTemplate;
+        private ConfigEntry<bool> _logServerStarted;
+        private ConfigEntry<string> _serverStartedTemplate;
+        private ConfigEntry<bool> _logServerStopped;
+        private ConfigEntry<string> _serverStoppedTemplate;
+        private ConfigEntry<bool> _logWorldSaved;
+        private ConfigEntry<string> _worldSavedTemplate;
+
+        // ZNet.SetServer peut être appelé plus d'une fois par session (transitions de
+        // scène) -- l'annonce Discord de démarrage ne doit partir qu'une fois.
+        private bool _serverStartAnnounced;
+
         // ServerSync (voir mods/_shared/ConfigSync.cs) : ForcePublicPosition est
         // volontairement le seul réglage inscrit ici. Jamais ServerToken -- AddConfigEntry
         // diffuse la valeur à chaque client connecté dès qu'elle change, ce qui enverrait
@@ -140,6 +167,78 @@ namespace FedoServerTools
             // l'admin du serveur lui-même (ConfigSync.IsAdmin reste vrai côté serveur,
             // qui fait toujours autorité sur sa propre valeur).
             _configSync.IsLocked = true;
+
+            _discordWebhookUrl = Config.Bind(
+                "Discord",
+                "WebhookUrl",
+                "",
+                "Discord webhook URL (Server Settings > Integrations > Webhooks). Keep it secret: anyone who has it can post in your channel. Unlike ServerToken above, this one can safely be filled in on every installation (including players') if you want player deaths -- which only fire on that player's own client -- to also be logged; see the README.");
+
+            _logPlayerConnected = Config.Bind(
+                "Discord",
+                "LogPlayerConnected",
+                true,
+                "Logs when a player connects. Only fires on the server (or a client hosting the game).");
+            _playerConnectedTemplate = Config.Bind(
+                "Discord",
+                "PlayerConnectedTemplate",
+                "**{player}** connected.",
+                "Message posted when a player connects. {player} is replaced with their name.");
+
+            _logPlayerDisconnected = Config.Bind(
+                "Discord",
+                "LogPlayerDisconnected",
+                true,
+                "Logs when a player disconnects. Only fires on the server (or a client hosting the game).");
+            _playerDisconnectedTemplate = Config.Bind(
+                "Discord",
+                "PlayerDisconnectedTemplate",
+                "**{player}** disconnected.",
+                "Message posted when a player disconnects. {player} is replaced with their name.");
+
+            _logPlayerDeath = Config.Bind(
+                "Discord",
+                "LogPlayerDeath",
+                true,
+                "Logs when a player dies. This fires on whichever machine actually simulates that player's character (their own client, or the host if they are the host) -- for every player's death to be logged, every player needs a webhook configured here.");
+            _playerDeathTemplate = Config.Bind(
+                "Discord",
+                "PlayerDeathTemplate",
+                "**{player}** died ({cause}).",
+                "Message posted when a player dies. {player} is replaced with their name, {cause} with the cause of death (drowning, fall damage, an attacker's name, etc.).");
+
+            _logServerStarted = Config.Bind(
+                "Discord",
+                "LogServerStarted",
+                true,
+                "Logs once the server (or a hosting client) finishes starting up.");
+            _serverStartedTemplate = Config.Bind(
+                "Discord",
+                "ServerStartedTemplate",
+                "Server started (world: **{world}**).",
+                "Message posted when the server starts. {world} is replaced with the world name.");
+
+            _logServerStopped = Config.Bind(
+                "Discord",
+                "LogServerStopped",
+                true,
+                "Logs when the server (or a hosting client) shuts down. Not guaranteed to arrive if the process is force-killed.");
+            _serverStoppedTemplate = Config.Bind(
+                "Discord",
+                "ServerStoppedTemplate",
+                "Server stopped.",
+                "Message posted when the server stops.");
+
+            _logWorldSaved = Config.Bind(
+                "Discord",
+                "LogWorldSaved",
+                true,
+                "Logs when the world finishes saving. Only fires on the server (or a hosting client).");
+            _worldSavedTemplate = Config.Bind(
+                "Discord",
+                "WorldSavedTemplate",
+                "World saved.",
+                "Message posted when the world finishes saving.");
 
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
@@ -491,6 +590,97 @@ namespace FedoServerTools
             {
                 Logger.LogError($"FedoServerTools: failed to report server stopping: {e}");
             }
+        }
+
+        // À partir d'ici : intégration Discord (voir DiscordWebhook.cs), sans rapport
+        // avec le reporting vers l'API Fedoheim ci-dessus -- un webhook, pas ServerToken.
+
+        public void AnnouncePlayerConnected(string playerName)
+        {
+            SendDiscordMessage(_logPlayerConnected, _playerConnectedTemplate, playerName);
+        }
+
+        public void AnnouncePlayerDisconnected(string playerName)
+        {
+            SendDiscordMessage(_logPlayerDisconnected, _playerDisconnectedTemplate, playerName);
+        }
+
+        public void AnnouncePlayerDied(string playerName, string cause)
+        {
+            SendDiscordMessage(_logPlayerDeath, _playerDeathTemplate, playerName, cause: cause);
+        }
+
+        public void AnnounceServerStarted(string worldName)
+        {
+            if (_serverStartAnnounced)
+            {
+                return;
+            }
+
+            _serverStartAnnounced = true;
+            SendDiscordMessage(_logServerStarted, _serverStartedTemplate, null, worldName);
+        }
+
+        public void AnnounceWorldSaved()
+        {
+            if (ZNet.instance == null || !ZNet.instance.IsServer())
+            {
+                return;
+            }
+
+            SendDiscordMessage(_logWorldSaved, _worldSavedTemplate, null);
+        }
+
+        public void AnnounceServerStopped()
+        {
+            // Fire-and-forget comme les autres annonces : ZNet.OnDestroy peut être appelé
+            // pendant de simples transitions de menu (pas seulement un vrai arrêt de
+            // serveur), donc on ne doit surtout pas bloquer le thread principal ici --
+            // contrairement à ReportBlocking ci-dessus, qui a une bonne raison de le faire.
+            SendDiscordMessage(_logServerStopped, _serverStoppedTemplate, null);
+        }
+
+        private void SendDiscordMessage(ConfigEntry<bool> toggle, ConfigEntry<string> template, string playerName, string worldName = null, string cause = null)
+        {
+            if (!toggle.Value)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_discordWebhookUrl.Value))
+            {
+                Logger.LogWarning("FedoServerTools: no Discord webhook configured (see fedo.servertools.cfg), message not sent.");
+                return;
+            }
+
+            string message = template.Value;
+            if (playerName != null)
+            {
+                message = message.Replace("{player}", playerName);
+            }
+            if (worldName != null)
+            {
+                message = message.Replace("{world}", worldName);
+            }
+            if (cause != null)
+            {
+                message = message.Replace("{cause}", cause);
+            }
+
+            string webhookUrl = _discordWebhookUrl.Value;
+            var logger = Logger;
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await DiscordWebhook.PostMessageAsync(webhookUrl, message);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError($"FedoServerTools: failed to send Discord message: {e}");
+                }
+            });
         }
     }
 }

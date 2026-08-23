@@ -51,6 +51,11 @@ of that, kept here for now since this is the closest thing to a "misc utilities"
    still happens on its own after ~90s if the process is killed outright, e.g. a real
    crash with no chance to report anything).
 
+Besides API reporting, this mod also posts session events (player connect/disconnect/
+death, server start/stop, world saved) straight to a Discord webhook — see "Discord
+webhook logging" below, entirely independent of the API-reporting feature (no
+`ServerToken` involved).
+
 Besides reporting, `ForcePublicPosition` (see below, on by default) forces "Public
 position" (Options > Game) on for the session, two ways at once, belt-and-suspenders:
 - **Server side**: writes directly to the server's copy of that flag for each connected
@@ -121,6 +126,47 @@ real token to every player.
   the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/) mod is installed
   on this server; harmless if it isn't.
 
+## Discord webhook logging
+
+Independent of the API reporting above: posts a running log of session events to a
+Discord channel via a webhook — who connected, who disconnected, who died, when the
+server started/stopped, and when the world was saved.
+
+- **Player connected / disconnected / server started / server stopped / world saved**
+  only fire on the machine acting as the server (a dedicated server, or a client
+  hosting the game).
+- **Player died** fires on whichever machine actually simulates that player's
+  character — normally that player's own client (or the host, for the host's own
+  character). For every player's death to show up, every player needs `WebhookUrl`
+  (below) filled in — it can be the same webhook for everyone.
+
+Settings live under `[Discord]` in `BepInEx/config/fedo.servertools.cfg`:
+
+- `WebhookUrl` — your Discord webhook URL (Server Settings > Integrations > Webhooks).
+  Keep it private — anyone who has it can post in that channel. **Unlike `ServerToken`
+  above, it's fine to fill this in on every installation, including players'** — it
+  doesn't grant access to the Fedoheim API, and death logging (see above) needs it set
+  on every client to work for every player. Blank by default (the safe no-op), same as
+  `ServerToken` — an admin has to explicitly decide to hand it out.
+- `LogPlayerConnected` / `PlayerConnectedTemplate`
+- `LogPlayerDisconnected` / `PlayerDisconnectedTemplate`
+- `LogPlayerDeath` / `PlayerDeathTemplate`
+- `LogServerStarted` / `ServerStartedTemplate`
+- `LogServerStopped` / `ServerStoppedTemplate`
+- `LogWorldSaved` / `WorldSavedTemplate`
+
+Each `*Template` supports `{player}` (connected/disconnected/death), `{world}` (server
+started), or `{cause}` (death only). `{cause}` describes what killed the player:
+`drowning`, `fall damage`, `fire`, `the cold`, `poison`, `the edge of the world`, the
+name of an attacking creature/player (e.g. `Greydwarf`), or a few other environmental
+causes (falling tree, cart, boat, turret, catapult, stalactite, the sea, smoke
+inhalation, unknown causes).
+
+The "server stopped" message is best-effort: it's sent right as the server shuts down
+(`OnApplicationQuit`), so it won't arrive if the process is force-killed instead of shut
+down normally — unlike the API's own `"stopping"` report, this one isn't waited on
+synchronously.
+
 ## Stability patch (unrelated to reporting)
 
 Not part of the API-reporting feature above — a small, generic Harmony patch on
@@ -160,3 +206,10 @@ recreate it properly on the next pass instead of leaving it permanently broken.
   reporting is simply skipped with a local log warning — safe, and doesn't affect
   `ForcePublicPosition` either way. Only the actual dedicated server's own copy,
   installed manually (not through the modpack sync), should ever have the real token.
+- **`WebhookUrl` does not have this restriction** — see "Discord webhook logging"
+  above. It's a separate secret with a separate risk (someone could post fake messages
+  to that one Discord channel, nothing more), and death logging actually needs it
+  filled in on every player's client to work for everyone. Still blank by default, so
+  nothing is posted anywhere until an admin deliberately fills it in — on the server
+  only (for connect/disconnect/start/stop/saved), on every client (to also get death
+  logging), or both.

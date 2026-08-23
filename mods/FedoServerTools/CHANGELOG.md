@@ -64,3 +64,10 @@
   every installation (including players') if you want death events -- which only fire on
   that player's own client -- to be logged for everyone; see the README. Each event has
   its own on/off toggle and customizable message template, same as the old mod.
+- Added an in-game clock overlay (`HH:MM`, top-center of the screen), following the
+  server's day/night cycle via `EnvMan.GetDayFraction()` -- purely local, no
+  `ServerToken` needed (`[Time]` section: `ShowClockOverlay`, `TimeOffsetHours`).
+  Draggable with Shift+mouse, position saved per-installation
+  (`ClockPositionX`/`ClockPositionY`) and restored on every future launch. The same
+  clock value is now also sent in the periodic API report, shown by the launcher's
+  home page next to the season.

@@ -60,6 +60,23 @@ namespace FedoServerTools
         private ConfigEntry<string> _seasonFall;
         private ConfigEntry<string> _seasonWinter;
 
+        // Horloge en jeu -- voir ClockOverlay.cs pour l'affichage à l'écran (client, sans
+        // rapport avec le reporting vers l'API) ; la même valeur formatée est aussi
+        // envoyée dans le rapport périodique pour être affichée par le launcher (voir
+        // GetCurrentGameTime ci-dessous). `_clockRefreshTimer` throttle le rafraîchissement
+        // de l'overlay à ~1x/seconde plutôt qu'à chaque frame (Update), la minute affichée
+        // ne changeant de toute façon pas plus vite que ça.
+        private ConfigEntry<float> _timeOffsetHours;
+        private ConfigEntry<bool> _showClockOverlay;
+        private float _clockRefreshTimer;
+
+        // Position de l'horloge à l'écran (voir ClockOverlay.cs, glissée à la souris en
+        // maintenant Maj) -- préférence purement locale à cette installation, jamais dans
+        // ServerSync : contrairement à ForcePublicPosition, ça n'affecte personne d'autre,
+        // chaque joueur doit pouvoir la placer où il veut sans que le serveur en décide.
+        private ConfigEntry<float> _clockPositionX;
+        private ConfigEntry<float> _clockPositionY;
+
         private ConfigEntry<bool> _forcePublicPosition;
         private bool ForcePublicPosition => _forcePublicPosition.Value;
 
@@ -155,6 +172,31 @@ namespace FedoServerTools
             _seasonSummer = Config.Bind("Seasons", "SummerName", "Summer", "Display name sent for the Summer season (requires the Seasons mod). Edit to translate (e.g. French).");
             _seasonFall = Config.Bind("Seasons", "FallName", "Fall", "Display name sent for the Fall season (requires the Seasons mod). Edit to translate (e.g. French).");
             _seasonWinter = Config.Bind("Seasons", "WinterName", "Winter", "Display name sent for the Winter season (requires the Seasons mod). Edit to translate (e.g. French).");
+
+            _showClockOverlay = Config.Bind(
+                "Time",
+                "ShowClockOverlay",
+                true,
+                "Shows a small in-game clock (HH:MM, following the day/night cycle) at the top-center of the screen. Purely a local HUD addition -- works on any installation with a local player (client or host), no ServerToken needed.");
+
+            _timeOffsetHours = Config.Bind(
+                "Time",
+                "TimeOffsetHours",
+                0f,
+                new ConfigDescription(
+                    "Shifts the displayed clock (both the HUD overlay and the value sent to the API/launcher) by this many hours, in case it doesn't match what the sky looks like (e.g. it reads midday while it visually looks like dawn) -- purely cosmetic, has no effect on the actual day/night cycle.",
+                    new AcceptableValueRange<float>(-12f, 12f)));
+
+            _clockPositionX = Config.Bind(
+                "Time",
+                "ClockPositionX",
+                0f,
+                "Horizontal position of the clock overlay, in UI pixels from the top-center of the screen. Saved automatically when you drag the clock (hold Left Shift and drag it with the mouse) -- not meant to be hand-edited, but you can reset it here.");
+            _clockPositionY = Config.Bind(
+                "Time",
+                "ClockPositionY",
+                -18f,
+                "Vertical position of the clock overlay, in UI pixels from the top-center of the screen (negative = downward). Saved automatically when you drag the clock (hold Left Shift and drag it with the mouse).");
 
             _forcePublicPosition = Config.Bind(
                 "Players",
@@ -337,6 +379,41 @@ namespace FedoServerTools
                 // rattrapé pour ne jamais spammer la console à chaque frame si ça arrive.
                 Log?.LogWarning($"FedoServerTools: ForceOwnPublicPosition failed: {e.Message}");
             }
+
+            RefreshClockOverlay();
+        }
+
+        // Throttlé à ~1x/seconde (pas la peine de reformater une chaîne à chaque frame
+        // pour une minute qui ne change pas plus vite que ça) -- voir ClockOverlay.cs
+        // pour la création/le positionnement de l'élément UI lui-même.
+        private void RefreshClockOverlay()
+        {
+            ClockOverlay.SetVisible(_showClockOverlay.Value);
+            if (!_showClockOverlay.Value)
+            {
+                return;
+            }
+
+            _clockRefreshTimer -= Time.deltaTime;
+            if (_clockRefreshTimer > 0f)
+            {
+                return;
+            }
+
+            _clockRefreshTimer = 1f;
+            ClockOverlay.SetText(GetCurrentGameTime());
+        }
+
+        // Lu par ClockOverlay au moment de (re)créer l'élément (voir Hud.Awake) pour le
+        // replacer où le joueur l'avait laissé une session précédente.
+        public Vector2 SavedClockPosition => new Vector2(_clockPositionX.Value, _clockPositionY.Value);
+
+        // Appelé par ClockOverlay.DragHandler à la fin d'un glissement (voir ClockOverlay.
+        // cs) -- écrit directement dans le .cfg local, pas de round-trip serveur.
+        public void SaveClockPosition(Vector2 anchoredPosition)
+        {
+            _clockPositionX.Value = anchoredPosition.x;
+            _clockPositionY.Value = anchoredPosition.y;
         }
 
         private IEnumerator ReportLoop()
@@ -511,6 +588,35 @@ namespace FedoServerTools
             }
         }
 
+        // Horloge en jeu au format HH:MM, dérivée de EnvMan.GetDayFraction() -- déjà la
+        // fraction (0..1) du jour en cours utilisée en interne par le jeu pour
+        // l'éclairage, donc déjà correctement calée sur le vrai cycle jour/nuit (pas de
+        // recalcul maison depuis ZNet.GetTimeSeconds() qui ignorerait le décalage du
+        // début de journée). `TimeOffsetHours` permet de recaler l'affichage si jamais il
+        // ne correspond pas visuellement au ciel (purement cosmétique). Une seule valeur
+        // par rapport, comme la saison ci-dessus -- pas une donnée par joueur.
+        private static string GetCurrentGameTime()
+        {
+            if (EnvMan.instance == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                float totalHours = EnvMan.instance.GetDayFraction() * 24f + Instance._timeOffsetHours.Value;
+                totalHours = ((totalHours % 24f) + 24f) % 24f;
+                int hour = (int)totalHours;
+                int minute = (int)((totalHours - hour) * 60f);
+                return $"{hour:D2}:{minute:D2}";
+            }
+            catch (Exception e)
+            {
+                Log?.LogWarning($"FedoServerTools: failed to resolve current game time: {e.Message}");
+                return null;
+            }
+        }
+
         // `status` : "starting" (juste chargé/pas encore prêt), "online" (rapport
         // périodique normal), "stopping" (arrêt en cours) -- voir onlinePlayers.ts pour
         // comment l'API en déduit un "offline" par péremption quand plus rien n'arrive.
@@ -534,12 +640,13 @@ namespace FedoServerTools
 
             var logger = Logger;
             string season = GetCurrentSeasonName();
+            string time = GetCurrentGameTime();
 
             Task.Run(async () =>
             {
                 try
                 {
-                    await OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, season).ConfigureAwait(false);
+                    await OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, season, time).ConfigureAwait(false);
                     if (_consecutiveReportFailures > 0)
                     {
                         logger.LogInfo($"FedoServerTools: online players report recovered after {_consecutiveReportFailures} consecutive failure(s).");
@@ -584,7 +691,9 @@ namespace FedoServerTools
 
             try
             {
-                OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, GetCurrentSeasonName()).GetAwaiter().GetResult();
+                OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, GetCurrentSeasonName(), GetCurrentGameTime())
+                    .GetAwaiter()
+                    .GetResult();
             }
             catch (Exception e)
             {

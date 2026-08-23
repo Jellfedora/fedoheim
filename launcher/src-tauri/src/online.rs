@@ -28,6 +28,10 @@ pub struct OnlinePlayers {
     // FedoServerTools, déjà traduite côté mod -- `None` si ce mod tiers n'est pas
     // installé sur le serveur, ou si le dernier rapport est périmé.
     pub season: Option<String>,
+    // Horloge en jeu au format "HH:MM" (voir FedoServerToolsPlugin.GetCurrentGameTime,
+    // dérivée du cycle jour/nuit) -- `None` si le dernier rapport est périmé, même
+    // principe que `season` ci-dessus.
+    pub time: Option<String>,
     #[serde(rename = "updatedAt")]
     pub updated_at: Option<String>,
 }

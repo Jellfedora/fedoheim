@@ -79,6 +79,9 @@ interface OnlinePlayers {
   // affiché tel quel. `null` si le mod Seasons n'est pas installé sur le serveur, ou si
   // aucun rapport frais n'est disponible.
   season: string | null;
+  // Horloge en jeu ("HH:MM", suit le cycle jour/nuit du serveur) -- `null` si aucun
+  // rapport frais n'est disponible, même principe que `season` ci-dessus.
+  time: string | null;
   updatedAt: string | null;
 }
 
@@ -350,8 +353,12 @@ export function HomePage({ heroEyebrow, heroTagline, slug, isAdmin }: HomePagePr
                 </p>
               );
             })()}
-            {onlinePlayers?.season && (
-              <p className="home-players__season">Saison : {onlinePlayers.season}</p>
+            {(onlinePlayers?.season || onlinePlayers?.time) && (
+              <p className="home-players__season">
+                {onlinePlayers.season && <>Saison : {onlinePlayers.season}</>}
+                {onlinePlayers.season && onlinePlayers.time && " · "}
+                {onlinePlayers.time && <>Heure : {onlinePlayers.time}</>}
+              </p>
             )}
             {onlinePlayers?.status === "online" &&
               (onlinePlayers.players.length > 0 ? (

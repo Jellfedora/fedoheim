@@ -20,7 +20,8 @@ namespace FedoServerTools
             string serverToken,
             IReadOnlyList<PlayerReport> players,
             string status,
-            string season = null)
+            string season = null,
+            string time = null)
         {
             if (string.IsNullOrWhiteSpace(apiBaseUrl) || string.IsNullOrWhiteSpace(serverToken))
             {
@@ -32,11 +33,12 @@ namespace FedoServerTools
             // seule valeur à recopier dans ce .cfg plutôt que deux qui doivent
             // correspondre entre elles.
             string url = apiBaseUrl.TrimEnd('/') + "/modpacks/online-players";
-            // `season` : une seule valeur par rapport (pas par joueur, contrairement à
-            // biome/armor) -- `null` si le mod Seasons n'est pas installé sur ce
-            // serveur, voir SeasonReporting.
+            // `season`/`time` : une seule valeur par rapport (pas par joueur, contrairement
+            // à biome/armor) -- `season` est `null` si le mod Seasons n'est pas installé sur
+            // ce serveur (voir SeasonReporting), `time` si EnvMan n'est pas encore chargé.
             string payload = "{\"players\":" + JsonPlayersArray(players) + ",\"status\":" + JsonEscape(status) +
-                ",\"season\":" + (season != null ? JsonEscape(season) : "null") + "}";
+                ",\"season\":" + (season != null ? JsonEscape(season) : "null") +
+                ",\"time\":" + (time != null ? JsonEscape(time) : "null") + "}";
 
             using var request = new HttpRequestMessage(HttpMethod.Post, url)
             {

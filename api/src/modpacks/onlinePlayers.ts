@@ -49,6 +49,10 @@ interface OnlineReport {
   // [Seasons]) -- `null` si ce mod tiers n'est pas installé sur le serveur, pas une
   // donnée par joueur contrairement à biome/armor.
   season: string | null;
+  // Horloge en jeu au format "HH:MM" (voir FedoServerToolsPlugin.GetCurrentGameTime,
+  // dérivée de EnvMan.GetDayFraction()) -- même principe que `season`, une seule valeur
+  // par rapport. `null` si EnvMan n'est pas encore chargé au moment du rapport.
+  time: string | null;
   reportedAt: number;
 }
 
@@ -69,6 +73,7 @@ const reportBodySchema = z.object({
     .max(500),
   status: z.enum(["starting", "online", "stopping"]).default("online"),
   season: z.string().trim().nullable().default(null),
+  time: z.string().trim().nullable().default(null),
 });
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -146,6 +151,7 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
       players: parsed.data.players,
       status: parsed.data.status,
       season: parsed.data.season,
+      time: parsed.data.time,
       reportedAt: now.getTime(),
     });
 
@@ -190,6 +196,9 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
       // n'a plus de sens à afficher dès que le serveur n'est plus vraiment "online" --
       // sinon le launcher continue de montrer une saison alors que le jeu est fermé.
       season: online ? (report?.season ?? null) : null,
+      // Même principe que `season` ci-dessus : n'a plus de sens à afficher une fois le
+      // serveur retombé hors "online".
+      time: online ? (report?.time ?? null) : null,
       updatedAt: report ? new Date(report.reportedAt).toISOString() : null,
     });
   });

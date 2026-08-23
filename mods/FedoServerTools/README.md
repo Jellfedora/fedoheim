@@ -37,7 +37,8 @@ of that, kept here for now since this is the closest thing to a "misc utilities"
    mod is installed on this server — a soft dependency, entirely optional: this mod
    works exactly the same without it, it just won't have a season to report. Unlike
    biome/armor this is one value per report, not per player, since the season is a
-   server-wide setting.
+   server-wide setting. Each report also carries the current in-game clock (`HH:MM`,
+   see "In-game clock" below) — same one-value-per-report principle as the season.
 3. Each report is authenticated with a shared secret (`ServerToken`) tied to one
    modpack profile (see Configuration below) — without it, reports are rejected by
    the API and only a warning is logged locally.
@@ -125,6 +126,36 @@ real token to every player.
   season, same principle as `[Biomes]` above. Only used (and only sent to the API) if
   the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/) mod is installed
   on this server; harmless if it isn't.
+
+**[Time]**
+- `ShowClockOverlay` (default `true`) — shows the in-game clock overlay (see "In-game
+  clock" below). Read on both a server and a client install, so it needs no
+  `ServerToken` to take effect on the client side.
+- `TimeOffsetHours` (default `0`, between `-12` and `12`) — shifts the displayed clock
+  (both the overlay and the value sent to the API/launcher) if it doesn't match what
+  the sky looks like. Purely cosmetic, no effect on the actual day/night cycle.
+- `ClockPositionX` / `ClockPositionY` (default `0` / `-18`) — where the overlay sits on
+  screen, in UI pixels from the top-center. Written automatically when a player drags
+  the clock (see below); not meant to be hand-edited, but resettable here.
+
+## In-game clock
+
+Independent of the API/Discord features above: shows a small clock (`HH:MM`) at the
+top-center of the screen, following the server's day/night cycle
+(`EnvMan.GetDayFraction()` — the same value the game itself uses for lighting, so it
+stays correctly synced with what the sky looks like). Works on any installation with a
+local player (client or host), no `ServerToken` or network call involved — purely
+local. The same value is also sent in the periodic API report (see "How it works"
+above) so the launcher's home page can show it next to the season.
+
+**Draggable, position saved locally**: hold **Left Shift** and drag the clock with the
+mouse to move it anywhere on screen. The clock is normally "click-through" (it never
+intercepts a gameplay click at that spot on screen) — holding Shift is what makes it
+draggable, so it never gets in the way otherwise. The new position is written to
+`ClockPositionX`/`ClockPositionY` in this installation's own `.cfg` as soon as you
+release the drag, and is restored on every future launch — this is a per-player, purely
+local preference, never synced through the modpack or the server (unlike
+`ForcePublicPosition`, which is a shared setting on purpose).
 
 ## Discord webhook logging
 

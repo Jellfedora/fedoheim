@@ -37,6 +37,12 @@
       <HintPath>$(ValheimManagedDir)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Input.GetKey (voir ClockOverlay.cs) : UnityEngine.dll ci-dessus n'en réexporte
+         pas assez pour que le compilateur résolve UnityEngine.Input à partir de lui seul. -->
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="assembly_valheim">
       <HintPath>$(ValheimManagedDir)/assembly_valheim.dll</HintPath>
       <Private>false</Private>

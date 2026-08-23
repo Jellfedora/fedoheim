@@ -47,15 +47,34 @@ function ShieldIcon() {
   );
 }
 
+// "offline" n'est jamais envoyé par le mod (voir onlinePlayers.ts) : c'est ce que l'API
+// renvoie elle-même dès que plus aucun rapport frais n'est disponible (péremption ou
+// jamais démarré).
+type ServerStatus = "starting" | "online" | "stopping" | "offline";
+
 interface OnlinePlayers {
+  status: ServerStatus;
   online: boolean;
   players: OnlinePlayer[];
+  // Nom déjà traduit par l'admin dans le .cfg de FedoServerTools (section [Seasons]) --
+  // affiché tel quel. `null` si le mod Seasons n'est pas installé sur le serveur, ou si
+  // aucun rapport frais n'est disponible.
+  season: string | null;
   updatedAt: string | null;
 }
 
-// Alimenté par le mod serveur FedoServerTools, qui poste toutes les ~30s — un intervalle
-// plus court côté launcher n'apporterait rien de plus frais.
-const ONLINE_PLAYERS_POLL_MS = 30_000;
+const STATUS_LABELS: Record<ServerStatus, string> = {
+  starting: "Démarrage en cours…",
+  online: "En ligne",
+  stopping: "Arrêt en cours…",
+  offline: "Hors ligne",
+};
+
+// Alimenté par le mod serveur FedoServerTools, qui poste toutes les
+// SyncIntervalSeconds (10s au minimum autorisé côté mod) — 10s ici aussi, pour ne pas
+// ajouter un délai d'affichage supplémentaire au-dessus du rythme le plus rapide
+// possible côté mod.
+const ONLINE_PLAYERS_POLL_MS = 10_000;
 
 export function HomePage({ heroEyebrow, heroTagline, slug }: HomePageProps) {
   const [latestAnnouncement, setLatestAnnouncement] = useState<Announcement | null>(null);
@@ -131,13 +150,19 @@ export function HomePage({ heroEyebrow, heroTagline, slug }: HomePageProps) {
           <div className="home-card__header">
             <h2>État du serveur</h2>
           </div>
-          <p className="home-players__status">
-            <span
-              className={`home-players__dot ${onlinePlayers?.online ? "" : "home-players__dot--offline"}`}
-            />
-            Statut : {onlinePlayers?.online ? "En ligne" : "Hors ligne"}
-          </p>
-          {onlinePlayers?.online &&
+          {(() => {
+            const status = onlinePlayers?.status ?? "offline";
+            return (
+              <p className="home-players__status">
+                <span className={`home-players__dot home-players__dot--${status}`} />
+                Statut : {STATUS_LABELS[status]}
+              </p>
+            );
+          })()}
+          {onlinePlayers?.season && (
+            <p className="home-players__season">Saison : {onlinePlayers.season}</p>
+          )}
+          {onlinePlayers?.status === "online" &&
             (onlinePlayers.players.length > 0 ? (
               <ul className="home-players">
                 {onlinePlayers.players.map((player) => (

@@ -28,6 +28,14 @@ namespace FedoServerTools
         private ConfigEntry<string> _apiBaseUrl;
         private ConfigEntry<string> _serverToken;
         private ConfigEntry<float> _syncIntervalSeconds;
+        private ConfigEntry<float> _startingGracePeriodSeconds;
+
+        // Time.realtimeSinceStartup au moment où ce plugin charge -- avant même que
+        // ZNet existe, donc bien avant qu'on sache si cette instance sera serveur ou
+        // client. C'est justement pendant cette fenêtre (chargement de BepInEx et de
+        // tous les mods, potentiellement long sur un serveur qui en a beaucoup) qu'on
+        // veut pouvoir remonter "starting" plutôt que rien du tout.
+        private float _bootRealtime;
 
         private ConfigEntry<string> _biomeMeadows;
         private ConfigEntry<string> _biomeBlackForest;
@@ -38,6 +46,11 @@ namespace FedoServerTools
         private ConfigEntry<string> _biomeDeepNorth;
         private ConfigEntry<string> _biomeOcean;
         private ConfigEntry<string> _biomeMistlands;
+
+        private ConfigEntry<string> _seasonSpring;
+        private ConfigEntry<string> _seasonSummer;
+        private ConfigEntry<string> _seasonFall;
+        private ConfigEntry<string> _seasonWinter;
 
         private ConfigEntry<bool> _forcePublicPosition;
         private bool ForcePublicPosition => _forcePublicPosition.Value;
@@ -55,6 +68,7 @@ namespace FedoServerTools
         {
             Instance = this;
             Log = Logger;
+            _bootRealtime = Time.realtimeSinceStartup;
 
             _apiBaseUrl = Config.Bind(
                 "Api",
@@ -76,6 +90,14 @@ namespace FedoServerTools
                     "How often (in seconds) this mod talks to the API -- reporting the connected player list today, and in the future also picking up anything the API needs to tell the game (this mod isn't just a player-list reporter).",
                     new AcceptableValueRange<float>(10f, 300f)));
 
+            _startingGracePeriodSeconds = Config.Bind(
+                "Api",
+                "StartingGracePeriodSeconds",
+                60f,
+                new ConfigDescription(
+                    "How long (in seconds) after this plugin loads to keep reporting 'starting' instead of 'online' on the launcher's home page, to give a heavily modded server time to fully boot before being shown as ready to join. Increase this if your server has a lot of mods and takes longer than this to start.",
+                    new AcceptableValueRange<float>(0f, 600f)));
+
             // Nom envoyé pour chaque biome, affiché tel quel par le launcher -- éditer ce
             // .cfg pour y mettre sa propre traduction (ex: français), comme pour n'importe
             // quel autre texte affiché au joueur dans les autres mods (voir mods/CLAUDE.md).
@@ -88,6 +110,16 @@ namespace FedoServerTools
             _biomeDeepNorth = Config.Bind("Biomes", "DeepNorthName", "Deep North", "Display name sent for the Deep North biome. Edit to translate (e.g. French).");
             _biomeOcean = Config.Bind("Biomes", "OceanName", "Ocean", "Display name sent for the Ocean biome. Edit to translate (e.g. French).");
             _biomeMistlands = Config.Bind("Biomes", "MistlandsName", "Mistlands", "Display name sent for the Mistlands biome. Edit to translate (e.g. French).");
+
+            // Rapportée seulement si le mod shudnal/Seasons est aussi présent sur ce
+            // serveur (voir SeasonReporting.cs, dépendance douce -- absente sinon,
+            // sans erreur). Même principe que les noms de biome ci-dessus : la valeur
+            // anglaise brute de Seasons n'est jamais envoyée telle quelle à l'API,
+            // éditer ce .cfg pour traduire.
+            _seasonSpring = Config.Bind("Seasons", "SpringName", "Spring", "Display name sent for the Spring season (requires the Seasons mod). Edit to translate (e.g. French).");
+            _seasonSummer = Config.Bind("Seasons", "SummerName", "Summer", "Display name sent for the Summer season (requires the Seasons mod). Edit to translate (e.g. French).");
+            _seasonFall = Config.Bind("Seasons", "FallName", "Fall", "Display name sent for the Fall season (requires the Seasons mod). Edit to translate (e.g. French).");
+            _seasonWinter = Config.Bind("Seasons", "WinterName", "Winter", "Display name sent for the Winter season (requires the Seasons mod). Edit to translate (e.g. French).");
 
             _forcePublicPosition = Config.Bind(
                 "Players",
@@ -103,11 +135,30 @@ namespace FedoServerTools
 
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
+
+            // Envoyé avant même de savoir si cette instance sera serveur ou client --
+            // sans effet sur un client normal (ServerToken y reste vide par convention,
+            // voir README, donc ce rapport est simplement sauté). Sur le vrai serveur,
+            // c'est le tout premier signal possible : la suite (ZNet, monde) peut encore
+            // mettre du temps à charger derrière, d'où "starting" plutôt que "online".
+            Report(new List<PlayerReport>(), "starting");
         }
 
         private void OnDestroy()
         {
             _harmony?.UnpatchSelf();
+        }
+
+        // Fire-and-forget comme les rapports périodiques : le process a le temps de
+        // tourner encore un peu après le début d'une fermeture demandée par le joueur
+        // (contrairement à OnServerStopping ci-dessous, juste avant la destruction
+        // effective de ZNet, où ce n'est plus vrai -- voir ce commentaire).
+        private void OnApplicationQuit()
+        {
+            if (ZNet.instance != null && ZNet.instance.IsServer())
+            {
+                Report(new List<PlayerReport>(), "stopping");
+            }
         }
 
         public void OnServerStarted()
@@ -136,13 +187,16 @@ namespace FedoServerTools
                 _reportLoop = null;
             }
 
-            ReportBlocking(new List<PlayerReport>(), online: false);
+            ReportBlocking(new List<PlayerReport>(), "stopping");
         }
 
-        // Appelé côté client uniquement (voir ClientPublicPositionPatch) -- reproduit un
-        // vrai clic sur la case "Position publique" des options du jeu via l'API publique
-        // de Minimap, pour passer par le chemin normal du jeu (RPC, diffusion aux autres
-        // clients...) plutôt que d'espérer qu'un champ forcé côté serveur suffise.
+        // Vérifié à chaque frame (voir Update ci-dessous) plutôt que déclenché une seule
+        // fois sur un événement précis (ex: ZNet.SetServer/Game.Start) : rien ne garantit
+        // l'ordre d'exécution entre objets Unity différents dans une même frame, donc
+        // Minimap.instance pouvait encore être nul au moment où un patch ponctuel
+        // s'exécutait -- observé en pratique (case jamais forcée). Ici, dès que Minimap
+        // existe (quelle que soit la frame), la frame suivante la force -- et ne fait
+        // plus rien une fois que c'est fait (`isOn` déjà true).
         public void ForceOwnPublicPosition()
         {
             if (!ForcePublicPosition || Minimap.instance == null || Minimap.instance.m_publicPosition == null)
@@ -157,12 +211,34 @@ namespace FedoServerTools
             }
         }
 
+        // Reproduit un vrai clic sur la case "Position publique" des options du jeu via
+        // l'API publique de Minimap (ForceOwnPublicPosition), pour passer par le chemin
+        // normal du jeu (RPC, diffusion aux autres clients...) plutôt que d'espérer qu'un
+        // champ forcé côté serveur seul (ForcePublicPositionOnPeers) suffise. Pas de
+        // vérification IsServer() : nécessaire aussi pour l'hôte d'une partie
+        // solo/hébergée, jamais son propre "pair" côté serveur -- voir cette dernière.
+        private void Update()
+        {
+            try
+            {
+                ForceOwnPublicPosition();
+            }
+            catch (Exception e)
+            {
+                // Ne devrait arriver que si Minimap est en train d'être détruite pile
+                // entre les deux vérifications de null ci-dessus (transition de scène) --
+                // rattrapé pour ne jamais spammer la console à chaque frame si ça arrive.
+                Log?.LogWarning($"FedoServerTools: ForceOwnPublicPosition failed: {e.Message}");
+            }
+        }
+
         private IEnumerator ReportLoop()
         {
             var wait = new WaitForSecondsRealtime(Mathf.Max(1f, _syncIntervalSeconds.Value));
             while (true)
             {
-                Report(GetConnectedPlayers(), online: true);
+                bool stillStarting = Time.realtimeSinceStartup - _bootRealtime < _startingGracePeriodSeconds.Value;
+                Report(GetConnectedPlayers(), stillStarting ? "starting" : "online");
                 yield return wait;
             }
         }
@@ -220,11 +296,20 @@ namespace FedoServerTools
         // ça a un vrai effet en jeu (le joueur apparaît sur la carte des autres), pas
         // seulement sur ce que ce mod rapporte. Rappelé à chaque cycle (pas juste à la
         // connexion) pour absorber tout pair rejoint entre deux appels.
+        //
+        // `m_characterID.IsNone()` exclut un pair dont le personnage n'a pas encore
+        // fini de spawn (ex: vient tout juste de se connecter) -- forcer le flag avant
+        // ce moment-là faisait logguer en boucle "Character ID for player (...) was
+        // 0:0. Skipping." (un rapport interne du jeu qui tente d'inclure ce pair dans
+        // la liste des positions publiques avant qu'il ait une ZDOID valide).
         private static void ForcePublicPositionOnPeers()
         {
             foreach (var peer in ZNet.instance.GetPeers())
             {
-                peer.m_publicRefPos = true;
+                if (!peer.m_characterID.IsNone())
+                {
+                    peer.m_publicRefPos = true;
+                }
             }
         }
 
@@ -298,7 +383,31 @@ namespace FedoServerTools
             }
         }
 
-        private void Report(List<PlayerReport> players, bool online)
+        // Saison actuelle du serveur -- pas une donnée par joueur comme le biome/
+        // l'armure, une seule valeur par rapport. `null` si le mod Seasons n'est pas
+        // installé sur ce serveur (voir SeasonReporting.IsLoaded, dépendance douce) ou
+        // n'a pas encore de monde chargé -- rapporté tel quel, jamais une erreur.
+        private static string GetCurrentSeasonName()
+        {
+            if (!SeasonReporting.IsLoaded)
+            {
+                return null;
+            }
+
+            switch (SeasonReporting.GetCurrentSeasonKey(Log))
+            {
+                case "Spring": return Instance._seasonSpring.Value;
+                case "Summer": return Instance._seasonSummer.Value;
+                case "Fall": return Instance._seasonFall.Value;
+                case "Winter": return Instance._seasonWinter.Value;
+                default: return null;
+            }
+        }
+
+        // `status` : "starting" (juste chargé/pas encore prêt), "online" (rapport
+        // périodique normal), "stopping" (arrêt en cours) -- voir onlinePlayers.ts pour
+        // comment l'API en déduit un "offline" par péremption quand plus rien n'arrive.
+        private void Report(List<PlayerReport> players, string status)
         {
             string apiBaseUrl = _apiBaseUrl.Value;
             string serverToken = _serverToken.Value;
@@ -310,12 +419,13 @@ namespace FedoServerTools
             }
 
             var logger = Logger;
+            string season = GetCurrentSeasonName();
 
             Task.Run(async () =>
             {
                 try
                 {
-                    await OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, online).ConfigureAwait(false);
+                    await OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, season).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -330,7 +440,7 @@ namespace FedoServerTools
         // fire-and-forget qui pourrait ne jamais s'exécuter si le process se termine
         // juste après OnDestroy -- acceptable ici puisque le jeu est de toute façon en
         // train de s'arrêter.
-        private void ReportBlocking(List<PlayerReport> players, bool online)
+        private void ReportBlocking(List<PlayerReport> players, string status)
         {
             string apiBaseUrl = _apiBaseUrl.Value;
             string serverToken = _serverToken.Value;
@@ -342,7 +452,7 @@ namespace FedoServerTools
 
             try
             {
-                OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, online).GetAwaiter().GetResult();
+                OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, GetCurrentSeasonName()).GetAwaiter().GetResult();
             }
             catch (Exception e)
             {

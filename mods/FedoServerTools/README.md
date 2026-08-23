@@ -3,43 +3,69 @@
 *By Fedo*
 
 Mostly a server-side mod: talks to the Fedoheim API on behalf of this game server.
-Today that means reporting who's currently online (with biome and armor) so the
-launcher's home page can show it to every player — no login required to see it — but
-this mod is meant to grow into the general channel between this server and the API, in
-both directions (the API telling the game to do something is planned), not just a
-player-list reporter. It also has one small client-side effect (see
-`ForcePublicPosition`) — safe to install on a regular player's client too, see Notes.
+Today that means reporting who's currently online (with biome and armor) and the
+current in-game season (if the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/)
+mod is also installed) so the launcher's home page can show it to every player — no
+login required to see it — but this mod is meant to grow into the general channel
+between this server and the API, in both directions (the API telling the game to do
+something is planned), not just a player-list reporter. It also has one small
+client-side effect (see `ForcePublicPosition`) — safe to install on a regular player's
+client too, see Notes — and a generic game-stability patch (see below) unrelated to any
+of that, kept here for now since this is the closest thing to a "misc utilities" mod.
 
 ## How it works
 
-1. Once this instance becomes an actual server (dedicated server, or the host of a
+1. The moment this plugin loads — before even knowing whether this instance will turn
+   out to be a server or a regular client — it sends one `status: "starting"` report
+   (harmless no-op on a regular client, since `ServerToken` is blank there). This is
+   the only report that can happen before the world/mods have finished loading, which
+   is exactly the window a heavily modded server can spend a while in.
+2. Once this instance becomes an actual server (dedicated server, or the host of a
    solo/co-op game), the mod starts talking to the API every `SyncIntervalSeconds`
-   (default 30s). Today that means posting the list of connected players, using the
-   game's own player list (`ZNet.GetPlayerList()`) — this includes the host in a
-   solo/hosted game, not just remote peers. Each entry also carries the player's
-   current biome (`Heightmap.FindBiome`, falling back to `WorldGenerator.GetBiome` if
-   that returns nothing for the zone) and current armor (`Humanoid.GetBodyArmor()`,
-   rounded). Each player's own "Public position" setting (Options > Game) normally has
-   to be enabled for their position to be usable at all — see `ForcePublicPosition`
-   below to force it on for everyone on this server.
-2. Each report is authenticated with a shared secret (`ServerToken`) tied to one
+   (default 30s): the list of connected players, using the game's own player list
+   (`ZNet.GetPlayerList()`) — this includes the host in a solo/hosted game, not just
+   remote peers. Each entry also carries the player's current biome (`Heightmap.
+   FindBiome`, falling back to `WorldGenerator.GetBiome` if that returns nothing for
+   the zone) and current armor (`Humanoid.GetBodyArmor()`, rounded). Each player's own
+   "Public position" setting (Options > Game) normally has to be enabled for their
+   position to be usable at all — see `ForcePublicPosition` below to force it on for
+   everyone on this server. Reports still say `status: "starting"` (not `"online"`)
+   until `StartingGracePeriodSeconds` has passed since the plugin loaded (default 60s)
+   — increase this if your server has a lot of mods and takes longer to actually
+   become reachable. Each report also carries the current season (`Spring`/`Summer`/
+   `Fall`/`Winter`) if the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/)
+   mod is installed on this server — a soft dependency, entirely optional: this mod
+   works exactly the same without it, it just won't have a season to report. Unlike
+   biome/armor this is one value per report, not per player, since the season is a
+   server-wide setting.
+3. Each report is authenticated with a shared secret (`ServerToken`) tied to one
    modpack profile (see Configuration below) — without it, reports are rejected by
    the API and only a warning is logged locally.
-3. On a clean server shutdown, one last report is sent — waited on synchronously
-   (bounded by a short HTTP timeout) rather than fired-and-forgotten, since the process
-   can exit within moments of a clean shutdown too — with an empty player list and
-   `online: false`, so the launcher reflects the server going down right away instead
-   of waiting for the report to simply go stale (which still happens on its own after
-   ~90s if the process is killed outright, e.g. a real crash).
+4. As soon as a shutdown is requested (`OnApplicationQuit`, best-effort/fire-and-forget
+   — there's usually still a moment before the process actually exits), one
+   `status: "stopping"` report is sent. Then, right before `ZNet` is actually torn down
+   (`ZNet.OnDestroy`), a final one is sent — this one waited on synchronously (bounded
+   by a short HTTP timeout) rather than fired-and-forgotten, since the process can exit
+   within moments of a clean shutdown too. Together these make the launcher reflect a
+   shutdown as it happens instead of waiting for the report to simply go stale (which
+   still happens on its own after ~90s if the process is killed outright, e.g. a real
+   crash with no chance to report anything).
 
 Besides reporting, `ForcePublicPosition` (see below, on by default) forces "Public
 position" (Options > Game) on for the session, two ways at once, belt-and-suspenders:
 - **Server side**: writes directly to the server's copy of that flag for each connected
-  peer (`ZNetPeer.m_publicRefPos`) every sync cycle.
-- **Client side**: on a regular connecting client (not the server), simulates a real
-  click on the in-game checkbox (`Minimap.OnTogglePublicPosition()`) once it loads in —
-  going through the game's own normal path (whatever networking that triggers) instead
-  of relying on the server-side write alone.
+  *remote* peer (`ZNetPeer.m_publicRefPos`) every sync cycle — never includes the host
+  itself in a solo/hosted game, since the host isn't its own "peer".
+- **Client side, on every installation with a local player** (not just remote clients —
+  the host of a solo/hosted game needs this too, exactly because the server-side write
+  above never reaches them): simulates a real click on the in-game checkbox
+  (`Minimap.OnTogglePublicPosition()`), going through the game's own normal path
+  (whatever networking that triggers) instead of relying on the server-side write
+  alone. Checked every frame rather than once on a specific lifecycle event — nothing
+  guarantees `Minimap.instance` already exists at any single fixed point (e.g.
+  `Game.Start()`), so a one-shot check could silently do nothing forever if it ran too
+  early. Naturally does nothing on a headless dedicated server (no local `Minimap` to
+  click) and stops re-clicking once the checkbox is already on.
 
 ## Configuration
 
@@ -56,6 +82,9 @@ Settings live in `BepInEx/config/fedo.servertools.cfg`.
   player-facing modpack with a real value filled in** — see Notes below.
 - `SyncIntervalSeconds` — how often this mod talks to the API (default `30`, between
   `10` and `300`).
+- `StartingGracePeriodSeconds` — how long after the plugin loads to keep reporting
+  `"starting"` instead of `"online"` (default `60`, between `0` and `600`). Raise this
+  for a heavily modded server that takes a while to actually finish loading.
 
 **[Players]**
 - `ForcePublicPosition` (default `true`) — forces "Public position" (Options > Game) on
@@ -86,14 +115,42 @@ real token to every player.
   Default to the English name; edit this file to use your own translation, e.g. French
   (`MeadowsName = Prairies`).
 
+**[Seasons]**
+- `SpringName`, `SummerName`, `FallName`, `WinterName` — display name sent for each
+  season, same principle as `[Biomes]` above. Only used (and only sent to the API) if
+  the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/) mod is installed
+  on this server; harmless if it isn't.
+
+## Stability patch (unrelated to reporting)
+
+Not part of the API-reporting feature above — a small, generic Harmony patch on
+`ZNetScene.RemoveObjects`, active on any install of this mod (client or server, no
+`ServerToken` needed). It repairs a class of Valheim bug seen on heavily-tested/modded
+saves: if a `ZNetView` instance gets destroyed (or loses its ZDO) without being properly
+removed from `ZNetScene`'s internal instance registry, that vanilla method throws a
+`NullReferenceException` on it *every single frame, forever* — never resolves on its
+own, floods the log, and (depending on what else is affected) can visibly break the
+game. This isn't specific to any one mod or prefab; see e.g.
+[ASharpPen/Valheim.LessZdoZoneCorruption](https://github.com/ASharpPen/Valheim.LessZdoZoneCorruption)
+for the same class of issue in other modded setups.
+
+This patch runs just before `RemoveObjects` each frame, finds any such broken entry,
+logs the affected `GameObject`'s name and prefab hash (`FedoServerTools: repaired a
+broken ZNetScene instance (...)`, useful to track down what actually caused it), removes
+it from the registry, and resets its ZDO's `Created` flag so the game gets a chance to
+recreate it properly on the next pass instead of leaving it permanently broken.
+
 ## Notes
 
-- **Reporting is server-only, `ForcePublicPosition` runs on both.** The player-list
-  reporting (and the server-side half of `ForcePublicPosition`) only ever activates
-  when this instance becomes an actual server (`ZNet.IsServer()`) — dedicated server, or
-  the host of a solo/co-op game; dormant on a regular connecting client. The
-  client-side half of `ForcePublicPosition` (the simulated checkbox click) does the
-  opposite: it only runs when this instance is *not* the server.
+- **Seasons integration is a soft dependency, detected at runtime** (BepInEx's plugin
+  list is checked for `shudnal.Seasons` before touching any of its API) — this mod
+  loads and works fine whether or not Seasons is part of the modpack, it just won't
+  have a season to report if it isn't. Not listed in `manifest.json`'s `dependencies`
+  for this reason (that field is for hard requirements only).
+- **Reporting is server-only. `ForcePublicPosition`'s client-side half runs everywhere
+  there's a local player**, including the host of a solo/hosted game — not gated on
+  `!ZNet.IsServer()` like the rest of this mod, since the server-side write only
+  reaches *remote* peers and would otherwise never force the host's own checkbox.
 - **If this mod ends up in the player-facing modpack (for the client-side effect),
   `ServerToken` must stay blank there.** The `.cfg` is resynced identically to everyone
   who has this modpack — including `ServerToken`. A player hosting their own solo/co-op

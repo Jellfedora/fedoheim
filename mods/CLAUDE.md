@@ -12,6 +12,31 @@
 
 - `ZNetView.GetPrefabName()` est **privée** (inaccessible depuis un mod). Pour identifier le prefab d'une ZDO, comparer `zdo.GetPrefab()` (hash int, public) à `StringExtensionMethods.GetStableHashCode("NomDuPrefab")` (méthode publique de `assembly_utils.dll`, à référencer dans le `.csproj`).
 - Ajouter un prefab custom (clone d'un prefab vanilla, ex. pour un mob) : `ZNetScene.m_prefabs` (`List<GameObject>`, public) peut être complété directement -- ça suffit pour qu'un mod qui énumère cette liste (ex. Easy Spawner) le liste. En revanche `ZNetScene.m_namedPrefabs` (le dictionnaire privé utilisé en interne par `GetPrefab`/`HasPrefab`) ne doit pas être modifié par réflexion : le clone se fait détruire par le jeu peu après sa création (probablement une transition de scène tôt dans le boot), rendant une écriture ponctuelle inutile. Patcher plutôt `ZNetScene.GetPrefab` (les deux surcharges, int et string) et `ZNetScene.HasPrefab` avec un Postfix **auto-réparant** : si le résultat original est vide, recréer le clone à la volée à partir du prefab source si besoin, puis mémoriser la référence. `HasPrefab` doit être patchée en plus de `GetPrefab` : `ZNetScene.CreateObject` (matérialisation d'une ZDO, ex. via `SpawnSystem.Spawn`) vérifie `HasPrefab` avant d'appeler `GetPrefab`.
+  - **Piège vécu (FedoGoldRabbit) : ne JAMAIS `SetActive(false)` sur le clone-gabarit
+    lui-même** pour l'empêcher d'agir comme une vraie entité tant qu'il n'est qu'une
+    cible de lookup -- `activeSelf` (pas `activeInHierarchy`) est ce qu'`Instantiate()`
+    recopie sur chaque VRAIE instance créée par `ZNetScene.CreateObject` (qui la place à
+    la racine du monde, sans parent), donc un gabarit désactivé produit de vrais mobs
+    désactivés à leur tour. Pire qu'un simple bug visuel (invisible, sans IA, `Awake` qui
+    ne se déclenche jamais tant que l'objet reste inactif -- donc toute logique qui en
+    dépend, nom/faction/apparence) : `ZNetView.Awake()` doit consommer un hint statique
+    (`ZNetView.m_initZDO`) posé par `CreateObject` juste avant `Instantiate()` pour
+    savoir à quelle ZDO s'associer -- s'il ne s'exécute pas tout de suite (objet inactif),
+    la fenêtre se referme (`CreateObject` la nettoie et logue "ZDO ... not used..." dès
+    qu'il détecte qu'elle n'a pas été consommée) et la ZDO d'origine ne passe jamais
+    `Created = true`. Un mob dont le spawn passe par le pipeline vanilla (table de
+    `SpawnSystem`, ZDO rechargée d'une sauvegarde) se fait alors ré-instancier à
+    l'identique à CHAQUE frame, indéfiniment -- observé en jeu comme un crash en boucle
+    de `ZNetScene.RemoveObjects`/`CreateDestroyObjects`. **Réactiver après coup (Postfix
+    sur `CreateObject`) ne suffit pas** : c'est trop tard, la fenêtre de `m_initZDO` est
+    déjà refermée. La bonne technique (déjà utilisée par `GuardianPrefabPatch`) : laisser
+    le clone `activeSelf = true`, et le rendre inerte en l'instanciant comme **enfant
+    d'un conteneur racine désactivé en permanence** (`Instantiate(source, templateRoot,
+    worldPositionStays: false)`) -- Unity ne déclenche jamais Awake/OnEnable/Start sur un
+    objet inactif *dans la hiérarchie*, mais une fois `Instantiate()`-é séparément à la
+    racine du monde (sans parent, ce que fait `ZNetScene.CreateObject`), son propre
+    `activeSelf` (resté `true`) redevient ce qui compte, et `Awake()` s'exécute
+    normalement, à temps.
 - `ItemDrop.ItemData.m_dropPrefab` n'est renseigné qu'au runtime par `ItemDrop.Awake()` (auto-référence vers son propre prefab). Récupérer un `ItemData` directement depuis un prefab jamais instancié (ex. `ZNetScene.GetPrefab("Coins").GetComponent<ItemDrop>().m_itemData`) donne un `m_dropPrefab` null, et `ItemDrop.DropItem(...)` plante avec "Object you want to instantiate is null" -- il faut renseigner `m_dropPrefab` soi-même avant de l'utiliser. `CharacterDrop.Drop` (table de loot à la mort) n'a pas ce problème : il référence directement un `GameObject`.
 - `Character.Faction.Boss` rend une créature ignorée par tous les autres monstres/factions sauvages (alliée à tout sauf aux joueurs en vanilla), sans afficher de barre de vie/musique de boss tant que `m_boss` reste à `false`. Pratique pour protéger un mob spécial des prédateurs sauvages.
 - Charger un fichier audio custom (mp3 fourni par l'utilisateur, pas un asset Unity) : `UnityWebRequestMultimedia.GetAudioClip("file://" + chemin, AudioType.MPEG)` dans une coroutine du plugin (référencer `UnityEngine.UnityWebRequestModule.dll` et `UnityEngine.UnityWebRequestAudioModule.dll`), chemin résolu via `Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)`. Ajouter le fichier au target `CopyToPlugins` du `.csproj` pour qu'il soit livré à côté de la DLL.

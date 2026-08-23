@@ -64,12 +64,22 @@ Voir `/CLAUDE.md` (racine du repo) pour l'architecture générale et le flow d'a
   (admin) — jeton partagé avec le mod serveur FedoServerTools, à recopier dans son
   `.cfg` (header `x-server-token`). `GET /modpacks` n'expose que `hasReportToken`
   (booléen), jamais la valeur.
-- `POST /modpacks/online-players` — posté par FedoServerTools toutes les ~30s
-  (`x-server-token` requis, pas de `:slug` : le jeton identifie déjà le profil de façon
-  unique) : `{ players: { name: string, biome: string | null }[], online: boolean }` —
-  `biome` est le nom brut de l'enum `Heightmap.Biome` côté jeu (ex: `"Meadows"`), `null`
-  si le joueur a désactivé le partage de sa position. `GET
-  /modpacks/:slug/online-players` (public) renvoie `{ online, players, updatedAt }` —
-  état gardé en mémoire (pas en base), `online` repasse à `false` tout seul si aucun
-  rapport n'arrive plus depuis 90s (serveur crashé) ou immédiatement si le dernier
-  rapport reçu avait `online: false` (arrêt propre).
+- `POST /modpacks/online-players` — posté par FedoServerTools toutes les
+  `SyncIntervalSeconds` (`x-server-token` requis, pas de `:slug` : le jeton identifie
+  déjà le profil de façon unique) : `{ players: { name: string, biome: string | null,
+  armor: number | null }[], status: "starting" | "online" | "stopping", season: string |
+  null }` — `biome` est le texte déjà traduit par le `.cfg` du mod (pas un enum brut),
+  `null` si le joueur n'a pas de position exploitable ; `armor` l'armure totale arrondie,
+  `null` si non résolue. `status` reflète le cycle de vie du serveur : `starting` juste
+  après le chargement du plugin (avant même de savoir si le monde finira de charger),
+  `online` une fois la fenêtre de démarrage passée, `stopping` dès qu'un arrêt est
+  amorcé. `season` est la saison actuelle (mod tiers Seasons, déjà traduite par le
+  `.cfg`), `null` si ce mod n'est pas installé sur le serveur — une seule valeur par
+  rapport, pas par joueur. `GET /modpacks/:slug/online-players` (public) renvoie
+  `{ status, online, players, season, updatedAt }` — état gardé en mémoire (pas en
+  base), `status` repasse à `offline` tout seul si aucun rapport n'arrive plus depuis
+  90s (crash). `players` et `season` sont tous deux vidés (`[]`/`null`) dès que
+  `status !== "online"` (donc aussi pendant `starting`/`stopping`), même si le dernier
+  rapport reçu les contenait encore — pas de sens à afficher une liste de joueurs ou une
+  saison pour un serveur qui n'est plus vraiment joignable. `online` reste exposé en
+  plus, dérivé (`status === "online"`), pour un client qui n'a besoin que du booléen.

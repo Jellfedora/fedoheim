@@ -17,16 +17,38 @@
   the session, so players show up on each other's map and a biome can be reported for
   everyone regardless of what they've set locally: writes directly to the server's copy
   of the flag for each connected peer (`ZNetPeer.m_publicRefPos`) on the server side,
-  and simulates a real click on the in-game checkbox
-  (`Minimap.OnTogglePublicPosition()`) on a regular connecting client.
+  and simulates a real click on the in-game checkbox (`Minimap.OnTogglePublicPosition()`)
+  on every installation with a local player -- checked every frame rather than once on a
+  fixed lifecycle event, since nothing guarantees `Minimap.instance` already exists at
+  any single point in time.
 - `ForcePublicPosition` is synced and locked via [ServerSync](https://github.com/blaxxun-boop/ServerSync)
   -- a connecting player can no longer disable it by editing their own local `.cfg`,
   only the server admin's own copy controls it.
-- The final `online: false` report on server shutdown is awaited synchronously (bounded
-  by a short HTTP timeout) rather than fired-and-forgotten, so it reliably reaches the
-  API even though the game process can exit within moments of a clean shutdown.
+- Reports now carry a `status` (`"starting"`, `"online"`, or `"stopping"`) instead of a
+  plain online/offline flag: `"starting"` from the moment the plugin loads (even before
+  knowing if this instance will be a server) until `StartingGracePeriodSeconds` has
+  passed (default 60s, useful for a heavily modded server that takes a while to boot),
+  `"stopping"` from `OnApplicationQuit` (best-effort) and once more, synchronously
+  (bounded by a short HTTP timeout so it reliably reaches the API even though the game
+  process can exit within moments of a clean shutdown), right before `ZNet` is
+  destroyed.
 - Biome display names are configurable per-biome in the `.cfg` (`[Biomes]` section,
   default English, e.g. `MeadowsName = Prairies` for a French translation) — sent as-is
   to the API, no translation happens in the launcher.
 - Authenticated per modpack profile with a shared `ServerToken` (identifies the profile
   on its own, alongside `ApiBaseUrl`) — no separate slug setting needed.
+- Reports now also carry the current in-game season (`Spring`/`Summer`/`Fall`/`Winter`)
+  when the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/) mod is also
+  installed on the server -- a soft dependency detected at runtime via BepInEx's plugin
+  list, never a hard reference: this mod works exactly the same without Seasons, it
+  just won't have a season to report. One value per report (not per player, unlike
+  biome/armor). Display names configurable in the `.cfg` (`[Seasons]` section, same
+  translation convention as `[Biomes]`).
+- Added a generic stability patch (not specific to any one mod or prefab): repairs any
+  `ZNetScene` instance whose `ZNetView` has been destroyed or lost its ZDO without being
+  properly deregistered, before `ZNetScene.RemoveObjects` gets a chance to crash on it
+  every single frame with a `NullReferenceException` that never resolves on its own
+  (observed in the wild on a heavily-modded, long-lived save). Logs the offending
+  `GameObject`'s name and prefab hash to help track down the actual root cause, and
+  resets the ZDO's `Created` flag so the game gets a chance to recreate it properly on
+  the next pass instead of leaving it permanently broken.

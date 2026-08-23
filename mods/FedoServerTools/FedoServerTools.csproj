@@ -10,6 +10,7 @@
     <ValheimManagedDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed</ValheimManagedDir>
     <ValheimBepInExCore>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/core</ValheimBepInExCore>
     <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoServerTools</ValheimPluginsDir>
+    <ValheimSeasonsDll>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/seasons/Seasons.dll</ValheimSeasonsDll>
   </PropertyGroup>
 
   <!-- UnityEngine.CoreModule fournit déjà PublicAPIAttribute/UsedImplicitlyAttribute
@@ -50,6 +51,13 @@
     </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>$(ValheimManagedDir)/Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Dépendance douce (voir SeasonReporting.cs) : jamais copiée (Private=false), le
+         mod shudnal/Seasons doit être fourni par le modpack lui-même s'il est présent.
+         Ce mod fonctionne sans lui (saison simplement non rapportée). -->
+    <Reference Include="Seasons">
+      <HintPath>$(ValheimSeasonsDll)</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

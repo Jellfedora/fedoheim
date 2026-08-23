@@ -408,36 +408,77 @@ serveur au moment du rapport).
     dans sa liste de retour — risque réel de corrompre une liste utilisée par d'autres
     systèmes du jeu (une boucle de `NullReferenceException` dans `ZNetScene.
     CreateDestroyObjects`/`RemoveObjects` a été observée avec cette approche) ; retirée.
-  - **Côté client** (`ClientPublicPositionPatch.cs`, patch sur `Game.Start`, actif
-    seulement si `!ZNet.instance.IsServer()`) : simule un vrai clic sur la case en jeu
-    (`Minimap.instance.OnTogglePublicPosition()`, méthode publique) pour passer par le
-    chemin normal du jeu plutôt que d'espérer que l'écriture côté serveur seule suffise
-    à déclencher la diffusion aux autres clients — sans certitude à ce sujet faute de
-    pouvoir décompiler. C'est le seul morceau de ce mod qui a un effet côté client et qui
-    ne nécessite aucun jeton — voir plus haut, sans danger à distribuer dans le modpack
+  - **Côté client** (`ForceOwnPublicPosition`, vérifié à chaque frame depuis `Update()`
+    — pas de check `IsServer()`, nécessaire aussi pour l'hôte d'une partie
+    solo/hébergée) : simule un vrai clic sur la case en jeu (`Minimap.instance.
+    OnTogglePublicPosition()`, méthode publique) pour passer par le chemin normal du jeu
+    plutôt que d'espérer que l'écriture côté serveur seule suffise à déclencher la
+    diffusion aux autres clients — sans certitude à ce sujet faute de pouvoir décompiler.
+    Une première version patchait `Game.Start()` en Harmony (une seule fois) au lieu de
+    vérifier à chaque frame — observé en pratique : la case restait jamais forcée, rien
+    ne garantissant que `Minimap.instance` existe déjà au moment précis où un objet Unity
+    donné exécute son `Start()`/`Update()` par rapport aux autres dans la même frame ;
+    corrigé. C'est le seul morceau de ce mod qui a un effet côté client et qui ne
+    nécessite aucun jeton — voir plus haut, sans danger à distribuer dans le modpack
     joueur.
   **Synchronisé et verrouillé via ServerSync** (`mods/_shared/ConfigSync.cs`,
   `ConfigSync.IsLocked = true`) : seul le `.cfg` du serveur (source de vérité, `IsAdmin`
   toujours vrai côté serveur) contrôle ce réglage — un joueur ne peut plus le désactiver
   en éditant son propre `.cfg` local, sa valeur y est écrasée dès la connexion. Voir
   section "ServerSync" plus bas.
-- **`online` = fraîcheur ET dernier statut envoyé**, pas juste l'un des deux : le mod
-  envoie `online:true` à chaque rapport périodique et, à l'arrêt du serveur
-  (`ZNet.OnDestroy`), un dernier rapport `online:false` — **attendu de façon bloquante**
-  (borné par un timeout HTTP court côté mod), pas fire-and-forget : une version
-  fire-and-forget se faisait tuer par la fin du process juste après `OnDestroy`, y
-  compris sur un arrêt propre du jeu (pas seulement un crash), laissant le launcher
-  afficher "en ligne" jusqu'à péremption (~90s plus tard) au lieu d'un passage immédiat à
-  `false`. Un vrai crash (process tué avant même d'atteindre `OnDestroy`) reste rattrapé
-  par la péremption du timestamp côté API (90s, 3x l'intervalle de synchronisation) —
-  `GET /modpacks/:slug/online-players` (public, comme `/health`) combine les deux.
+- **`status` (`starting`/`online`/`stopping`/`offline`) reflète le cycle de vie complet
+  du serveur**, pas juste en-ligne/hors-ligne :
+  - `starting` est envoyé dès le chargement du plugin (`Awake`), **avant même de savoir**
+    si cette instance sera serveur ou client — inoffensif sur un client normal
+    (`ServerToken` y est vide par convention, le rapport est juste sauté). C'est la seule
+    fenêtre qui couvre le temps de chargement de BepInEx/des mods, potentiellement long
+    sur un serveur qui en a beaucoup — sans ce rapport précoce, le launcher n'aurait
+    aucune donnée du tout pendant tout ce temps (donc "hors ligne", trompeur). Les
+    rapports périodiques normaux continuent de dire `starting` tant que
+    `StartingGracePeriodSeconds` (60s par défaut, configurable) ne s'est pas écoulé
+    depuis le chargement du plugin, puis basculent sur `online`.
+  - `stopping` est envoyé une première fois dès `OnApplicationQuit` (best-effort,
+    fire-and-forget — le process a encore un peu de temps à ce moment), puis une
+    dernière fois juste avant la destruction de `ZNet` (`ZNet.OnDestroy`) —
+    **celui-ci attendu de façon bloquante** (borné par un timeout HTTP court côté mod),
+    pas fire-and-forget : une version fire-and-forget se faisait tuer par la fin du
+    process juste après `OnDestroy`, y compris sur un arrêt propre du jeu (pas
+    seulement un crash), laissant le launcher afficher "en ligne" jusqu'à péremption
+    (~90s plus tard) au lieu d'un passage immédiat à un statut de fermeture.
+  - `offline` n'est **jamais envoyé par le mod** — c'est ce que l'API renvoie elle-même
+    (`onlinePlayers.ts`) dès que plus aucun rapport frais n'est disponible (péremption à
+    90s, 3x l'intervalle de synchronisation) : le filet de sécurité pour un vrai crash,
+    où même `OnApplicationQuit` n'a pas eu l'occasion de se déclencher.
+  `online` (booléen, `status === "online"`) reste exposé en plus par
+  `GET /modpacks/:slug/online-players` (public, comme `/health`) pour un usage qui n'a
+  besoin que de ça.
 - **`GET /modpacks/:slug/online-players` public, pas de session requise** : cohérent avec
   le reste du contenu en lecture publique (règlement/FAQ/annonces/statut BepInEx), et
   nécessaire puisque ce sera à terme un mod *serveur* qui alimente cette donnée, pas un
-  joueur connecté. `HomePage.tsx` l'interroge au montage puis toutes les 30s (même
-  cadence que le mod), scopé sur `effectiveModpackSlug` (donc la production pour un
-  joueur normal, le profil actif pour un admin en train d'en tester un autre) — voir
-  App.tsx.
+  joueur connecté. `HomePage.tsx` l'interroge au montage puis toutes les 10s (le
+  minimum autorisé pour `SyncIntervalSeconds` côté mod — pas la peine d'ajouter un
+  délai d'affichage au-dessus du rythme le plus rapide possible côté rapport), scopé
+  sur `effectiveModpackSlug` (donc la production pour un joueur normal, le profil actif
+  pour un admin en train d'en tester un autre) — voir App.tsx.
+- **Saison en cours (mod tiers Seasons), dépendance douce détectée à l'exécution** :
+  chaque rapport inclut aussi la saison actuelle (`Spring`/`Summer`/`Fall`/`Winter`,
+  traduite dans `fedo.servertools.cfg` section `[Seasons]`, même principe que les noms
+  de biome) si le mod [shudnal/Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/)
+  fait aussi partie du modpack — `null`/absent sinon, sans erreur.
+  `SeasonReporting.cs` isole tout usage de l'API de Seasons dans un fichier dédié : le
+  garde `IsLoaded` (vérifie juste la présence du plugin dans
+  `BepInEx.Bootstrap.Chainloader.PluginInfos`, jamais un type `Seasons.*`) doit toujours
+  être vérifié avant tout appel touchant réellement son API — le CLR ne résout le corps
+  d'une méthode (donc les types qu'il référence) qu'à sa première exécution, jamais à la
+  simple présence de sa signature dans l'assembly, donc ce découpage suffit à ce que
+  FedoServerTools reste chargeable même si Seasons.dll est absent du serveur. Contrairement
+  à biome/armor, une seule valeur par rapport (pas par joueur) : la saison est un état du
+  monde, pas du joueur. `manifest.json` ne liste pas Seasons dans ses `dependencies` — ce
+  champ est réservé aux dépendances dures, pas aux intégrations optionnelles comme
+  celle-ci. **Exposée par `GET /modpacks/:slug/online-players` seulement si
+  `status === "online"`**, comme `players` — sinon un serveur en cours d'arrêt (ou
+  fermé depuis peu, tant que le dernier rapport n'est pas encore périmé) afficherait
+  encore une saison alors que le jeu n'est plus joignable.
 
 ## ServerSync (synchronisation de config entre serveur et clients)
 

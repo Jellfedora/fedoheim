@@ -39,6 +39,20 @@ namespace FedoGoldRabbit
         public static FedoGoldRabbitPlugin Instance { get; private set; }
         public static ManualLogSource Log { get; private set; }
 
+        // Conteneur racine désactivé en permanence, destiné à recevoir le gabarit cloné (voir
+        // GoldRabbitPrefabPatch) : tant qu'un objet reste enfant d'un parent inactif, Unity ne
+        // déclenche jamais Awake/OnEnable/Start dessus, quel que soit son propre `activeSelf` --
+        // même technique que FedoGuardianPlugin.TemplateRoot, pour la même raison. Contrairement
+        // à un `clone.SetActive(false)` direct sur le gabarit lui-même : `activeSelf` (pas
+        // `activeInHierarchy`) est ce qu'`Instantiate()` recopie sur chaque vraie instance créée
+        // par `ZNetScene.CreateObject` (qui la place à la racine du monde, sans parent) -- un
+        // gabarit désactivé produit donc de VRAIS lièvres désactivés à leur tour, invisibles, et
+        // dont `ZNetView.Awake()` ne s'exécute jamais à temps pour consommer le hint `ZNetView.
+        // m_initZDO` posé par `CreateObject` (fenêtre déjà refermée, cf. warning vanilla "ZDO ...
+        // not used when creating object ...") -- la ZDO d'origine ne passe alors jamais
+        // `Created = true` et le jeu retente un `Instantiate` à chaque frame, indéfiniment.
+        public static Transform TemplateRoot { get; private set; }
+
         public ConfigEntry<string> GoldenName;
         public ConfigEntry<int> SpawnMaxPerZone;
         public ConfigEntry<float> SpawnIntervalSeconds;
@@ -79,6 +93,11 @@ namespace FedoGoldRabbit
         {
             Instance = this;
             Log = Logger;
+
+            var root = new GameObject("FedoGoldRabbit_TemplateRoot");
+            UnityEngine.Object.DontDestroyOnLoad(root);
+            root.SetActive(false);
+            TemplateRoot = root.transform;
 
             GoldenName = SyncedConfig(
                 "GoldRabbit",

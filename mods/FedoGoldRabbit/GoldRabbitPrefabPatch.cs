@@ -34,9 +34,27 @@ namespace FedoGoldRabbit
                     return null;
                 }
 
-                var clone = UnityEngine.Object.Instantiate(harePrefab);
+                // Instancié comme enfant du conteneur racine désactivé
+                // (FedoGoldRabbitPlugin.TemplateRoot), PAS désactivé lui-même
+                // (`clone.SetActive(false)`) : tant qu'un objet reste enfant d'un parent
+                // inactif, Unity ne déclenche jamais Awake/OnEnable/Start dessus, ce qui
+                // suffit à l'empêcher de se comporter comme une vraie entité (tomber sous
+                // l'effet de la gravité, jamais positionné, et spammer "Object fell out of
+                // world") -- même technique que GuardianPrefabPatch, pour la même raison.
+                // Piège vécu avec l'ancienne version (`SetActive(false)` direct) : c'est
+                // `activeSelf` (pas `activeInHierarchy`) qu'`Instantiate()` recopie sur
+                // chaque VRAIE instance créée par `ZNetScene.CreateObject` (qui la place à
+                // la racine du monde, sans parent) -- un gabarit désactivé produisait donc
+                // de vrais lièvres désactivés à leur tour, dont `ZNetView.Awake()` ne
+                // s'exécutait jamais à temps pour consommer le hint `ZNetView.m_initZDO`
+                // posé par `CreateObject` (fenêtre déjà refermée une fois `Instantiate()`
+                // revenu). La ZDO d'origine ne passait alors jamais `Created = true`, et le
+                // jeu retentait un nouvel `Instantiate` à CHAQUE frame, indéfiniment --
+                // observé en jeu comme un crash en boucle de `ZNetScene.RemoveObjects`. Pas
+                // de DontDestroyOnLoad ici : un objet avec un parent en hérite déjà, et
+                // Unity refuse/avertit si on l'appelle explicitement sur un objet non-racine.
+                var clone = UnityEngine.Object.Instantiate(harePrefab, FedoGoldRabbitPlugin.TemplateRoot, worldPositionStays: false);
                 clone.name = FedoGoldRabbitPlugin.GoldRabbitPrefabName;
-                UnityEngine.Object.DontDestroyOnLoad(clone);
 
                 // N'ajouter qu'une seule fois à la liste publique (pour l'affichage dans des mods
                 // comme Easy Spawner) -- si ce clone-ci finit lui aussi détruit et qu'on doit en

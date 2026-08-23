@@ -14,12 +14,20 @@ pub struct OnlinePlayer {
 }
 
 // Alimenté par le mod serveur FedoServerTools (voir /mods/FedoServerTools), qui poste
-// la liste des joueurs connectés toutes les ~30s -- `online` reflète la fraîcheur de ce
-// rapport côté API (voir onlinePlayers.ts), pas juste sa présence.
+// la liste des joueurs connectés toutes les `SyncIntervalSeconds` -- `status` reflète
+// le cycle de vie du serveur ("starting" pendant le chargement des mods/du monde,
+// "online" une fois démarré, "stopping" pendant un arrêt, "offline" si l'API n'a plus
+// reçu de rapport depuis 90s, ex: crash) ; `online` reste exposé en plus, dérivé côté
+// API (`status === "online"`), pour un usage qui n'a besoin que du booléen.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OnlinePlayers {
+    pub status: String,
     pub online: bool,
     pub players: Vec<OnlinePlayer>,
+    // Saison actuelle rapportée par le mod Seasons (shudnal/Seasons) via
+    // FedoServerTools, déjà traduite côté mod -- `None` si ce mod tiers n'est pas
+    // installé sur le serveur, ou si le dernier rapport est périmé.
+    pub season: Option<String>,
     #[serde(rename = "updatedAt")]
     pub updated_at: Option<String>,
 }

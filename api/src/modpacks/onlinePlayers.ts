@@ -21,13 +21,34 @@ interface OnlinePlayerReport {
   armor: number | null;
 }
 
+// Envoyé explicitement par le mod : "starting" juste après le chargement du plugin
+// (avant même de savoir si ZNet finira de démarrer, voir FedoServerToolsPlugin.Awake),
+// "online" en rapport périodique normal une fois la fenêtre de démarrage passée,
+// "stopping" dès qu'un arrêt est amorcé (OnApplicationQuit, best-effort) et confirmé
+// une dernière fois juste avant la destruction de ZNet (rapport bloquant, voir
+// ReportBlocking côté mod). Distinct de la fraîcheur du rapport ci-dessous, qui couvre
+// elle le cas d'un crash (aucun de ces rapports n'a pu partir) — voir "offline" plus bas.
+type ReportedStatus = "starting" | "online" | "stopping";
+
+interface OnlinePlayerReport {
+  name: string;
+  // Texte final déjà traduit par le mod (voir fedo.servertools.cfg, section [Biomes]) —
+  // affiché tel quel, aucun mapping ici. `null` si le joueur a désactivé le partage de
+  // sa position et que ForcePublicPosition ne le contourne pas (voir le mod).
+  biome: string | null;
+  // Armure totale actuelle (Humanoid.GetBodyArmor(), arrondie côté mod) — `null` si le
+  // personnage n'a pas pu être retrouvé côté serveur au moment du rapport.
+  armor: number | null;
+}
+
 interface OnlineReport {
   players: OnlinePlayerReport[];
-  // Envoyé explicitement par le mod (true à chaque rapport périodique, false sur un
-  // arrêt propre du serveur — voir ZNetLifecyclePatches côté mod) — distinct de la
-  // fraîcheur du rapport, qui couvre elle le cas d'un crash (pas d'arrêt propre, donc
-  // pas de dernier rapport à `online:false` — seule la péremption du timestamp joue).
-  online: boolean;
+  status: ReportedStatus;
+  // Saison actuelle rapportée par le mod Seasons (shudnal/Seasons) via
+  // FedoServerTools, déjà traduite côté mod (voir fedo.servertools.cfg, section
+  // [Seasons]) -- `null` si ce mod tiers n'est pas installé sur le serveur, pas une
+  // donnée par joueur contrairement à biome/armor.
+  season: string | null;
   reportedAt: number;
 }
 
@@ -46,7 +67,8 @@ const reportBodySchema = z.object({
       }),
     )
     .max(500),
-  online: z.boolean().default(true),
+  status: z.enum(["starting", "online", "stopping"]).default("online"),
+  season: z.string().trim().nullable().default(null),
 });
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -93,19 +115,22 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
 
     reportsBySlug.set(modpack.slug, {
       players: parsed.data.players,
-      online: parsed.data.online,
+      status: parsed.data.status,
+      season: parsed.data.season,
       reportedAt: Date.now(),
     });
     return reply.send({ ok: true });
   });
 
-  // Public, comme /health — lu par le launcher pour afficher qui est en ligne sur la
+  // Public, comme /health — lu par le launcher pour afficher l'état du serveur sur la
   // page d'accueil, sans compte requis. Scopé par `:slug` (contrairement au POST
   // ci-dessus) : ici c'est le launcher qui appelle sans jeton, pour un profil qu'il
   // connaît déjà (production, ou le profil actif pour un admin).
-  // `online` combine la fraîcheur du dernier rapport ET son propre statut envoyé par
-  // le mod — un arrêt propre du serveur repasse `online` à false immédiatement, un
-  // crash (pas de dernier rapport `online:false`) est rattrapé par la péremption.
+  // `status` combine la fraîcheur du dernier rapport ET son propre statut envoyé par le
+  // mod — "offline" dès que plus rien n'arrive depuis 90s (crash : aucun rapport
+  // "stopping" n'a pu partir), sinon le statut littéral envoyé ("starting"/"online"/
+  // "stopping"). `online` reste exposé en plus, dérivé de `status`, pour un launcher qui
+  // n'a besoin que du booléen (liste de joueurs, par ex.).
   app.get("/modpacks/:slug/online-players", async (req, reply) => {
     const { slug } = req.params as { slug: string };
 
@@ -116,11 +141,18 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
 
     const report = reportsBySlug.get(slug);
     const fresh = report !== undefined && Date.now() - report.reportedAt < STALE_AFTER_MS;
-    const online = fresh && report.online;
+    const status: ReportedStatus | "offline" = fresh ? report.status : "offline";
+    const online = status === "online";
 
     return reply.send({
+      status,
       online,
-      players: online ? report.players : [],
+      players: online ? (report?.players ?? []) : [],
+      // Même principe que `players` : la dernière saison connue reste dans le rapport
+      // le temps que `status` retombe à `offline` (jusqu'à 90s après un arrêt), mais
+      // n'a plus de sens à afficher dès que le serveur n'est plus vraiment "online" --
+      // sinon le launcher continue de montrer une saison alors que le jeu est fermé.
+      season: online ? (report?.season ?? null) : null,
       updatedAt: report ? new Date(report.reportedAt).toISOString() : null,
     });
   });

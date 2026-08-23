@@ -167,6 +167,15 @@
   box-shadow: none;
 }
 
+/* Démarrage/arrêt : même teinte orange que les autres états "transitoires, pas une
+   erreur" du launcher (ex: avertissements ModsPage), ni le vert "prêt" ni le gris
+   "éteint". */
+.home-players__dot--starting,
+.home-players__dot--stopping {
+  background: #eb942a;
+  box-shadow: 0 0 6px rgba(235, 148, 42, 0.6);
+}
+
 .home-players__status {
   display: flex;
   align-items: center;
@@ -174,6 +183,12 @@
   margin: 0;
   font-size: 0.88rem;
   color: var(--text-muted);
+}
+
+.home-players__season {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-faint);
 }
 
 .home-players__hint {

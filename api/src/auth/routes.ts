@@ -61,72 +61,79 @@ export default async function authRoutes(app: FastifyInstance) {
   // Appelé par le launcher une fois qu'il a récupéré le `code` OAuth2 sur son
   // serveur loopback local. Échange le code, vérifie le rôle Discord requis et le
   // statut de ban, upsert l'utilisateur, renvoie un JWT de session.
-  app.post("/auth/discord/token", async (req, reply) => {
-    const parsed = tokenBodySchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: parsed.error.flatten() });
-    }
-    const { code, redirectUri } = parsed.data;
-
-    try {
-      const accessToken = await exchangeCodeForAccessToken(code, redirectUri);
-      const discordUser = await getDiscordUser(accessToken);
-      const roles = await getGuildMemberRoles(discordUser.id);
-
-      if (!hasRequiredRole(roles)) {
-        return reply.code(403).send({ error: "Missing required Discord role" });
+  app.post(
+    "/auth/discord/token",
+    // Échange un `code` OAuth2 auprès de Discord à chaque appel — plus coûteux et plus
+    // sensible (brute-force de code) que le reste de l'API, d'où une limite dédiée plus
+    // stricte que le plafond global de 100/min.
+    { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const parsed = tokenBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: parsed.error.flatten() });
       }
+      const { code, redirectUri } = parsed.data;
 
-      const existing = db
-        .select()
-        .from(users)
-        .where(eq(users.discordId, discordUser.id))
-        .get();
+      try {
+        const accessToken = await exchangeCodeForAccessToken(code, redirectUri);
+        const discordUser = await getDiscordUser(accessToken);
+        const roles = await getGuildMemberRoles(discordUser.id);
 
-      // Le ban est un état géré manuellement (voir admin/routes.ts), jamais recalculé
-      // depuis Discord : on le vérifie avant de laisser passer, sans le toucher ici.
-      if (existing?.isBanned) {
-        return reply.code(403).send({ error: "Banned" });
+        if (!hasRequiredRole(roles)) {
+          return reply.code(403).send({ error: "Missing required Discord role" });
+        }
+
+        const existing = db
+          .select()
+          .from(users)
+          .where(eq(users.discordId, discordUser.id))
+          .get();
+
+        // Le ban est un état géré manuellement (voir admin/routes.ts), jamais recalculé
+        // depuis Discord : on le vérifie avant de laisser passer, sans le toucher ici.
+        if (existing?.isBanned) {
+          return reply.code(403).send({ error: "Banned" });
+        }
+
+        const isAdmin = hasAdminRole(roles);
+        const now = new Date();
+
+        const user = existing
+          ? db
+              .update(users)
+              .set({
+                discordUsername: discordUser.username,
+                discordAvatar: discordUser.avatar,
+                isAdmin,
+                lastLoginAt: now,
+              })
+              .where(eq(users.discordId, discordUser.id))
+              .returning()
+              .get()
+          : db
+              .insert(users)
+              .values({
+                discordId: discordUser.id,
+                discordUsername: discordUser.username,
+                discordAvatar: discordUser.avatar,
+                isAdmin,
+                createdAt: now,
+                lastLoginAt: now,
+              })
+              .returning()
+              .get();
+
+        const token = signSession({ userId: user.id, discordId: user.discordId, isAdmin: user.isAdmin });
+
+        return reply.send({ token, user: serializeUser(user) });
+      } catch (err) {
+        if (err instanceof DiscordAuthError) {
+          return reply.code(err.statusCode).send({ error: err.message });
+        }
+        throw err;
       }
-
-      const isAdmin = hasAdminRole(roles);
-      const now = new Date();
-
-      const user = existing
-        ? db
-            .update(users)
-            .set({
-              discordUsername: discordUser.username,
-              discordAvatar: discordUser.avatar,
-              isAdmin,
-              lastLoginAt: now,
-            })
-            .where(eq(users.discordId, discordUser.id))
-            .returning()
-            .get()
-        : db
-            .insert(users)
-            .values({
-              discordId: discordUser.id,
-              discordUsername: discordUser.username,
-              discordAvatar: discordUser.avatar,
-              isAdmin,
-              createdAt: now,
-              lastLoginAt: now,
-            })
-            .returning()
-            .get();
-
-      const token = signSession({ userId: user.id, discordId: user.discordId, isAdmin: user.isAdmin });
-
-      return reply.send({ token, user: serializeUser(user) });
-    } catch (err) {
-      if (err instanceof DiscordAuthError) {
-        return reply.code(err.statusCode).send({ error: err.message });
-      }
-      throw err;
-    }
-  });
+    },
+  );
 
   // Appelé périodiquement par le launcher en tâche de fond (pas juste à la connexion) :
   // revérifie en direct que le rôle requis est toujours présent sur Discord et que le

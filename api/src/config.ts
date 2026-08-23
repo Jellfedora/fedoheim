@@ -17,7 +17,13 @@ const envSchema = z.object({
   DB_PATH: z.string().default("data.sqlite"),
   UPLOADS_DIR: z.string().default("uploads"),
 
-  JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
+  JWT_SECRET: z
+    .string()
+    .min(16, "JWT_SECRET must be at least 16 characters")
+    .refine(
+      (val) => val !== "change-me-to-a-long-random-string",
+      "JWT_SECRET is still set to the .env.example placeholder — generate a real random secret",
+    ),
 
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_CLIENT_SECRET: z.string().min(1),

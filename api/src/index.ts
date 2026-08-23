@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { config } from "./config.js";
@@ -28,6 +29,14 @@ await app.register(cors, {
   // Le launcher appelle l'API depuis un webview local, pas un navigateur classique,
   // donc pas d'origine à restreindre finement pour l'instant.
   origin: true,
+});
+
+// Défense en profondeur de base contre le spam/brute-force — les routes sensibles
+// restent de toute façon derrière Discord OAuth/requireAdmin, mais rien n'empêchait
+// jusqu'ici de marteler /health ou /auth/discord/token sans aucune friction.
+await app.register(rateLimit, {
+  max: 100,
+  timeWindow: "1 minute",
 });
 
 await app.register(multipart, {

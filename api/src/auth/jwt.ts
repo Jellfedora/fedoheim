@@ -11,10 +11,12 @@ export interface SessionPayload {
 // donc le JWT n'a pas besoin d'expirer vite pour rester sûr.
 const EXPIRES_IN = "30d";
 
+const ALGORITHM = "HS256";
+
 export function signSession(payload: SessionPayload): string {
-  return jwt.sign(payload, config.JWT_SECRET, { expiresIn: EXPIRES_IN });
+  return jwt.sign(payload, config.JWT_SECRET, { expiresIn: EXPIRES_IN, algorithm: ALGORITHM });
 }
 
 export function verifySession(token: string): SessionPayload {
-  return jwt.verify(token, config.JWT_SECRET) as SessionPayload;
+  return jwt.verify(token, config.JWT_SECRET, { algorithms: [ALGORITHM] }) as SessionPayload;
 }

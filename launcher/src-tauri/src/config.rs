@@ -6,8 +6,18 @@ pub const LOOPBACK_PORT: u16 = 38217;
 // Client ID de l'app OAuth2 Discord (valeur publique, pas un secret).
 pub const DISCORD_CLIENT_ID: &str = "1539934485460688926";
 
+// `VALHEIM_API_URL` permet de surcharger l'URL dans les deux sens (ex: pointer un build
+// de dev vers la prod pour tester, ou l'inverse) — sans elle, un build de dev
+// (`tauri dev`) cible l'API locale, un build de release (celui distribué aux joueurs)
+// cible directement l'API de prod.
 pub fn api_base_url() -> String {
-    std::env::var("VALHEIM_API_URL").unwrap_or_else(|_| "http://127.0.0.1:3000".to_string())
+    std::env::var("VALHEIM_API_URL").unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            "http://127.0.0.1:3000".to_string()
+        } else {
+            "https://fedoheim.hopto.org".to_string()
+        }
+    })
 }
 
 pub fn redirect_uri() -> String {

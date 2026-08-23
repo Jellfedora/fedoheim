@@ -4,6 +4,13 @@ Une entrée par version publiée du launcher. Le texte de chaque section est rep
 automatiquement comme description de la release GitHub correspondante (voir
 `.github/workflows/launcher-release.yml`).
 
+## 0.0.6
+
+- Un build distribué (release) pointe maintenant vers l'API de production
+  (`https://fedoheim.hopto.org`) par défaut, au lieu de l'API locale de dev — jusqu'ici
+  il fallait positionner `VALHEIM_API_URL` à la main pour qu'un build autre que
+  `tauri dev` fonctionne vraiment.
+
 ## 0.0.5
 
 - Le launcher retient maintenant la taille, la position et l'état agrandi/plein écran

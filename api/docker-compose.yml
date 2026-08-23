@@ -3,9 +3,9 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      # Ajuster le port hôte si un reverse proxy (nginx/caddy déjà en place pour tes
-      # autres sites) doit pointer vers un port précis, ex: "3001:3000".
-      - "3000:3000"
+      # Lié à 127.0.0.1 seulement : seul nginx (reverse proxy, voir sa conf) doit
+      # pouvoir joindre ce port, pas le monde entier en direct sur :3000.
+      - "127.0.0.1:3000:3000"
     env_file:
       - .env
     environment:

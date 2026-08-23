@@ -52,3 +52,8 @@
   `GameObject`'s name and prefab hash to help track down the actual root cause, and
   resets the ZDO's `Created` flag so the game gets a chance to recreate it properly on
   the next pass instead of leaving it permanently broken.
+- Stopped spamming the log every `SyncIntervalSeconds` when the periodic report can't
+  reach the API (wrong `ApiBaseUrl`, API down...) or `ServerToken` is empty: the full
+  error/warning is now logged once, with a terse reminder every 20 consecutive failures
+  for the API case (and a one-line info log once it recovers), instead of a fresh full
+  exception on every single attempt.

@@ -473,9 +473,13 @@ serveur au moment du rapport).
   simple présence de sa signature dans l'assembly, donc ce découpage suffit à ce que
   FedoServerTools reste chargeable même si Seasons.dll est absent du serveur. Contrairement
   à biome/armor, une seule valeur par rapport (pas par joueur) : la saison est un état du
-  monde, pas du joueur. `manifest.json` ne liste pas Seasons dans ses `dependencies` — ce
-  champ est réservé aux dépendances dures, pas aux intégrations optionnelles comme
-  celle-ci. **Exposée par `GET /modpacks/:slug/online-players` seulement si
+  monde, pas du joueur. `manifest.json` liste quand même `shudnal-Seasons-1.8.2` dans ses
+  `dependencies` — pas pour en faire une dépendance dure au sens BepInEx (le garde
+  `IsLoaded` ci-dessus reste nécessaire, le mod continue de charger sans elle), mais pour
+  que l'éditeur de modpack du launcher avertisse (bordure orange, même mécanique que les
+  dépendances manquantes classiques) si un admin configure FedoServerTools sans avoir
+  aussi ajouté Seasons — sinon la saison resterait silencieusement absente des rapports
+  sans qu'on comprenne pourquoi. **Exposée par `GET /modpacks/:slug/online-players` seulement si
   `status === "online"`**, comme `players` — sinon un serveur en cours d'arrêt (ou
   fermé depuis peu, tant que le dernier rapport n'est pas encore périmé) afficherait
   encore une saison alors que le jeu n'est plus joignable.

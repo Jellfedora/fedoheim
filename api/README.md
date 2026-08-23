@@ -37,6 +37,35 @@ Sans CI : image construite et lancée directement sur le serveur.
    pour que Discord puisse intégrer les images d'annonces. Ne pas remplir `DB_PATH`/
    `UPLOADS_DIR`, déjà fixés par `docker-compose.yml`.
 2. `docker compose up -d --build`
+3. **Une seule fois, sur une base neuve** : créer le profil de modpack "Production"
+   (`slug: "default"`, voir `/CLAUDE.md` section Profils de modpack) — sans lui, le
+   launcher reçoit des 404 partout (`Modpack not found`), même une fois l'API jointe.
+   `npm run db:seed` (dev uniquement) le crée aussi, mais avec de faux mods `example.com`
+   à ne jamais utiliser en prod :
+   ```bash
+   docker compose exec api node -e "
+   import('./dist/src/db/client.js').then(async ({ db }) => {
+     const { modpacks } = await import('./dist/src/db/schema.js');
+     const { eq } = await import('drizzle-orm');
+     const existing = db.select().from(modpacks).where(eq(modpacks.slug, 'default')).get();
+     if (!existing) {
+       db.insert(modpacks).values({ slug: 'default', name: 'Fedoheim Modpack', version: '1.0.0', isDefault: true, updatedAt: new Date() }).run();
+     }
+   });
+   "
+   ```
+   BepInEx et les mods restent ensuite à configurer normalement depuis la page "Mods" du
+   launcher (compte admin requis).
+4. Le reverse proxy devant ce port (nginx, voir `docker-compose.yml`) doit autoriser des
+   requêtes bien plus grosses que sa limite par défaut (1 Mo) : un zip de mod ou de
+   BepInEx peut atteindre plusieurs centaines de Mo (`MAX_ZIP_SIZE` côté API est fixé à
+   1024 Mo, voir `modpacks/files.ts`). Sans ça, l'upload échoue côté nginx avant même
+   d'atteindre l'API, avec un `413 Request Entity Too Large` — ajouter dans le `server{}`
+   (ou `http{}`) du vhost concerné :
+   ```
+   client_max_body_size 1024m;
+   ```
+   puis `nginx -t && systemctl reload nginx`.
 
 Le conteneur applique automatiquement les migrations en attente à chaque démarrage
 (`docker-entrypoint.sh`, avant de lancer le serveur) — pas d'étape `db:migrate` séparée à

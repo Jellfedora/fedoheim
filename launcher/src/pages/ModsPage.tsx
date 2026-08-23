@@ -663,6 +663,17 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
     [configFiles, initialConfigFiles],
   );
 
+  // Un gros zip (BepInEx, mod "AIO"...) peut prendre du temps à uploader -- le seul
+  // texte "Import..." sur le bouton cliqué passe facilement inaperçu. Vrai tant que
+  // n'importe quel import est en cours, peu importe lequel, pour bloquer tout le reste
+  // de l'éditeur pendant ce temps (voir l'overlay dans le JSX ci-dessous).
+  const isImporting =
+    pickingIndex !== null ||
+    addingMod ||
+    bepinexState.kind === "uploading" ||
+    pickingConfigFile ||
+    pickingConfigFileIndex !== null;
+
   // Reflète les vrais changements non enregistrés, pas juste "l'éditeur est ouvert" —
   // "Enregistrer" ne ferme pas l'éditeur (voir handleSaveMods/handleSaveConfig, pour
   // pouvoir continuer sur l'autre onglet), donc `editing` seul resterait `true` après un
@@ -763,6 +774,13 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
 
       {editing ? (
         <div className="mods-editor">
+          {isImporting && (
+            <div className="mods-editor__overlay">
+              <div className="mods-editor__spinner" />
+              <span className="mods-editor__overlay-text">Import en cours...</span>
+            </div>
+          )}
+
           {editLoadError && <p className="mods-page__error">{editLoadError}</p>}
 
           <div className="mods-page__tabs">

@@ -30,6 +30,14 @@ namespace FedoServerTools
         private ConfigEntry<float> _syncIntervalSeconds;
         private ConfigEntry<float> _startingGracePeriodSeconds;
 
+        // Nombre d'échecs consécutifs du rapport périodique (API injoignable, mauvais
+        // ApiBaseUrl...) -- sert uniquement à espacer les logs, voir Report() ci-dessous.
+        private int _consecutiveReportFailures;
+
+        // Idem pour l'avertissement "pas de jeton configuré" -- un seul log tant que
+        // ServerToken reste vide, pas un à chaque rapport (SyncIntervalSeconds).
+        private bool _missingTokenWarned;
+
         // Time.realtimeSinceStartup au moment où ce plugin charge -- avant même que
         // ZNet existe, donc bien avant qu'on sache si cette instance sera serveur ou
         // client. C'est justement pendant cette fenêtre (chargement de BepInEx et de
@@ -414,9 +422,16 @@ namespace FedoServerTools
 
             if (string.IsNullOrWhiteSpace(serverToken))
             {
-                Logger.LogWarning("FedoServerTools: no server token configured (see fedo.servertools.cfg), report skipped.");
+                if (!_missingTokenWarned)
+                {
+                    Logger.LogWarning("FedoServerTools: no server token configured (see fedo.servertools.cfg), report skipped.");
+                    _missingTokenWarned = true;
+                }
+
                 return;
             }
+
+            _missingTokenWarned = false;
 
             var logger = Logger;
             string season = GetCurrentSeasonName();
@@ -426,10 +441,28 @@ namespace FedoServerTools
                 try
                 {
                     await OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, season).ConfigureAwait(false);
+                    if (_consecutiveReportFailures > 0)
+                    {
+                        logger.LogInfo($"FedoServerTools: online players report recovered after {_consecutiveReportFailures} consecutive failure(s).");
+                        _consecutiveReportFailures = 0;
+                    }
                 }
                 catch (Exception e)
                 {
-                    logger.LogError($"FedoServerTools: failed to report online players: {e}");
+                    _consecutiveReportFailures++;
+                    // Le rapport tourne toutes les SyncIntervalSeconds (30s par défaut) --
+                    // une API injoignable en continu (mauvais ApiBaseUrl, API down...)
+                    // spammerait sinon un LogError avec stack complète indéfiniment.
+                    // Stack complète seulement au premier échec, puis un rappel bref de
+                    // loin en loin tant que ça ne se rétablit pas.
+                    if (_consecutiveReportFailures == 1)
+                    {
+                        logger.LogError($"FedoServerTools: failed to report online players: {e}");
+                    }
+                    else if (_consecutiveReportFailures % 20 == 0)
+                    {
+                        logger.LogWarning($"FedoServerTools: still failing to report online players ({_consecutiveReportFailures} consecutive failures, last error: {e.Message}).");
+                    }
                 }
             });
         }

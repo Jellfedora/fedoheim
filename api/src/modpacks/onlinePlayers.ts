@@ -3,7 +3,8 @@ import type { FastifyInstance } from "fastify";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { modpacks, playerStats } from "../db/schema.js";
+import { modpacks, playerStats, users } from "../db/schema.js";
+import { discordAvatarUrl } from "../auth/routes.js";
 
 // Considéré périmé si aucun rapport reçu depuis plus longtemps que 3x l'intervalle de
 // rapport du mod FedoServerTools (~30s) — large marge pour absorber un rapport manqué
@@ -19,6 +20,11 @@ interface OnlinePlayerReport {
   // Armure totale actuelle (Humanoid.GetBodyArmor(), arrondie côté mod) — `null` si le
   // personnage n'a pas pu être retrouvé côté serveur au moment du rapport.
   armor: number | null;
+  // SteamID64 du pair connecté, résolu côté serveur (voir FedoServerToolsPlugin) —
+  // `null` si non résolvable. Sert uniquement à lier ce nom de perso au compte
+  // Fedoheim correspondant (voir linkCharacterName ci-dessous), jamais affiché tel
+  // quel.
+  steamId: string | null;
 }
 
 // Envoyé explicitement par le mod : "starting" juste après le chargement du plugin
@@ -39,6 +45,11 @@ interface OnlinePlayerReport {
   // Armure totale actuelle (Humanoid.GetBodyArmor(), arrondie côté mod) — `null` si le
   // personnage n'a pas pu être retrouvé côté serveur au moment du rapport.
   armor: number | null;
+  // SteamID64 du pair connecté, résolu côté serveur (voir FedoServerToolsPlugin) —
+  // `null` si non résolvable. Sert uniquement à lier ce nom de perso au compte
+  // Fedoheim correspondant (voir linkCharacterName ci-dessous), jamais affiché tel
+  // quel.
+  steamId: string | null;
 }
 
 interface OnlineReport {
@@ -68,12 +79,18 @@ const reportBodySchema = z.object({
         name: z.string().trim().min(1),
         biome: z.string().trim().nullable().default(null),
         armor: z.number().nullable().default(null),
+        steamId: z.string().trim().nullable().default(null),
       }),
     )
     .max(500),
   status: z.enum(["starting", "online", "stopping"]).default("online"),
   season: z.string().trim().nullable().default(null),
   time: z.string().trim().nullable().default(null),
+});
+
+const characterCheckSchema = z.object({
+  characterName: z.string().trim().min(1),
+  steamId: z.string().trim().nullable().default(null),
 });
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -124,6 +141,26 @@ function upsertPlayerStats(modpackId: number, players: OnlinePlayerReport[], now
   }
 }
 
+// Associe un nom de perso au compte Fedoheim correspondant, "premier arrivé, premier
+// servi" (voir schema.ts::users.characterName) : si le steamId rapporté correspond à un
+// compte dont characterName est encore null, ET que ce nom n'est pas déjà pris par un
+// AUTRE compte, on le pose définitivement. Sinon (déjà lié à ce nom, ou pris par
+// quelqu'un d'autre) on ne touche à rien -- c'est ce qui matérialise "restreint à ce
+// nom" une fois posé, sans jamais faire échouer le rapport du mod.
+function linkCharacterName(players: OnlinePlayerReport[]) {
+  for (const player of players) {
+    if (!player.steamId) continue;
+
+    const user = db.select().from(users).where(eq(users.steamId, player.steamId)).get();
+    if (!user || user.characterName !== null) continue;
+
+    const nameTaken = db.select().from(users).where(eq(users.characterName, player.name)).get();
+    if (nameTaken) continue;
+
+    db.update(users).set({ characterName: player.name }).where(eq(users.id, user.id)).run();
+  }
+}
+
 export default async function onlinePlayersRoutes(app: FastifyInstance) {
   // Posté par le mod serveur FedoServerTools toutes les ~30s (et une dernière fois à
   // l'arrêt du serveur, `online:false`) depuis le serveur Valheim lui-même (dédié ou
@@ -160,9 +197,49 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
     // peine de faire une requête pour rien dans ces deux cas.
     if (parsed.data.players.length > 0) {
       upsertPlayerStats(modpack.id, parsed.data.players, now);
+      linkCharacterName(parsed.data.players);
     }
 
     return reply.send({ ok: true });
+  });
+
+  // Appelé par FedoServerTools à chaque connexion d'un joueur distant (jamais pour
+  // l'hôte lui-même, voir mods/FedoServerTools/PeerSteamId.cs), avant de le laisser
+  // rejoindre pour de bon — protection contre l'usurpation d'un nom déjà lié à un AUTRE
+  // compte Fedoheim (voir linkCharacterName ci-dessus, "premier arrivé, premier servi") :
+  // sans ce contrôle, n'importe qui pourrait recréer localement un perso du même nom et
+  // se faire passer pour ce compte aux yeux du serveur/des autres joueurs. Un nom pas
+  // encore lié à personne est toujours autorisé — cette route ne fait qu'empêcher un vol
+  // d'identité, jamais la première liaison elle-même (qui reste `linkCharacterName`, sur
+  // rapport périodique normal). Réponse par code HTTP seul (200/403), pas de JSON à
+  // parser côté mod — aucun mod de ce repo n'a de dépendance de parsing JSON.
+  app.post("/modpacks/character-check", async (req, reply) => {
+    const token = req.headers["x-server-token"];
+    if (typeof token !== "string") {
+      return reply.code(401).send({ error: "Invalid or missing server token" });
+    }
+
+    const modpack = findModpackByToken(token);
+    if (!modpack) {
+      return reply.code(401).send({ error: "Invalid or missing server token" });
+    }
+
+    const parsed = characterCheckSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.flatten() });
+    }
+
+    const owner = db
+      .select()
+      .from(users)
+      .where(eq(users.characterName, parsed.data.characterName))
+      .get();
+
+    if (!owner || (parsed.data.steamId !== null && owner.steamId === parsed.data.steamId)) {
+      return reply.send({ ok: true });
+    }
+
+    return reply.code(403).send({ error: "Character name already linked to another account" });
   });
 
   // Public, comme /health — lu par le launcher pour afficher l'état du serveur sur la
@@ -224,14 +301,23 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
 
     const rows = db.select().from(playerStats).where(eq(playerStats.modpackId, modpack.id)).all();
 
+    // Compte Fedoheim lié à ce nom de perso (voir linkCharacterName ci-dessus) — `null`
+    // pour un perso vu avant l'existence de cette fonctionnalité, ou jamais lié (pas de
+    // steamId rapporté). Requête par ligne : la table `player_stats` d'un profil ne
+    // dépasse jamais quelques dizaines de joueurs, pas la peine d'un vrai join SQL.
     const players = rows
-      .map((row) => ({
-        name: row.name,
-        biome: row.biome,
-        armor: row.armor,
-        online: onlineNames.has(row.name),
-        lastSeenAt: row.lastSeenAt.toISOString(),
-      }))
+      .map((row) => {
+        const linkedUser = db.select().from(users).where(eq(users.characterName, row.name)).get();
+        return {
+          name: row.name,
+          biome: row.biome,
+          armor: row.armor,
+          online: onlineNames.has(row.name),
+          lastSeenAt: row.lastSeenAt.toISOString(),
+          discordUsername: linkedUser?.discordUsername ?? null,
+          discordAvatar: linkedUser ? discordAvatarUrl(linkedUser) : null,
+        };
+      })
       // En ligne d'abord, puis par dernière activité décroissante -- l'ordre le plus
       // utile pour un admin qui veut voir qui joue en ce moment sans avoir à trier.
       .sort((a, b) => {

@@ -6,6 +6,12 @@ import { formatDate } from "../utils/date";
 import { hexToRgba } from "../utils/color";
 import "./ProfilesPage.css";
 
+// Cible d'auto-connexion de ce profil (voir FedoServerTools / CLAUDE.md) — `null` =
+// profil non configuré, comportement vanilla inchangé pour ce profil.
+type AutoConnectTarget =
+  | { type: "world"; world: string }
+  | { type: "server"; host: string; port: number; password: string };
+
 interface ModpackProfile {
   slug: string;
   name: string;
@@ -21,6 +27,7 @@ interface ModpackProfile {
   hasReportToken: boolean;
   modCount: number;
   updatedAt: string;
+  autoConnect: AutoConnectTarget | null;
 }
 
 // Point de départ du <input type="color"> tant qu'aucune couleur n'a encore été
@@ -166,6 +173,19 @@ export function ProfilesPage({ activeSlug, onSelect, onModpackUpdated }: Profile
   // handleCopyToken.
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
 
+  // Édition de la cible d'auto-connexion (voir FedoServerTools) — brouillon local tant que
+  // non enregistré, même principe que renamingSlug/renameDraft ci-dessus.
+  const [autoConnectSlug, setAutoConnectSlug] = useState<string | null>(null);
+  const [autoConnectDraft, setAutoConnectDraft] = useState<{
+    type: "none" | "world" | "server";
+    world: string;
+    host: string;
+    port: string;
+    password: string;
+  }>({ type: "none", world: "", host: "", port: "", password: "" });
+  const [autoConnectBusy, setAutoConnectBusy] = useState(false);
+  const [autoConnectError, setAutoConnectError] = useState<string | null>(null);
+
   function loadProfiles() {
     setState({ kind: "loading" });
     invoke<ModpackProfile[]>("list_modpacks")
@@ -308,6 +328,57 @@ export function ProfilesPage({ activeSlug, onSelect, onModpackUpdated }: Profile
       setTokenError(String(err));
     } finally {
       setTokenBusySlug(null);
+    }
+  }
+
+  function startEditAutoConnect(profile: ModpackProfile) {
+    const current = profile.autoConnect;
+    setAutoConnectDraft({
+      type: current?.type ?? "none",
+      world: current?.type === "world" ? current.world : "",
+      host: current?.type === "server" ? current.host : "",
+      port: current?.type === "server" ? String(current.port) : "",
+      password: current?.type === "server" ? current.password : "",
+    });
+    setAutoConnectError(null);
+    setAutoConnectSlug(profile.slug);
+  }
+
+  async function saveAutoConnect() {
+    const slug = autoConnectSlug;
+    if (!slug) return;
+
+    let autoConnect: AutoConnectTarget | null = null;
+    if (autoConnectDraft.type === "world") {
+      if (!autoConnectDraft.world.trim()) {
+        setAutoConnectError("Le nom du monde est requis.");
+        return;
+      }
+      autoConnect = { type: "world", world: autoConnectDraft.world.trim() };
+    } else if (autoConnectDraft.type === "server") {
+      const port = Number(autoConnectDraft.port);
+      if (!autoConnectDraft.host.trim() || !Number.isInteger(port) || port < 1 || port > 65535) {
+        setAutoConnectError("Adresse et port (1-65535) valides requis.");
+        return;
+      }
+      autoConnect = {
+        type: "server",
+        host: autoConnectDraft.host.trim(),
+        port,
+        password: autoConnectDraft.password,
+      };
+    }
+
+    setAutoConnectBusy(true);
+    setAutoConnectError(null);
+    try {
+      await invoke("set_modpack_auto_connect", { slug, autoConnect });
+      setAutoConnectSlug(null);
+      loadProfiles();
+    } catch (err) {
+      setAutoConnectError(String(err));
+    } finally {
+      setAutoConnectBusy(false);
     }
   }
 
@@ -462,6 +533,97 @@ export function ProfilesPage({ activeSlug, onSelect, onModpackUpdated }: Profile
                   >
                     {profile.hasReportToken ? "Régénérer le jeton" : "Générer un jeton"}
                   </button>
+                </div>
+
+                <div className="profiles-list__auto-connect">
+                  {autoConnectSlug === profile.slug ? (
+                    <>
+                      <select
+                        value={autoConnectDraft.type}
+                        onChange={(e) =>
+                          setAutoConnectDraft((prev) => ({
+                            ...prev,
+                            type: e.target.value as "none" | "world" | "server",
+                          }))
+                        }
+                      >
+                        <option value="none">Aucune (menu Valheim normal)</option>
+                        <option value="world">Monde local à héberger</option>
+                        <option value="server">Serveur dédié à rejoindre</option>
+                      </select>
+                      {autoConnectDraft.type === "world" && (
+                        <input
+                          placeholder="Nom du monde (ex: fedodev3)"
+                          value={autoConnectDraft.world}
+                          onChange={(e) =>
+                            setAutoConnectDraft((prev) => ({ ...prev, world: e.target.value }))
+                          }
+                        />
+                      )}
+                      {autoConnectDraft.type === "server" && (
+                        <>
+                          <input
+                            placeholder="Adresse (IP ou nom d'hôte)"
+                            value={autoConnectDraft.host}
+                            onChange={(e) =>
+                              setAutoConnectDraft((prev) => ({ ...prev, host: e.target.value }))
+                            }
+                          />
+                          <input
+                            placeholder="Port"
+                            value={autoConnectDraft.port}
+                            onChange={(e) =>
+                              setAutoConnectDraft((prev) => ({ ...prev, port: e.target.value }))
+                            }
+                          />
+                          <input
+                            placeholder="Mot de passe (optionnel)"
+                            value={autoConnectDraft.password}
+                            onChange={(e) =>
+                              setAutoConnectDraft((prev) => ({ ...prev, password: e.target.value }))
+                            }
+                          />
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn--accent"
+                        onClick={saveAutoConnect}
+                        disabled={autoConnectBusy}
+                      >
+                        Enregistrer
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => setAutoConnectSlug(null)}
+                        disabled={autoConnectBusy}
+                      >
+                        Annuler
+                      </button>
+                      {autoConnectError && (
+                        <p className="profiles-page__status is-error">{autoConnectError}</p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span className="profiles-list__report-token-label">
+                        Connexion auto :{" "}
+                        {profile.autoConnect === null
+                          ? "aucune"
+                          : profile.autoConnect.type === "world"
+                            ? `monde "${profile.autoConnect.world}"`
+                            : `serveur ${profile.autoConnect.host}:${profile.autoConnect.port}`}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() => startEditAutoConnect(profile)}
+                      >
+                        Configurer
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 <div className="profiles-list__actions">

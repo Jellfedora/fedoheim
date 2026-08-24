@@ -39,6 +39,31 @@ fn current_token(state: &State<'_, AppState>) -> Result<String, String> {
         .ok_or_else(|| "Not logged in".to_string())
 }
 
+// Utilisé juste avant un lancement (voir `play`/`launch_only`) pour renseigner le
+// fichier lu par la partie client de FedoServerTools -- `None` si pas connecté (ne
+// devrait pas arriver, ces commandes supposent déjà une session) ou si ce compte n'a
+// encore aucun perso lié.
+fn current_character_name(state: &State<'_, AppState>) -> Option<String> {
+    state
+        .session
+        .lock()
+        .unwrap()
+        .as_ref()
+        .and_then(|s| s.user.character_name.clone())
+}
+
+// Utilisé juste avant un lancement pour pré-remplir le nom à la création de perso
+// (voir FejdStartupAutoNavigatePatch) -- `None` si pas connecté (ne devrait pas
+// arriver, ces commandes supposent déjà une session).
+fn current_discord_username(state: &State<'_, AppState>) -> Option<String> {
+    state
+        .session
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|s| s.user.discord_username.clone())
+}
+
 // Met à jour les infos utilisateur stockées (mémoire + disque) en gardant le même
 // token, après une action qui modifie le profil (accepter le règlement, Steam ID...).
 fn persist_updated_user(
@@ -95,14 +120,19 @@ enum RefreshOutcome {
     Error { message: String },
 }
 
-// Appelé périodiquement par le frontend tant qu'un joueur est connecté, pour vérifier
-// en tâche de fond que son rôle Discord est toujours valide sans jamais lui redemander
-// de se reconnecter manuellement.
-#[tauri::command]
-async fn refresh_session(app: AppHandle, state: State<'_, AppState>) -> Result<RefreshOutcome, ()> {
-    let token = match current_token(&state) {
+// Factorisé pour être appelé à la fois par la commande périodique ci-dessous et juste
+// avant un lancement (voir `play`/`launch_only`) -- le process Valheim est lancé en
+// fire-and-forget (jamais attendu, voir `valheim::launch`), donc rien ne rafraîchit
+// `state.session` entre deux lancements rapprochés autrement que ce timer de 5 min
+// côté frontend. Sans ce rafraîchissement juste avant `write_mod_session`,
+// `characterName` peut rester périmé de plusieurs minutes après sa toute première
+// liaison côté API (voir onlinePlayers.ts::linkCharacterName), et la partie client de
+// FedoServerTools recrée alors un nouveau personnage à chaque reconnexion rapide au
+// lieu de retrouver celui déjà lié.
+async fn refresh_session_inner(app: &AppHandle, state: &State<'_, AppState>) -> RefreshOutcome {
+    let token = match current_token(state) {
         Ok(t) => t,
-        Err(e) => return Ok(RefreshOutcome::Error { message: e }),
+        Err(e) => return RefreshOutcome::Error { message: e },
     };
 
     match auth::refresh(&state.http, &token).await {
@@ -111,17 +141,25 @@ async fn refresh_session(app: AppHandle, state: State<'_, AppState>) -> Result<R
                 token,
                 user: user.clone(),
             };
-            let _ = session::save(&app, &session);
+            let _ = session::save(app, &session);
             *state.session.lock().unwrap() = Some(session);
-            Ok(RefreshOutcome::Ok { user })
+            RefreshOutcome::Ok { user }
         }
         Err(auth::RefreshError::Unauthorized(message)) => {
             *state.session.lock().unwrap() = None;
-            let _ = session::clear(&app);
-            Ok(RefreshOutcome::LoggedOut { message })
+            let _ = session::clear(app);
+            RefreshOutcome::LoggedOut { message }
         }
-        Err(auth::RefreshError::Other(message)) => Ok(RefreshOutcome::Error { message }),
+        Err(auth::RefreshError::Other(message)) => RefreshOutcome::Error { message },
     }
+}
+
+// Appelé périodiquement par le frontend tant qu'un joueur est connecté, pour vérifier
+// en tâche de fond que son rôle Discord est toujours valide sans jamais lui redemander
+// de se reconnecter manuellement.
+#[tauri::command]
+async fn refresh_session(app: AppHandle, state: State<'_, AppState>) -> Result<RefreshOutcome, ()> {
+    Ok(refresh_session_inner(&app, &state).await)
 }
 
 // Une seule action "Jouer" : s'assure que BepInEx et les mods sont à jour dans le
@@ -147,7 +185,7 @@ async fn play(
     let token = current_token(&state)?;
     let profile_dir = valheim::profile_dir(&app)?;
 
-    match modpack::fetch_manifest(&state.http, &token, &slug, &mode).await {
+    let auto_connect = match modpack::fetch_manifest(&state.http, &token, &slug, &mode).await {
         Ok(manifest) => {
             let Some(bepinex) = &manifest.bepinex else {
                 return Err(
@@ -160,7 +198,9 @@ async fn play(
             modpack::sync_mods(&state.http, &app, &profile_dir, &manifest.mods, total_steps)
                 .await?;
             modpack::sync_config_files(&state.http, &profile_dir, &manifest.config_files).await?;
+            let auto_connect = manifest.auto_connect.clone();
             modpack::save_local_manifest(&profile_dir, &manifest);
+            auto_connect
         }
         Err(err) => {
             let Some(manifest) = modpack::load_local_manifest(&profile_dir) else {
@@ -176,8 +216,20 @@ async fn play(
                 1,
                 1,
             );
+            manifest.auto_connect
         }
-    }
+    };
+
+    // Best-effort : une erreur ici ne doit jamais empêcher le lancement, on retombe
+    // simplement sur ce qui était déjà en cache (voir refresh_session_inner ci-dessus).
+    refresh_session_inner(&app, &state).await;
+
+    valheim::write_mod_session(
+        &profile_dir,
+        current_character_name(&state).as_deref(),
+        current_discord_username(&state).as_deref(),
+        auto_connect.as_ref(),
+    );
 
     let install_dir = valheim::find_install_dir()?;
     valheim::launch(&install_dir, &profile_dir)
@@ -296,8 +348,19 @@ async fn send_log_to_discord(app: AppHandle, state: State<'_, AppState>) -> Resu
 // à jour — utilisé par le bouton "Jouer" quand une mise à jour est disponible mais que le
 // joueur préfère continuer avec ce qu'il a déjà (voir App.tsx).
 #[tauri::command]
-fn launch_only(app: AppHandle) -> Result<(), String> {
+async fn launch_only(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let profile_dir = valheim::profile_dir(&app)?;
+
+    let auto_connect = modpack::load_local_manifest(&profile_dir).and_then(|m| m.auto_connect);
+    // Best-effort, voir refresh_session_inner et le même appel dans `play` ci-dessus.
+    refresh_session_inner(&app, &state).await;
+    valheim::write_mod_session(
+        &profile_dir,
+        current_character_name(&state).as_deref(),
+        current_discord_username(&state).as_deref(),
+        auto_connect.as_ref(),
+    );
+
     let install_dir = valheim::find_install_dir()?;
     valheim::launch(&install_dir, &profile_dir)
 }
@@ -763,6 +826,16 @@ async fn set_modpack_color(
 }
 
 #[tauri::command]
+async fn set_modpack_auto_connect(
+    state: State<'_, AppState>,
+    slug: String,
+    auto_connect: Option<modpack::AutoConnectTarget>,
+) -> Result<(), String> {
+    let token = current_token(&state)?;
+    modpack::set_modpack_auto_connect(&state.http, &token, &slug, auto_connect.as_ref()).await
+}
+
+#[tauri::command]
 async fn save_bepinex(
     state: State<'_, AppState>,
     slug: String,
@@ -868,6 +941,7 @@ pub fn run() {
             rename_modpack,
             delete_modpack,
             set_modpack_color,
+            set_modpack_auto_connect,
             fetch_online_players,
             fetch_player_stats,
             fetch_report_token,

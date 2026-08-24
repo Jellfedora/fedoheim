@@ -27,16 +27,56 @@ const hexColorSchema = z
   .trim()
   .regex(/^#[0-9a-f]{6}$/i, "Couleur invalide (format hexadécimal #rrggbb)");
 
+// Cible de connexion automatique du profil (voir FedoServerTools) — un monde local à
+// héberger, ou un serveur dédié à rejoindre. `null` explicite pour désactiver la
+// fonctionnalité sur ce profil (retour au menu Valheim normal, voir
+// schema.ts::modpacks.autoConnectType).
+const autoConnectSchema = z
+  .discriminatedUnion("type", [
+    z.object({ type: z.literal("world"), world: z.string().trim().min(1) }),
+    z.object({
+      type: z.literal("server"),
+      host: z.string().trim().min(1),
+      port: z.number().int().min(1).max(65535),
+      // Pas un vrai secret (voir CLAUDE.md) : doit de toute façon atteindre le client
+      // de chaque joueur pour que l'auto-connexion fonctionne. Vide = pas de mot de
+      // passe sur ce serveur.
+      password: z.string().trim().default(""),
+    }),
+  ])
+  .nullable();
+
 const updateModpackSchema = z
   .object({
     name: z.string().trim().min(1).optional(),
     // `null` explicite pour réinitialiser (retour à l'apparence par défaut) —
     // distinct d'absent (champ non touché par cette requête).
     color: hexColorSchema.nullable().optional(),
+    autoConnect: autoConnectSchema.optional(),
   })
-  .refine((data) => data.name !== undefined || data.color !== undefined, {
-    message: "Nothing to update",
-  });
+  .refine(
+    (data) => data.name !== undefined || data.color !== undefined || data.autoConnect !== undefined,
+    { message: "Nothing to update" },
+  );
+
+// Reconstruit la forme "objet" d'autoConnect (même shape que le body ci-dessus) à
+// partir des colonnes à plat en base — utilisé pour l'affichage admin (GET /modpacks,
+// formulaire d'édition) et pour ce que consomme réellement la partie client de
+// FedoServerTools (voir GET /modpacks/:slug/manifest).
+function resolveAutoConnect(modpack: typeof modpacks.$inferSelect) {
+  if (modpack.autoConnectType === "world" && modpack.autoConnectWorld) {
+    return { type: "world" as const, world: modpack.autoConnectWorld };
+  }
+  if (modpack.autoConnectType === "server" && modpack.autoConnectHost && modpack.autoConnectPort) {
+    return {
+      type: "server" as const,
+      host: modpack.autoConnectHost,
+      port: modpack.autoConnectPort,
+      password: modpack.autoConnectPassword ?? "",
+    };
+  }
+  return null;
+}
 
 // Une URL de téléchargement absolue (hébergement externe, ex: GitHub release) OU un
 // chemin relatif "/uploads/..." renvoyé par POST /modpacks/files (voir files.ts) — le
@@ -117,6 +157,7 @@ export default async function modpackRoutes(app: FastifyInstance) {
           version: m.version,
           isDefault: m.isDefault,
           color: m.color,
+          autoConnect: resolveAutoConnect(m),
           hasReportToken: Boolean(m.reportToken),
           modCount: countByModpackId.get(m.id) ?? 0,
           updatedAt: m.updatedAt,
@@ -165,6 +206,7 @@ export default async function modpackRoutes(app: FastifyInstance) {
         version: created.version,
         isDefault: created.isDefault,
         color: created.color,
+        autoConnect: resolveAutoConnect(created),
         modCount: 0,
         updatedAt: created.updatedAt,
       });
@@ -190,11 +232,42 @@ export default async function modpackRoutes(app: FastifyInstance) {
         return reply.code(404).send({ error: "Modpack not found" });
       }
 
-      const update: { name?: string; color?: string | null; updatedAt: Date } = {
+      const update: {
+        name?: string;
+        color?: string | null;
+        autoConnectType?: "world" | "server" | null;
+        autoConnectWorld?: string | null;
+        autoConnectHost?: string | null;
+        autoConnectPort?: number | null;
+        autoConnectPassword?: string | null;
+        updatedAt: Date;
+      } = {
         updatedAt: new Date(),
       };
       if (parsed.data.name !== undefined) update.name = parsed.data.name;
       if (parsed.data.color !== undefined) update.color = parsed.data.color;
+      if (parsed.data.autoConnect !== undefined) {
+        const autoConnect = parsed.data.autoConnect;
+        if (autoConnect === null) {
+          update.autoConnectType = null;
+          update.autoConnectWorld = null;
+          update.autoConnectHost = null;
+          update.autoConnectPort = null;
+          update.autoConnectPassword = null;
+        } else if (autoConnect.type === "world") {
+          update.autoConnectType = "world";
+          update.autoConnectWorld = autoConnect.world;
+          update.autoConnectHost = null;
+          update.autoConnectPort = null;
+          update.autoConnectPassword = null;
+        } else {
+          update.autoConnectType = "server";
+          update.autoConnectWorld = null;
+          update.autoConnectHost = autoConnect.host;
+          update.autoConnectPort = autoConnect.port;
+          update.autoConnectPassword = autoConnect.password || null;
+        }
+      }
 
       db.update(modpacks).set(update).where(eq(modpacks.id, modpack.id)).run();
 
@@ -425,6 +498,13 @@ export default async function modpackRoutes(app: FastifyInstance) {
           downloadUrl: f.downloadUrl,
           sha256: f.sha256,
         })),
+        // Cible de connexion automatique pour la partie client de FedoServerTools —
+        // `null` = profil non configuré, comportement vanilla inchangé (kill-switch,
+        // voir CLAUDE.md).
+        // Même endpoint que celui déjà appelé par le launcher juste avant de lancer le
+        // jeu : pas besoin d'une route publique séparée pour qu'un joueur normal (pas
+        // seulement un admin) puisse lire la cible de son profil actif.
+        autoConnect: resolveAutoConnect(modpack),
       });
     },
   );

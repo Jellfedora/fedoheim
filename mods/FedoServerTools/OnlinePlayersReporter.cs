@@ -70,13 +70,17 @@ namespace FedoServerTools
                 sb.Append(players[i].Biome != null ? JsonEscape(players[i].Biome) : "null");
                 sb.Append(",\"armor\":");
                 sb.Append(players[i].Armor.HasValue ? players[i].Armor.Value.ToString(CultureInfo.InvariantCulture) : "null");
+                sb.Append(",\"steamId\":");
+                sb.Append(players[i].SteamId != null ? JsonEscape(players[i].SteamId) : "null");
                 sb.Append('}');
             }
             sb.Append(']');
             return sb.ToString();
         }
 
-        private static string JsonEscape(string value)
+        // Interne (pas private) : réutilisé tel quel par CharacterOwnershipCheck.cs,
+        // seul autre endroit de ce mod qui construit du JSON à la main.
+        internal static string JsonEscape(string value)
         {
             var sb = new StringBuilder(value.Length + 2);
             sb.Append('"');

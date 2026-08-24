@@ -105,6 +105,63 @@ pub fn bepinex_config_dir(dir: &Path) -> PathBuf {
     bepinex_dir(dir).join("config")
 }
 
+// Lu au boot du jeu par la partie client de FedoServerTools (voir mods/FedoServerTools/
+// SessionFile.cs) -- jamais synchronisé/zippé comme le contenu d'un mod (même logique
+// que ServerToken) : sous `BepInEx/` mais hors de `plugins/<mod>/`, ignoré par
+// `bootstrap_copy` (qui saute tout ce qui s'appelle "BepInEx") et par le nettoyage de
+// `sync_mods` (qui n'agit que sur `BepInEx/plugins/*`). Format "clé=valeur" une ligne
+// par champ, pas du JSON.
+fn mod_session_path(profile_dir: &Path) -> PathBuf {
+    bepinex_dir(profile_dir).join("fedoheim-session.txt")
+}
+
+// Écrit juste avant chaque lancement (voir `play`/`launch_only` dans lib.rs) --
+// `character_name`/`auto_connect` peuvent tous les deux être absents (compte pas encore
+// lié, ou profil sans cible configurée) : le mod ne fait alors rien (kill-switch, voir
+// CLAUDE.md). `discord_username` sert uniquement à pré-remplir le nom à la création de
+// perso (voir FejdStartupAutoNavigatePatch) -- jamais utilisé pour la liaison
+// compte<->perso elle-même. Best-effort : une erreur d'écriture ne doit jamais empêcher
+// le lancement.
+pub fn write_mod_session(
+    profile_dir: &Path,
+    character_name: Option<&str>,
+    discord_username: Option<&str>,
+    auto_connect: Option<&crate::modpack::AutoConnectTarget>,
+) {
+    let mut lines = vec![
+        format!("character_name={}", character_name.unwrap_or("")),
+        format!("discord_username={}", discord_username.unwrap_or("")),
+    ];
+
+    match auto_connect {
+        Some(target) if target.kind == "world" => {
+            lines.push("auto_connect_type=world".to_string());
+            lines.push(format!(
+                "auto_connect_world={}",
+                target.world.as_deref().unwrap_or("")
+            ));
+        }
+        Some(target) if target.kind == "server" => {
+            lines.push("auto_connect_type=server".to_string());
+            lines.push(format!(
+                "auto_connect_host={}",
+                target.host.as_deref().unwrap_or("")
+            ));
+            lines.push(format!(
+                "auto_connect_port={}",
+                target.port.map(|p| p.to_string()).unwrap_or_default()
+            ));
+            lines.push(format!(
+                "auto_connect_password={}",
+                target.password.as_deref().unwrap_or("")
+            ));
+        }
+        _ => {}
+    }
+
+    let _ = std::fs::write(mod_session_path(profile_dir), lines.join("\n"));
+}
+
 // Dossier où vivent BepInEx et les mods. Sur Windows : dossier externe, hors de
 // l'install Steam du joueur (façon r2modman/Gale) — même pattern que `session.rs` pour
 // son fichier de session (app_data_dir, propre à cette app Tauri). Sur macOS :

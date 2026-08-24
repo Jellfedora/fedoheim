@@ -27,10 +27,14 @@ renommer ces occurrences-là, elles sont correctes telles quelles.
 - **Mods maison** (`mods/`) — mods Valheim (BepInEx) développés en interne, distribués via
   l'API et installés automatiquement par le launcher. Six mods écrits et buildés
   (`HelloFedo`, `FedoDeath`, `FedoGoldRabbit`, `FedoGuardian`, `FedoDeathGif`,
-  `FedoServerTools` — voir `mods/CLAUDE.md`; `FedoServerTools` inclut depuis peu le
-  logging Discord de l'ancien mod `FedoDiscordLogs`, fusionné dedans et supprimé),
-  packagés en zips dans `mods/dist/` prêts à être uploadés via l'éditeur du launcher ;
-  aucun n'est encore effectivement configuré dans un profil de modpack en base.
+  `FedoServerTools` — voir `mods/CLAUDE.md`; `FedoServerTools` a depuis peu absorbé
+  deux fonctionnalités écrites à part puis fusionnées dedans (et supprimées en tant que
+  mods séparés) plutôt que de multiplier les petits mods maison : le logging Discord de
+  l'ancien mod `FedoDiscordLogs`, et la connexion automatique développée un temps sous
+  le nom `FedoAutoJoin` (jamais commité en tant que mod séparé), packagés en zips dans
+  `mods/dist/` prêts à être uploadés via l'éditeur du launcher ; aucun n'est encore
+  effectivement configuré dans un profil de modpack en
+  base.
 
 ## Stack technique (décisions actées)
 
@@ -274,6 +278,14 @@ jamais réinitialisé en base, juste recalculé à la volée.
   changement de modpack normal — seul le paramètre `mode` transmis à
   `fetch_manifest`/`play`/`sync_modpack`/`repair_modpack`/`check_update_available`
   change.
+  - **Popup sautée si le profil actif n'a aucun mod `adminOnly` activé** (`hasAdminOnlyMods`
+    dans `App.tsx`, rechargé via `fetch_mods_full` à chaque changement de profil actif,
+    indépendamment de `ModsPage` qui peut ne pas être montée) : dans ce cas les modpacks
+    "Joueur" et "Admin" sont strictement identiques (voir `resolveAutoConnect`/filtrage
+    `adminOnly`+`enabled` ci-dessus), donc proposer un choix n'aurait aucun effet
+    observable — `requestPrimaryAction` part directement en mode `"player"`, même pour un
+    admin. Un mod `adminOnly` mais désactivé (`enabled: false`) ne compte pas non plus :
+    déjà filtré du manifest des deux modpacks, donc sans différence lui non plus.
 
 ### Profils de modpack (test vs production)
 
@@ -485,6 +497,138 @@ serveur au moment du rapport).
   fermé depuis peu, tant que le dernier rapport n'est pas encore périmé) afficherait
   encore une saison alors que le jeu n'est plus joignable.
 
+## Connexion automatique (FedoServerTools)
+
+Partie client de `FedoServerTools` (`AutoConnect.cs`/`FejdStartupPatches.cs`/
+`SessionFile.cs` — le seul patch du mod qui touche l'écran-titre `FejdStartup`, pas le
+gameplay ; développée un temps comme un mod séparé `FedoAutoJoin`, jamais commis en
+tant que tel, fusionnée dedans avant le premier commit pour ne pas multiplier les
+petits mods maison — même raisonnement que l'absorption de `FedoDiscordLogs`, voir
+Vue d'ensemble) qui saute le menu principal de Valheim quand un profil de modpack a une
+**cible d'auto-connexion** configurée (page "Profils" du launcher, admin seulement,
+section "Connexion auto") : soit un monde local à héberger (`autoConnectType: "world"`,
+champ texte libre comparé **insensible à la casse** aux mondes locaux, `AutoConnect.
+ConnectToWorld` — pas un sélecteur sur la vraie liste, une casse légèrement différente du
+nom réel a été observée en conditions réelles), soit un serveur dédié à rejoindre
+(`"server"`, host/port/mot de passe optionnel). `null`/absent = kill-switch,
+comportement 100% vanilla — c'est ce qui permet de n'activer la fonctionnalité que sur
+un profil de test (ex. `fedodev3`) sans toucher à la production tant qu'elle n'est pas
+validée en conditions réelles.
+
+- **Le nom de personnage est celui imposé (pseudo Discord), pas un choix libre du
+  joueur** — voir ci-dessous ; ce choix **devient définitif pour ce compte** :
+  `users.characterName` (API) est posé une seule fois, "premier arrivé, premier servi",
+  dès que `FedoServerTools` rapporte un `steamId` connecté correspondant à un compte dont
+  `characterName` est encore `null` (voir `onlinePlayers.ts::linkCharacterName` et
+  `mods/FedoServerTools/PeerSteamId.cs`). Pas de contrainte UNIQUE en base ; l'unicité
+  est vérifiée en code avant d'assigner.
+  - **`PeerSteamId.Resolve` distingue deux cas** : un pair distant (`ZNet.
+    GetPeerByPlayerName(name).m_socket.GetHostName()` — méthode/champs publics, vérifiés
+    par reflection dump contre le vrai `assembly_valheim.dll`) ; ou l'hôte lui-même (nom
+    comparé à `Game.instance.GetPlayerProfile().GetName()`), qui n'a **aucun `ZNetPeer`
+    le représentant** — confirmé par désassemblage IL de `ZNet.UpdatePlayerList()`, qui
+    ajoute l'entrée de l'hôte à `m_players` directement depuis son propre profil, jamais
+    via `m_peers` (rempli uniquement par `OnNewConnection`, donc seulement pour de
+    vraies connexions entrantes). Sans ce second cas, un admin qui héberge et joue
+    lui-même (le scénario de test le plus courant, ex. `fedodev3`) ne voyait **jamais**
+    son propre perso lié à son compte, peu importe combien de fois il se reconnectait —
+    trouvé et corrigé après un vrai test en jeu. Le SteamID64 de l'hôte est alors lu
+    directement via la couche plateforme (`Splatform.PlatformManager` — singleton
+    accessible seulement par un champ statique privé, `s_distributionPlatform`, seul
+    point de reflection nécessaire ici — puis
+    `IDistributionPlatform.LocalUser.PlatformUserID.TryParseAsUInt64`, tous publics,
+    référencés directement dans `FedoServerTools.csproj`).
+  - **Protection contre l'usurpation d'un nom déjà lié** (`CharacterOwnershipPatch.cs`,
+    `POST /modpacks/character-check`) : à la connexion d'un pair distant (jamais l'hôte
+    lui-même, même distinction que ci-dessus), le mod demande à l'API si ce nom de
+    perso appartient déjà à un AUTRE compte que le SteamID qui se connecte — si oui,
+    `ZNet.Kick(peer.m_playerName)` (méthode publique, même mécanisme que `/kick` en
+    console admin) l'éjecte immédiatement. Un nom pas encore lié à personne reste
+    toujours autorisé (cette route ne fait que bloquer un vol d'identité, jamais la
+    première liaison elle-même). Volontairement bloquant (comme `ReportBlocking`, voir
+    plus haut) : un Postfix Harmony ne peut pas être async, et la décision doit être
+    connue avant de laisser la connexion continuer — timeout court (3s) car ça bloque
+    le thread principal du serveur (donc tout le monde), pas seulement le joueur qui se
+    connecte ; échoue toujours "ouvert" (autorisé) sur erreur/timeout API, jamais
+    "fermé", pour qu'un souci réseau ne verrouille jamais un joueur légitime dehors.
+    `ServerToken` vide désactive ce contrôle, même logique que le reporting.
+- Sans `characterName` lié → `FejdStartup` patché en Postfix de `Start()` saute
+  direct à l'écran de création, nom **imposé au pseudo Discord du joueur** (pas de choix
+  libre du tout — champ pré-rempli puis verrouillé en lecture seule, `readOnly` sur le
+  `TMP_InputField`), `PlayerProfile.HaveProfile` suffixé d'un nombre croissant —
+  `Nom2`, `Nom3`... — si déjà pris localement (voir `ResolvePrefillName`/
+  `PrefillCharacterName` dans `FejdStartupPatches.cs`) ; une fois
+  "Terminé" cliqué (`OnNewCharacterDone`, patché en Postfix), connexion automatique à la
+  cible configurée. Avec un `characterName` déjà lié et un `.fch` local correspondant →
+  aucun menu du tout, le perso est sélectionné et la connexion se lance immédiatement.
+- Le launcher écrit, juste avant chaque lancement (`play`/`launch_only` dans `lib.rs`),
+  un fichier plat `<profil>/BepInEx/fedoheim-session.txt` (format `clé=valeur`, pas du
+  JSON — aucun mod de ce repo n'a de dépendance de parsing JSON) contenant
+  `character_name` + `discord_username` (pré-remplissage seulement, voir ci-dessus) + la
+  cible résolue — jamais synchronisé/zippé comme le contenu d'un mod, même logique que
+  `ServerToken` de `FedoServerTools`. `GET /modpacks/:slug/manifest` expose la cible
+  résolue (`autoConnect`) à **tout** joueur onboardé, pas seulement un admin : chacun
+  doit pouvoir lire la cible de son propre profil actif pour que l'auto-connexion
+  fonctionne chez lui.
+  - **`state.session` rafraîchi juste avant l'écriture de ce fichier** (`play`/
+    `launch_only` appellent maintenant `refresh_session_inner` avant `write_mod_session`,
+    voir `lib.rs`) — trouvé et corrigé après un vrai test en jeu : le process Valheim est
+    lancé en fire-and-forget (`valheim::launch`, jamais attendu), donc rien ne
+    rafraîchissait `characterName` entre deux lancements rapprochés autrement que le
+    timer de 5 min côté frontend (`SESSION_REFRESH_INTERVAL_MS`). Sans ce
+    rafraîchissement, un `characterName` tout juste lié côté API (quelques secondes plus
+    tôt) restait invisible du launcher, qui écrivait alors un `character_name` vide et
+    faisait recréer un nouveau personnage à chaque reconnexion rapide au lieu de
+    retrouver celui déjà lié. Best-effort : une erreur ne bloque jamais le lancement,
+    juste un retour au cache existant.
+- **Écran de chargement Fedoheim** (`LoadingOverlay.cs`) : comme aucun panneau de menu
+  n'est affiché une fois l'auto-connexion enclenchée, l'écran de chargement vanilla
+  (qui se déclenche via ces mêmes panneaux) ne l'est pas non plus — un écran noir sans
+  aucun texte le temps de la connexion/du chargement du monde, facilement pris pour un
+  plantage. Un texte "Chargement de Fedoheim..." est affiché en haut de l'écran dès
+  qu'on saute vers la connexion (perso déjà lié, ou juste après en avoir créé un
+  nouveau), masqué dès que le HUD apparaît vraiment (`Hud.Awake`) — ou après 30s dans
+  tous les cas, filet de sécurité si la connexion échoue et que le HUD n'apparaît
+  jamais.
+- Page "Joueurs" du launcher : l'avatar Discord du compte lié est affiché à côté du nom
+  de perso (`GET /modpacks/:slug/player-stats`, jointure par `characterName`) — `null`
+  pour un perso vu avant l'existence de cette fonctionnalité ou jamais lié.
+- **Testée en conditions réelles, quatre bugs trouvés et corrigés jusqu'ici** :
+  1. Le menu principal (`m_mainMenu`) restait affiché en dessous de l'écran de création
+     de perso — `ShowCharacterSelection()` seule ne le masque jamais. Corrigé en
+     appelant plutôt `OnStartGame()` (le vrai handler public du bouton "Lancer une
+     partie", confirmé par désassemblage IL : il fait `m_mainMenu.SetActive(false)`
+     avant d'appeler `ShowCharacterSelection()`).
+  2. Après création d'un nouveau perso (compte pas encore lié), la connexion ne se
+     déclenchait jamais : `AutoConnect.Connect` tournait avant `OnCharacterStart()`
+     (qui peuple `m_worlds` via `ShowStartGame()` et appelle `Game.SetProfile(...)`),
+     donc héberger un monde local échouait silencieusement ("could not read the local
+     world list") et le joueur restait bloqué sur l'écran de sélection de perso.
+     Corrigé en appelant `OnCharacterStart()` avant `AutoConnect.Connect`, comme le
+     fait déjà le chemin "perso déjà lié" — voir les commentaires de tête de
+     `FejdStartupAutoNavigatePatch`/`FejdStartupNewCharacterDonePatch`.
+  3. Le perso d'un admin hébergeant lui-même (host solo/co-op, cas de test le plus
+     courant) ne se liait jamais à son compte, quel que soit le nombre de reconnexions —
+     voir le point "PeerSteamId.Resolve distingue deux cas" plus haut pour le détail
+     (l'hôte n'a pas de `ZNetPeer`, donc `GetPeerByPlayerName` ne le trouve jamais).
+     Corrigé en résolvant le SteamID64 de l'hôte via la couche plateforme
+     (`Splatform`) plutôt que par pair.
+  4. Même après une liaison réussie, une reconnexion rapide recréait quand même un
+     nouveau personnage (`character_name` vide dans `fedoheim-session.txt`) — voir le
+     point "`state.session` rafraîchi juste avant l'écriture de ce fichier" plus haut :
+     `state.session` (launcher) pouvait rester périmé de plusieurs minutes, le process
+     Valheim étant lancé en fire-and-forget, jamais attendu. Corrigé côté launcher
+     (`refresh_session_inner` appelé avant `write_mod_session`), pas dans ce mod.
+
+  **Reste à revalider avec ces quatre correctifs** : l'enchaînement complet jusqu'à une
+  vraie connexion (host local ou serveur dédié) suivie d'une liaison réussie du compte
+  n'a pas encore été observé de bout en bout. Les champs privés `m_profiles`/`m_worlds`/
+  `<ServerPassword>k__BackingField` et le point d'accroche `OnWorldStart`/
+  `SetServerToJoin`+`JoinServer` restent vérifiés seulement par dump de reflection contre
+  le vrai assembly (signatures correctes) avant de considérer cette partie
+  de `FedoServerTools` fiable, même principe que les autres patchs `FejdStartup`/`ZNet`
+  de ce repo (voir `mods/CLAUDE.md`, "Notes techniques de modding").
+
 ## ServerSync (synchronisation de config entre serveur et clients)
 
 `mods/_shared/ConfigSync.cs` — librairie communautaire standard du modding Valheim
@@ -571,7 +715,18 @@ messages" + "Intégrer des liens" sur ce salon précis.
   mécanismes n'ont pu être vérifiés que par lecture de code source (Gale pour Windows,
   macheim pour macOS), pas par un test réel avec Steam + Valheim installés — à faire en
   priorité sur chaque plateforme avant de considérer cette partie fiable.
-- Migrations Drizzle à jour jusqu'à `0023_mature_boomer` (voir
+- **Testée en jeu, quatre bugs trouvés et corrigés jusqu'ici** : la connexion automatique
+  de `FedoServerTools` (voir section "Connexion automatique" ci-dessus) — menu principal
+  resté visible sous l'écran de création, connexion ne se déclenchant jamais après
+  création d'un nouveau perso (`OnCharacterStart()` jamais appelé), liaison compte↔perso
+  ne se faisant jamais pour un admin hébergeant lui-même (l'hôte n'a pas de `ZNetPeer`,
+  résolution SteamID corrigée via `Splatform`), et une reconnexion rapide recréant quand
+  même un nouveau perso malgré une liaison déjà réussie (`state.session` périmé côté
+  launcher, corrigé par un rafraîchissement avant chaque lancement). Le reste de
+  l'enchaînement runtime reste vérifié seulement par reflection dump contre le vrai
+  assembly (signatures correctes), pas encore observé en jeu jusqu'au bout d'une vraie
+  connexion avec ces quatre correctifs.
+- Migrations Drizzle à jour jusqu'à `0025_past_talon` (voir
   `api/drizzle/`) — toujours générer via `db:generate` + appliquer via `db:migrate`, ne
   jamais éditer une migration déjà appliquée.
 - **Pas encore fait** :
@@ -630,7 +785,22 @@ messages" + "Intégrer des liens" sur ce salon précis.
 
 - Node géré via `nvm` — utiliser Node 22 pour `api/` (Fastify 5 requiert Node ≥ 20 ;
   Node 18 par défaut sur cette machine est trop ancien). Un `.nvmrc` est présent dans `api/`.
+  **Chaque nouvelle commande shell repart sur Node 18** (pas de persistance de `nvm use`
+  entre commandes) : `npx drizzle-kit migrate` sous Node 18 **segfault silencieusement**
+  (exit code 139, aucun message d'erreur, `__drizzle_migrations` pas mis à jour) — le
+  binding natif de `better-sqlite3` en cause. `db:generate` ne plante pas (diff de schéma
+  en pur JS, pas d'ouverture réelle de la db), seul `db:migrate` a besoin du `nvm use 22`
+  explicite dans la même commande.
 - Rust installé via `rustup` pour le launcher (`launcher/src-tauri`).
+- **Une vraie install Valheim complète existe sur cette machine** (pas juste un bundle
+  `.app` vide) : `~/Library/Application Support/Steam/steamapps/common/Valheim/`, avec
+  `assembly_valheim.dll` sous `valheim.app/Contents/Resources/Data/Managed/` — c'est
+  d'ailleurs déjà le chemin `ValheimManagedDir` utilisé par les `.csproj` des mods (voir
+  `mods/FedoServerTools/FedoServerTools.csproj`). Utile à savoir : un dump de reflection
+  (`System.Reflection.MetadataLoadContext`, voir `mods/CLAUDE.md`) contre cet assembly
+  est possible directement sur cette machine, pas besoin d'un accès Windows pour ça —
+  seul un lancement réel du jeu (pour valider le comportement runtime d'un patch Harmony,
+  pas juste sa compilation) resterait à faire en priorité sur la cible Windows.
 
 ## Plateforme cible du launcher
 

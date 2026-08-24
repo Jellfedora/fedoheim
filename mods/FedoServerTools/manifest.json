@@ -3,7 +3,7 @@
   "author": "Fedo",
   "version_number": "1.0.0",
   "website_url": "",
-  "description": "Mostly server-side: reports connected players (with biome/armor) and the current season (if Seasons is installed) to the Fedoheim API every ~30s so the launcher can show server status, and forces 'Public position' on for everyone. Also posts session events (connect/disconnect/death/server start-stop/world saved) to a Discord webhook. If distributed through a player modpack, ServerToken must stay blank in that shared .cfg -- fill it in only on the actual dedicated server, installed manually.",
+  "description": "Mostly server-side: reports connected players (with biome/armor/SteamID) and the current season (if Seasons is installed) to the Fedoheim API every ~30s so the launcher can show server status, and forces 'Public position' on for everyone. Also posts session events (connect/disconnect/death/server start-stop/world saved) to a Discord webhook, and skips the main menu straight to character creation/auto-connect when the active profile has an auto-connect target configured. If distributed through a player modpack, ServerToken must stay blank in that shared .cfg -- fill it in only on the actual dedicated server, installed manually.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2333",
     "shudnal-Seasons-1.8.2"

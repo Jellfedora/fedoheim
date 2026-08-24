@@ -71,3 +71,55 @@
   (`ClockPositionX`/`ClockPositionY`) and restored on every future launch. The same
   clock value is now also sent in the periodic API report, shown by the launcher's
   home page next to the season.
+- Player reports now also carry each player's resolved SteamID64 (`PeerSteamId.cs`,
+  via `ZNetPeer.m_socket.GetHostName()`) so the API can link a character name to the
+  Fedoheim account that played it, first-come first-served -- never displayed, used
+  only for that link.
+- Absorbed the former standalone `FedoAutoJoin` mod: a client-only patch on
+  `FejdStartup` (the main menu) that skips straight to character creation or
+  auto-connect based on a per-profile auto-connect target and the character↔account
+  link above -- see the "Auto-join" section in the README.
+- Fixed the main menu remaining visible underneath the character creation screen during
+  auto-join (found in an actual in-game test): now calls the game's own `OnStartGame()`
+  (the real "start game" button handler, which hides the main menu first) instead of
+  invoking `ShowCharacterSelection()` directly.
+- The new-character name field is now pre-filled with the player's Discord username when
+  auto-join jumps straight to character creation, appending a number (`Name2`, `Name3`,
+  ...) if that name is already taken by a local character on this machine -- and locked
+  read-only right after, so the player can't retype a different name.
+- Hid the "Cancel" button on that same character creation screen during auto-join: it
+  only led back to the character-select list (never to the hidden main menu), but would
+  let the player back out of an otherwise automatic flow.
+- Fixed auto-join never actually connecting after creating a brand new character (found
+  in an actual in-game test): the connection attempt ran before the game's own
+  `OnCharacterStart()` (which sets the active profile and populates the local world
+  list), so hosting a local world silently failed ("could not read the local world
+  list") and the player was left stranded on the character-select screen. Now calls
+  `OnCharacterStart()` first, same as the "already-linked character" path.
+- Fixed the character↔account link never happening at all when playing solo or hosting
+  (found in an actual in-game test): SteamID resolution (`PeerSteamId.cs`) went through
+  `ZNet.GetPeerByPlayerName`, which only searches actual network connections
+  (`ZNetPeer`, populated solely by incoming connections from other players) -- the host
+  itself is added to the player list directly from its own profile, with no `ZNetPeer`
+  to be found. `PeerSteamId.Resolve` now checks the local player's own name first and,
+  if it matches, reads the SteamID64 straight from the platform layer
+  (`Splatform.PlatformManager`/`IDistributionPlatform.LocalUser.PlatformUserID`)
+  instead.
+- The configured auto-connect world name is now matched case-insensitively against
+  local worlds -- it's a free-text field on the launcher's "Profils" page, not a picker
+  over the real world list, so a slightly different casing (`Fedodev3` vs `fedodev3`)
+  used to silently fail to match.
+- Added a server-side check (`CharacterOwnershipPatch.cs`, `POST /modpacks/character-
+  check`) that kicks a connecting player if their character name is already linked to a
+  *different* Fedoheim account -- protection against someone recreating a local
+  character with an already-claimed name and joining under that identity. Fails open
+  (allows the connection) on any API/network error so an outage never locks out
+  legitimate players; never triggered for the host's own character, only remote
+  connections.
+- Added a "Chargement de Fedoheim..." text overlay (`LoadingOverlay.cs`), shown right
+  before auto-join skips straight to connecting (already-linked character, or right
+  after creating a new one) and hidden once the in-game HUD actually appears. Auto-join
+  never shows the vanilla menu panels that normally display Valheim's own loading
+  screen, so without this the whole connection/world-load time was a plain black
+  screen with no text -- easy to mistake for a crash. Self-destructs after 30s as a
+  safety net in case the HUD never shows up (a failed connection).

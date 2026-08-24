@@ -18,6 +18,10 @@ interface PlayerStat {
   armor: number | null;
   online: boolean;
   lastSeenAt: string;
+  // Compte Fedoheim lié à ce nom de perso (voir onlinePlayers.ts::linkCharacterName) --
+  // `null` pour un perso vu avant l'existence de cette fonctionnalité, ou jamais lié.
+  discordUsername: string | null;
+  discordAvatar: string | null;
 }
 
 type LoadState = { kind: "loading" } | { kind: "error"; message: string } | { kind: "loaded" };
@@ -73,6 +77,13 @@ export function PlayersPage({ slug }: PlayersPageProps) {
           {players.map((player) => (
             <li key={player.name} className="players-list__item">
               <span className={`players-list__dot ${player.online ? "is-online" : ""}`} />
+              <span className="players-list__avatar" aria-hidden="true">
+                {player.discordAvatar ? (
+                  <img className="players-list__avatar-img" src={player.discordAvatar} alt="" />
+                ) : (
+                  (player.discordUsername ?? player.name).slice(0, 1).toUpperCase()
+                )}
+              </span>
               <span className="players-list__name">{player.name}</span>
               {player.armor !== null && (
                 <span className="players-list__armor" title="Armure">

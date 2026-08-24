@@ -14,6 +14,14 @@ export const users = sqliteTable("users", {
   rulesAcceptedAt: integer("rules_accepted_at", { mode: "timestamp" }),
   // Rempli une fois via POST /auth/steam-id, après validation du format SteamID64.
   steamId: text("steam_id"),
+  // Nom du personnage Valheim associé à ce compte -- posé une seule fois, "premier
+  // arrivé, premier servi" (voir modpacks/onlinePlayers.ts::linkCharacterName), à partir
+  // du steamId rapporté par FedoServerTools pour un joueur connecté. Pas de contrainte
+  // UNIQUE en base (pour ne jamais faire échouer un rapport sur collision) -- l'unicité
+  // est garantie en code avant l'assignation. Une fois posé, restreint ce compte à ce
+  // nom côté launcher (voir la partie client de FedoServerTools) : pas de re-choix
+  // libre après coup.
+  characterName: text("character_name"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   lastLoginAt: integer("last_login_at", { mode: "timestamp" }).notNull(),
 });
@@ -50,6 +58,18 @@ export const modpacks = sqliteTable("modpacks", {
   // Profils — voir modpacks/routes.ts. `null` tant qu'aucun n'a été généré : le serveur
   // Valheim de ce profil n'a alors aucun moyen de poster qui est en ligne.
   reportToken: text("report_token"),
+  // Cible de connexion automatique pour ce profil (voir FedoServerTools) -- `null`/absent
+  // = comportement vanilla inchangé, c'est le kill-switch qui permet de n'activer la
+  // fonctionnalité que sur un profil de test sans toucher à la production. "world" =
+  // héberger un monde local (autoConnectWorld) ; "server" = rejoindre un serveur dédié
+  // (autoConnectHost/Port, autoConnectPassword optionnel). Le mot de passe n'est pas un
+  // vrai secret au sens de reportToken : il doit de toute façon atteindre le client de
+  // chaque joueur pour que l'auto-connexion fonctionne.
+  autoConnectType: text("auto_connect_type", { enum: ["world", "server"] }),
+  autoConnectWorld: text("auto_connect_world"),
+  autoConnectHost: text("auto_connect_host"),
+  autoConnectPort: integer("auto_connect_port"),
+  autoConnectPassword: text("auto_connect_password"),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 

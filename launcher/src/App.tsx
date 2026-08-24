@@ -187,6 +187,22 @@ function App() {
   // quel mode ; "launch_only" lance l'installation existante telle quelle, son
   // comportement ne dépend pas du mode choisi.
   const [pendingAction, setPendingAction] = useState<"play" | "update" | "repair" | null>(null);
+  // Un profil sans aucun mod "adminOnly" *activé* n'a pas de vrai modpack "Admin"
+  // distinct du modpack "Joueur" (voir CLAUDE.md) -- dans ce cas requestPrimaryAction
+  // saute carrément la popup de choix de mode, aucun intérêt à la proposer. Rechargé à
+  // chaque changement de profil actif, indépendamment de ModsPage (qui peut ne pas être
+  // montée) -- best-effort, une erreur réseau laisse simplement la popup désactivée
+  // plutôt que de bloquer "Jouer"/"Mettre à jour"/"Réparer".
+  const [hasAdminOnlyMods, setHasAdminOnlyMods] = useState(false);
+  useEffect(() => {
+    if (!isAdmin) {
+      setHasAdminOnlyMods(false);
+      return;
+    }
+    invoke<{ adminOnly: boolean; enabled: boolean }[]>("fetch_mods_full", { slug: effectiveModpackSlug })
+      .then((mods) => setHasAdminOnlyMods(mods.some((m) => m.adminOnly && m.enabled)))
+      .catch(() => setHasAdminOnlyMods(false));
+  }, [isAdmin, effectiveModpackSlug]);
   // Édition de mods en cours (voir ModsPage.onDirtyChange) — sert à confirmer avant de
   // changer de page ou de fermer le launcher plutôt que de perdre le brouillon en silence.
   const [modsDirty, setModsDirty] = useState(false);
@@ -581,9 +597,11 @@ function App() {
   // trois actions qui resynchronisent le modpack et ont donc besoin de savoir dans
   // quel mode (voir CLAUDE.md). Un admin est reredemandé à chaque appel (pas de mode
   // mémorisé au-delà de l'appel en cours) ; un joueur normal reste toujours en "player"
-  // sans jamais voir la popup.
+  // sans jamais voir la popup -- de même qu'un admin sur un profil sans mod "adminOnly"
+  // activé (voir hasAdminOnlyMods), le mode "admin" n'y ayant tout simplement aucun
+  // effet différent de "player".
   function requestPrimaryAction(action: "play" | "update" | "repair") {
-    if (!user?.isAdmin) {
+    if (!user?.isAdmin || !hasAdminOnlyMods) {
       runPrimaryAction(action, "player");
       return;
     }

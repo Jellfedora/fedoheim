@@ -24,6 +24,15 @@ pub struct UserInfo {
     pub rules_accepted_at: Option<String>,
     #[serde(rename = "steamId")]
     pub steam_id: Option<String>,
+    // Posé une seule fois côté API dès que FedoServerTools rapporte ce compte connecté
+    // en jeu (voir onlinePlayers.ts::linkCharacterName) -- `null` tant que ce compte n'a
+    // jamais été vu. Consommé par la partie client de FedoServerTools (voir
+    // valheim::write_mod_session) pour savoir s'il faut sauter direct en création de
+    // perso ou en connexion. `default` :
+    // même raison que `rules_accepted_at` ci-dessus (compat avec un session.json mis en
+    // cache par une version antérieure du launcher).
+    #[serde(rename = "characterName", default)]
+    pub character_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

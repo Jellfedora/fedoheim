@@ -8,10 +8,11 @@ current in-game season (if the [Seasons](https://thunderstore.io/c/valheim/p/shu
 mod is also installed) so the launcher's home page can show it to every player — no
 login required to see it — but this mod is meant to grow into the general channel
 between this server and the API, in both directions (the API telling the game to do
-something is planned), not just a player-list reporter. It also has one small
-client-side effect (see `ForcePublicPosition`) — safe to install on a regular player's
-client too, see Notes — and a generic game-stability patch (see below) unrelated to any
-of that, kept here for now since this is the closest thing to a "misc utilities" mod.
+something is planned), not just a player-list reporter. It also has a couple of small
+client-side effects (see `ForcePublicPosition` and "Auto-join" below) — safe to install
+on a regular player's client too, see Notes — and a generic game-stability patch (see
+below) unrelated to any of that, kept here for now since this is the closest thing to a
+"misc utilities" mod.
 
 ## How it works
 
@@ -216,6 +217,57 @@ logs the affected `GameObject`'s name and prefab hash (`FedoServerTools: repaire
 broken ZNetScene instance (...)`, useful to track down what actually caused it), removes
 it from the registry, and resets its ZDO's `Created` flag so the game gets a chance to
 recreate it properly on the next pass instead of leaving it permanently broken.
+
+## Auto-join (client menu skip)
+
+Also unrelated to reporting — a client-only Harmony patch on `FejdStartup` (the
+Valheim main menu) that skips it entirely when the active modpack profile has an
+auto-connect target configured (see the Fedoheim launcher's "Profils" page, admin
+only). At boot, it reads a small `fedoheim-session.txt` file dropped by the launcher
+next to `BepInEx/` — never part of this mod's own package, never synced like the rest
+of a modpack (same idea as `ServerToken` above).
+
+- If the profile has no auto-connect target configured, this does nothing — the menu
+  behaves exactly like vanilla Valheim.
+- If the account has no character linked yet, it jumps straight to the "new character"
+  screen. Once the character is created, it connects automatically to the configured
+  target (a local world to host, or a dedicated server to join).
+- If the account already has a linked character (and it exists locally), the whole menu
+  is skipped entirely: the character is selected and the game connects immediately.
+
+The character↔account link itself is decided server-side (see `PeerSteamId.cs` and the
+Fedoheim API's `linkCharacterName`), not by this patch — it only reacts to what the
+launcher tells it.
+
+Since none of the vanilla menu panels are shown once auto-join takes over, Valheim's own
+loading screen never appears either — the whole connection/world-load time would
+otherwise be a plain black screen with no text. `LoadingOverlay.cs` shows a small
+"Chargement de Fedoheim..." banner at the top of the screen for that duration, hidden as
+soon as the in-game HUD actually appears (or after 30s regardless, as a safety net if the
+connection fails).
+
+## Character ownership check
+
+Server-side only (`CharacterOwnershipPatch.cs`) — when a remote player connects, this
+mod asks the Fedoheim API (`POST /modpacks/character-check`) whether their character
+name is already linked to a *different* Fedoheim account, and kicks them immediately if
+so. This closes an impersonation gap: without it, anyone could create a local character
+with an already-claimed name and connect under that identity, showing up on the map and
+in reports as if they were the rightful owner.
+
+- Never triggered for the host's own character in a solo/hosted game — the host has no
+  `ZNetPeer` representing themselves (see `PeerSteamId.cs`), so this check simply never
+  runs for them.
+- A character name not yet linked to anyone is always allowed — this check only blocks
+  stealing an already-claimed name, it never performs the first-time link itself (that
+  stays `linkCharacterName`, on the normal periodic report).
+- Blocking by design: the connecting player has to wait for this one HTTP round-trip
+  (3s timeout) before joining, which also briefly blocks the whole server's main thread
+  (Harmony patches can't be async) — kept deliberately short for that reason. Fails
+  open (allows the connection) on any error or timeout, same philosophy as the rest of
+  this mod's API calls: a network hiccup should never lock out a legitimate player.
+- `ServerToken` empty (the default on a player install) disables this check entirely,
+  same as the periodic reporting above.
 
 ## Notes
 

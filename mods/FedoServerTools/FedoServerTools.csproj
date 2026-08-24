@@ -47,12 +47,25 @@
       <HintPath>$(ValheimManagedDir)/assembly_valheim.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- IDistributionPlatform/ILocalUser/IUser/PlatformUserID (voir PeerSteamId.cs),
+         pour résoudre le SteamID64 de l'hôte lui-même, qui n'a pas de ZNetPeer le
+         représentant. -->
+    <Reference Include="Splatform">
+      <HintPath>$(ValheimManagedDir)/Splatform.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="assembly_utils">
       <HintPath>$(ValheimManagedDir)/assembly_utils.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>$(ValheimManagedDir)/UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Canvas/CanvasScaler/RenderMode (voir LoadingOverlay.cs), module core Unity,
+         distinct de UnityEngine.UI.dll (uGUI : Text/Image/Button...) ci-dessus. -->
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.UIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Unity.TextMeshPro">

@@ -27,7 +27,7 @@ const steamIdBodySchema = z.object({
 // Discord ne renvoie qu'un hash d'avatar (ex: "a1b2c3..."), pas une URL exploitable —
 // il faut le combiner avec l'ID Discord pour construire l'URL CDN. "a_" en préfixe
 // signale un avatar animé (webp/gif), voir la doc Discord sur le format des hash.
-function discordAvatarUrl(user: typeof users.$inferSelect): string | null {
+export function discordAvatarUrl(user: typeof users.$inferSelect): string | null {
   if (!user.discordAvatar) return null;
   const extension = user.discordAvatar.startsWith("a_") ? "gif" : "png";
   return `https://cdn.discordapp.com/avatars/${user.discordId}/${user.discordAvatar}.${extension}`;
@@ -54,6 +54,12 @@ function serializeUser(user: typeof users.$inferSelect) {
     // est aussi vrai, pas se baser sur ce champ seul.
     rulesAcceptedAt: user.rulesAcceptedAt,
     steamId: user.steamId,
+    // Posé une seule fois par le lien serveur↔SteamID (voir
+    // modpacks/onlinePlayers.ts::linkCharacterName) -- `null` tant que ce compte n'a
+    // jamais été vu connecté en jeu. Consommé par la partie client de FedoServerTools
+    // (via le launcher) pour savoir s'il faut sauter direct en création de perso ou en
+    // connexion.
+    characterName: user.characterName,
   };
 }
 

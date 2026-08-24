@@ -27,6 +27,12 @@ namespace FedoServerTools
 
         private ConfigEntry<string> _apiBaseUrl;
         private ConfigEntry<string> _serverToken;
+
+        // Exposés pour CharacterOwnershipPatch.cs (classe statique, pas d'accès direct
+        // aux champs privés d'ici) -- mêmes valeurs que celles utilisées par le rapport
+        // périodique ci-dessus.
+        public string ApiBaseUrl => _apiBaseUrl.Value;
+        public string ServerToken => _serverToken.Value;
         private ConfigEntry<float> _syncIntervalSeconds;
         private ConfigEntry<float> _startingGracePeriodSeconds;
 
@@ -465,7 +471,7 @@ namespace FedoServerTools
                 }
 
                 playersByName.TryGetValue(info.m_name, out var player);
-                result.Add(new PlayerReport(info.m_name, GetBiomeName(info), GetArmor(player)));
+                result.Add(new PlayerReport(info.m_name, GetBiomeName(info), GetArmor(player), PeerSteamId.Resolve(info.m_name)));
             }
 
             return result;

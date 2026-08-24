@@ -69,6 +69,12 @@ pub struct PlayerStat {
     pub online: bool,
     #[serde(rename = "lastSeenAt")]
     pub last_seen_at: String,
+    // Compte Fedoheim lié à ce nom de perso (voir onlinePlayers.ts::linkCharacterName) --
+    // `None` pour un perso vu avant l'existence de cette fonctionnalité, ou jamais lié.
+    #[serde(rename = "discordUsername")]
+    pub discord_username: Option<String>,
+    #[serde(rename = "discordAvatar")]
+    pub discord_avatar: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

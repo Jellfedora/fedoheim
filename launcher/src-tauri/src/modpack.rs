@@ -39,6 +39,19 @@ pub struct ConfigFileEntry {
     pub sha256: String,
 }
 
+// Cible d'auto-connexion résolue pour ce profil (voir FedoServerTools) -- `type` vaut
+// "world" (héberger `world` en local) ou "server" (rejoindre `host`/`port`, `password`
+// optionnel). `None` = profil non configuré, comportement vanilla inchangé côté jeu.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoConnectTarget {
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub world: Option<String>,
+    pub host: Option<String>,
+    pub port: Option<u16>,
+    pub password: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Manifest {
     pub slug: String,
@@ -50,6 +63,10 @@ pub struct Manifest {
     // fonctionnalité (voir `load_local_manifest`) n'en a pas encore.
     #[serde(rename = "configFiles", default)]
     pub config_files: Vec<ConfigFileEntry>,
+    // `default` : idem, absent d'un manifest local mis en cache avant l'ajout de cette
+    // fonctionnalité.
+    #[serde(rename = "autoConnect", default)]
+    pub auto_connect: Option<AutoConnectTarget>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -380,6 +397,10 @@ pub struct ModpackProfile {
     pub mod_count: i64,
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
+    // Cible d'auto-connexion de ce profil (voir FedoServerTools) -- `None` = comportement
+    // vanilla inchangé pour ce profil, voir CLAUDE.md.
+    #[serde(rename = "autoConnect")]
+    pub auto_connect: Option<AutoConnectTarget>,
 }
 
 pub async fn list_modpacks(
@@ -545,6 +566,34 @@ pub async fn set_modpack_color(
     if !res.status().is_success() {
         return Err(format!(
             "Failed to set modpack color ({}): {}",
+            res.status(),
+            res.text().await.unwrap_or_default()
+        ));
+    }
+
+    Ok(())
+}
+
+// `auto_connect` à `None` désactive l'auto-connexion pour ce profil (retour au menu
+// Valheim normal) — voir routes.ts::updateModpackSchema, qui distingue explicitement
+// `null` d'absent.
+pub async fn set_modpack_auto_connect(
+    http: &reqwest::Client,
+    token: &str,
+    slug: &str,
+    auto_connect: Option<&AutoConnectTarget>,
+) -> Result<(), String> {
+    let res = http
+        .patch(format!("{}/modpacks/{slug}", config::api_base_url()))
+        .bearer_auth(token)
+        .json(&serde_json::json!({ "autoConnect": auto_connect }))
+        .send()
+        .await
+        .map_err(|e| config::describe_request_error(&e))?;
+
+    if !res.status().is_success() {
+        return Err(format!(
+            "Failed to set auto-connect target ({}): {}",
             res.status(),
             res.text().await.unwrap_or_default()
         ));

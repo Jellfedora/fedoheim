@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0
+
+- Merged the former standalone `FedoDeathGif` mod into `FedoDeath` — one mod now covers the whole death experience, guardian included. `FedoDeathGif` no longer exists as a separate mod; its icon is now used for `FedoDeath`.
+- Death gif capture, Discord webhook posting, on-screen message and chat line on death are unchanged in behavior, just carried over as-is.
+- Gif/webhook/message settings remain local to each client and are never synced (unlike the guardian settings), since a webhook URL is a secret.
+
 ## 1.0.0
 
 - Initial release.

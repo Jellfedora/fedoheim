@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AnnouncementComposer } from "../components/AnnouncementComposer";
 import { MarkdownText } from "../components/MarkdownText";
+import { ShieldIcon } from "../components/ShieldIcon";
 import { SERVER_NAME } from "../data/mock";
 import { getApiBaseUrl } from "../utils/apiBaseUrl";
 import { formatDate } from "../utils/date";
@@ -44,26 +45,10 @@ interface OnlinePlayer {
   // Armure totale actuelle, arrondie côté mod. `null` si le personnage n'a pas pu être
   // retrouvé côté serveur au moment du rapport.
   armor: number | null;
-}
-
-// Icône bouclier minimale, en `currentColor` pour hériter de la couleur du texte
-// environnant plutôt que d'ajouter une dépendance à une librairie d'icônes pour un
-// seul usage.
-function ShieldIcon() {
-  return (
-    <svg
-      className="home-players__shield-icon"
-      viewBox="0 0 16 16"
-      width="12"
-      height="12"
-      aria-hidden="true"
-    >
-      <path
-        fill="currentColor"
-        d="M8 1 2.5 3v4.2c0 3.4 2.2 6.2 5.5 7.3 3.3-1.1 5.5-3.9 5.5-7.3V3L8 1Z"
-      />
-    </svg>
-  );
+  // Compte Fedoheim lié à ce nom de perso (voir onlinePlayers.ts::linkCharacterName) --
+  // `null` pour un perso vu avant l'existence de cette fonctionnalité, ou jamais lié.
+  discordUsername: string | null;
+  discordAvatar: string | null;
 }
 
 // "offline" n'est jamais envoyé par le mod (voir onlinePlayers.ts) : c'est ce que l'API
@@ -365,16 +350,23 @@ export function HomePage({ heroEyebrow, heroTagline, slug, isAdmin }: HomePagePr
                 <ul className="home-players">
                   {onlinePlayers.players.map((player) => (
                     <li key={player.name} className="home-players__item">
-                      <span className="home-players__name-group">
-                        <span>{player.name}</span>
-                        {player.armor !== null && (
-                          <span className="home-players__armor" title="Armure">
-                            <ShieldIcon />
-                            {player.armor}
-                          </span>
+                      <span className="home-players__avatar" aria-hidden="true">
+                        {player.discordAvatar ? (
+                          <img className="home-players__avatar-img" src={player.discordAvatar} alt="" />
+                        ) : (
+                          (player.discordUsername ?? player.name).slice(0, 1).toUpperCase()
                         )}
                       </span>
-                      {player.biome && <span className="home-players__biome">{player.biome}</span>}
+                      <span className="home-players__name">{player.name}</span>
+                      <span className="home-players__armor" title="Armure">
+                        {player.armor !== null && (
+                          <>
+                            <ShieldIcon className="home-players__shield-icon" />
+                            {player.armor}
+                          </>
+                        )}
+                      </span>
+                      <span className="home-players__biome">{player.biome ?? ""}</span>
                     </li>
                   ))}
                 </ul>

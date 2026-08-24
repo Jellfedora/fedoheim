@@ -64,7 +64,7 @@ namespace FedoServerTools
                     // Aucun panneau de menu ne sera plus affiché à partir d'ici jusqu'à
                     // l'entrée en jeu -- sans ça, écran noir sans texte pendant tout le
                     // chargement (voir LoadingOverlay.cs).
-                    LoadingOverlay.Show(__instance, "Chargement de Fedoheim...");
+                    LoadingOverlay.Show(__instance, "Chargement de Fedoheim");
                     __instance.OnCharacterStart();
                     AutoConnect.Connect(__instance, session.AutoConnect);
                 }
@@ -196,7 +196,7 @@ namespace FedoServerTools
                 // existant lié").
                 // Le panneau de création vient de disparaître -- écran noir sans texte
                 // jusqu'à l'entrée en jeu à partir d'ici (voir LoadingOverlay.cs).
-                LoadingOverlay.Show(__instance, "Chargement de Fedoheim...");
+                LoadingOverlay.Show(__instance, "Chargement de Fedoheim");
                 __instance.OnCharacterStart();
                 AutoConnect.Connect(__instance, session.AutoConnect);
             }

@@ -123,3 +123,50 @@
   screen, so without this the whole connection/world-load time was a plain black
   screen with no text -- easy to mistake for a crash. Self-destructs after 30s as a
   safety net in case the HUD never shows up (a failed connection).
+- Reworked that loading overlay: centered the whole block in the middle of the screen
+  (was pinned to the top), added the Fedoheim logo above the loading line (bundled as a
+  plain PNG next to the DLL, decoded at runtime via `Texture2D.LoadImage` --
+  `LoadingLogo.cs`), and disabled word-wrap so the loading line always stays on one
+  line. Briefly tried rendering the logo *and* a "Fedoheim" title in Cinzel SemiBold
+  (the launcher home page's title font), registering the bundled `.ttf` with the OS for
+  this process only (`AddFontResourceEx`/`CTFontManagerRegisterFontsForURL`) and
+  resolving it via `Font.CreateDynamicFontFromOSFont` -- confirmed broken by an actual
+  game launch (`Unable to load font face for [Cinzel SemiBold]`): the OS resolves the
+  font by name, but Unity's own font engine can't load its glyph data from a
+  process-only registration in a standalone player. Reverted to the font already
+  borrowed from the game and dropped the title text entirely.
+- Fixed: the host's own connect/disconnect never showed up in the Discord log (only
+  "server started"/"server stopped" did), confirmed by an actual game launch (hosting
+  solo). Same root cause already found for character↔account linking: the host has no
+  `ZNetPeer` representing themselves, so `ZNetJoinLeaveAnnouncePatches.cs` (which hooks
+  `RPC_PeerInfo`/`Disconnect`) never fires for them. Now announced explicitly
+  (`AnnounceHostConnected`/`AnnounceHostDisconnected`, using
+  `Game.instance.GetPlayerProfile()`'s name).
+- Discord session log events (connect/disconnect/death/server started-stopped/world
+  saved) are now posted as embeds (colored side bar, emoji + title, the templated
+  message as the description, `Player`/`Cause` fields, a "Fedoheim · <world>" footer
+  with a native timestamp) instead of a plain text message -- inspired by similar
+  community mods. `DiscordWebhook.PostMessageAsync` replaced by `PostEmbedAsync`
+  (`DiscordEmbed`/`DiscordEmbedField`), payload still hand-built (no JSON dependency,
+  see mods/CLAUDE.md).
+- Fixed, again, after a second game launch: "disconnected" showed up fine, but
+  "connected" still didn't. `AnnounceHostConnected` was firing from `ZNet.SetServer`
+  (right alongside "server started") -- too early, `Game.instance.GetPlayerProfile()`
+  isn't usable yet at that point, so the announcement silently never went out. Moved to
+  `Hud.Awake` instead (guarded on `ZNet.instance.IsServer()`), with a one-time guard so
+  a mid-session scene reload (which re-triggers `Hud.Awake`) doesn't re-announce it.
+- Loading screen text switched from `fejd.m_versionLabel.font` (too pixel/retro-looking
+  in practice, per an actual game launch) to `fejd.m_csName.font` (the game's regular UI
+  font, used for the character name on the character-selection screen) -- confirmed
+  in-game to look right. Also dropped the trailing "..." from "Chargement de
+  Fedoheim...".
+- Two new Discord log events: **new day** (🌅, fires when `EnvMan.GetDay()` -- the
+  game's own day counter, which ticks over at dawn -- returns a different value than
+  last observed) and **season changed** (🍂, fires when `SeasonReporting.
+  GetCurrentSeasonKey()` returns a different key than last observed; requires the
+  Seasons mod, simply never fires without it, same as the rest of the season
+  reporting). Both detected by polling (`CheckDayAndSeasonChange`, every 5s from
+  `Update()`, independent of the clock overlay's own throttle/visibility toggle), not a
+  game event hook -- no such hook was found for either. Both reset their "last known"
+  value on every new session (`OnServerStarted`) so resuming on a different world never
+  announces a false change left over from the previous session.

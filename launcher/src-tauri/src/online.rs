@@ -11,6 +11,14 @@ pub struct OnlinePlayer {
     pub name: String,
     pub biome: Option<String>,
     pub armor: Option<i64>,
+    // Compte Fedoheim lié à ce nom de perso (voir onlinePlayers.ts::linkCharacterName) --
+    // `None` pour un perso jamais lié. Même champs que PlayerStat ci-dessous -- sans les
+    // déclarer ici, serde les ignore silencieusement (champs inconnus tolérés par
+    // défaut) et l'avatar n'atteint jamais le frontend malgré l'API qui l'envoie bien.
+    #[serde(rename = "discordUsername")]
+    pub discord_username: Option<String>,
+    #[serde(rename = "discordAvatar")]
+    pub discord_avatar: Option<String>,
 }
 
 // Alimenté par le mod serveur FedoServerTools (voir /mods/FedoServerTools), qui poste

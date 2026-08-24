@@ -86,9 +86,16 @@
 }
 
 .players-list__armor {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   color: var(--text-faint);
   font-size: 0.78rem;
   font-family: var(--font-mono);
+}
+
+.players-list__shield-icon {
+  flex-shrink: 0;
 }
 
 .players-list__biome {

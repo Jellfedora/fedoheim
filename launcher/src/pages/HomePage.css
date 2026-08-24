@@ -231,37 +231,59 @@
   font-family: var(--font-mono);
 }
 
+/* Grille partagée par toutes les lignes (chaque <li> passe en `display: contents`,
+   voir .home-players__item ci-dessous) -- c'est ce qui permet aux colonnes
+   (avatar/nom/armure/biome) de s'aligner verticalement entre les lignes, plutôt que
+   chaque ligne ait sa propre largeur de colonne selon la longueur de son propre texte. */
 .home-players {
   list-style: none;
   margin: 0.75rem 0 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.home-players li {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 0.6rem;
+  column-gap: 0.5rem;
+  row-gap: 0.6rem;
   font-size: 0.88rem;
   color: var(--text-primary);
 }
 
 .home-players__item {
-  justify-content: space-between;
+  display: contents;
 }
 
-.home-players__name-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.home-players__avatar {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.66rem;
+}
+
+.home-players__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-players__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .home-players__armor {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  min-height: 1em;
   color: var(--text-faint);
   font-size: 0.78rem;
   font-family: var(--font-mono);
@@ -274,6 +296,8 @@
 .home-players__biome {
   color: var(--text-faint);
   font-size: 0.78rem;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .home-players__dot {

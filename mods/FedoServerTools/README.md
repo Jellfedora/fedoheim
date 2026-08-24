@@ -162,15 +162,52 @@ local preference, never synced through the modpack or the server (unlike
 
 Independent of the API reporting above: posts a running log of session events to a
 Discord channel via a webhook — who connected, who disconnected, who died, when the
-server started/stopped, and when the world was saved.
+server started/stopped, when the world was saved, when a new in-game day begins, and
+when the season changes.
+
+Each event is posted as a small Discord embed (colored side bar, emoji + title, the
+templated message as the description, a `Player`/`Cause` field where relevant, and a
+"Fedoheim · <world name>" footer with a native timestamp) rather than a plain text
+message — inspired by similar community mods, not copying their exact layout. Title,
+emoji, color and field names are fixed per event (`FedoServerToolsPlugin.
+DescribeEventKind`), not configurable — only the message text itself
+(`*Template` below) is.
 
 - **Player connected / disconnected / server started / server stopped / world saved**
   only fire on the machine acting as the server (a dedicated server, or a client
   hosting the game).
+- **The host's own connect/disconnect** is a special case: the normal connect/disconnect
+  patches (`ZNetJoinLeaveAnnouncePatches.cs`) hook `ZNet.RPC_PeerInfo`/`ZNet.Disconnect`,
+  which only ever fire for *remote* peers — the host has no `ZNetPeer` representing
+  themselves (same limitation already found for character↔account linking, see
+  `PeerSteamId.cs`). Without a special case, a host playing solo/hosted would only ever
+  see "server started/stopped" on Discord, never their own join/leave. Fixed by
+  announcing the host's own name (from `Game.instance.GetPlayerProfile()`) via
+  `FedoServerToolsPlugin.AnnounceHostConnected`/`AnnounceHostDisconnected`.
+  `AnnounceHostDisconnected` fires right alongside "server stopped"
+  (`ZNet.OnDestroy`, see `ZNetLifecyclePatches.cs`) — by then the profile is long since
+  available. `AnnounceHostConnected`, on the other hand, does **not** fire alongside
+  "server started" (`ZNet.SetServer`): confirmed by an actual game launch that
+  `Game.instance.GetPlayerProfile()` isn't usable yet at that early point (the
+  announcement silently never went out). It's called from `Hud.Awake` instead
+  (`HudAwakeAnnounceHostPatch`, guarded on `ZNet.instance.IsServer()`) — by the time the
+  HUD exists, the profile is definitely ready. A one-time guard
+  (`_hostConnectAnnounced`, never reset, same principle as `_serverStartAnnounced`)
+  keeps a mid-session scene reload (which re-triggers `Hud.Awake`) from re-announcing.
 - **Player died** fires on whichever machine actually simulates that player's
   character — normally that player's own client (or the host, for the host's own
   character). For every player's death to show up, every player needs `WebhookUrl`
   (below) filled in — it can be the same webhook for everyone.
+- **New day / season changed** are detected by polling (`CheckDayAndSeasonChange`,
+  throttled to once every 5s from `Update()` — independent of the clock overlay's own
+  1s throttle, so it still runs even with `ShowClockOverlay` off), not a game event
+  hook: a new day is `EnvMan.GetDay()` returning a different value than last observed
+  (its own day counter, which only ticks over at dawn — no separate 6 AM check needed);
+  a season change is `SeasonReporting.GetCurrentSeasonKey()` (see below, requires the
+  Seasons mod) returning a different key. Both only fire on the server/hosting client,
+  and both reset their "last known" value on every new session
+  (`FedoServerToolsPlugin.OnServerStarted`) so resuming on a different world never
+  announces a false change from whatever the previous session last saw.
 
 Settings live under `[Discord]` in `BepInEx/config/fedo.servertools.cfg`:
 
@@ -186,13 +223,16 @@ Settings live under `[Discord]` in `BepInEx/config/fedo.servertools.cfg`:
 - `LogServerStarted` / `ServerStartedTemplate`
 - `LogServerStopped` / `ServerStoppedTemplate`
 - `LogWorldSaved` / `WorldSavedTemplate`
+- `LogNewDay` / `NewDayTemplate`
+- `LogSeasonChanged` / `SeasonChangedTemplate`
 
 Each `*Template` supports `{player}` (connected/disconnected/death), `{world}` (server
-started), or `{cause}` (death only). `{cause}` describes what killed the player:
-`drowning`, `fall damage`, `fire`, `the cold`, `poison`, `the edge of the world`, the
-name of an attacking creature/player (e.g. `Greydwarf`), or a few other environmental
-causes (falling tree, cart, boat, turret, catapult, stalactite, the sea, smoke
-inhalation, unknown causes).
+started), `{cause}` (death only), `{day}` (new day only), or `{season}` (season changed
+only — the already-translated display name, same as `[Seasons]` above, not the raw
+English key). `{cause}` describes what killed the player: `drowning`, `fall damage`,
+`fire`, `the cold`, `poison`, `the edge of the world`, the name of an attacking
+creature/player (e.g. `Greydwarf`), or a few other environmental causes (falling tree,
+cart, boat, turret, catapult, stalactite, the sea, smoke inhalation, unknown causes).
 
 The "server stopped" message is best-effort: it's sent right as the server shuts down
 (`OnApplicationQuit`), so it won't arrive if the process is force-killed instead of shut
@@ -241,10 +281,25 @@ launcher tells it.
 
 Since none of the vanilla menu panels are shown once auto-join takes over, Valheim's own
 loading screen never appears either — the whole connection/world-load time would
-otherwise be a plain black screen with no text. `LoadingOverlay.cs` shows a small
-"Chargement de Fedoheim..." banner at the top of the screen for that duration, hidden as
-soon as the in-game HUD actually appears (or after 30s regardless, as a safety net if the
-connection fails).
+otherwise be a plain black screen with no text. `LoadingOverlay.cs` shows the Fedoheim
+logo and a "Chargement de Fedoheim" line below it (single line, word-wrap disabled),
+both centered in the middle of the screen, hidden as soon as the in-game HUD actually
+appears (or after 30s regardless, as a safety net if the connection fails). The text
+uses `fejd.m_csName.font` — the game's regular UI font (used for the character name on
+the character-selection screen), picked after actually comparing it in-game against
+`fejd.m_versionLabel.font` (a much more retro/pixelated look, used at first) — falls
+back to `m_versionLabel` if `m_csName` isn't initialized for some reason. See
+`LoadingLogo.cs` for why a genuinely custom font (Cinzel, matching the launcher home
+page's title) was tried and abandoned instead: the OS resolved the font by name just
+fine, but Unity's own font-rendering engine still couldn't load its actual glyph data
+("Unable to load font face", confirmed by an actual game launch) — a per-process-only
+font registration doesn't appear to be visible to Unity's internal font-file resolution
+in a standalone player, only to the OS's own text layout APIs.
+
+The logo (`fedoheim-logo.png`) isn't embedded as a .NET resource — it's a plain file
+shipped next to the DLL (see the `CopyToPlugins` target in the `.csproj`) and decoded
+straight from its PNG bytes into a `Texture2D` at runtime (`Texture2D.LoadImage`), no
+Unity import pipeline needed.
 
 ## Character ownership check
 

@@ -108,6 +108,19 @@ namespace FedoServerTools
         private ConfigEntry<string> _serverStoppedTemplate;
         private ConfigEntry<bool> _logWorldSaved;
         private ConfigEntry<string> _worldSavedTemplate;
+        private ConfigEntry<bool> _logNewDay;
+        private ConfigEntry<string> _newDayTemplate;
+        private ConfigEntry<bool> _logSeasonChanged;
+        private ConfigEntry<string> _seasonChangedTemplate;
+
+        // État pour détecter un changement (voir CheckDayAndSeasonChange) -- `null`
+        // signifie "pas encore observé pour cette session", remis à `null` par
+        // OnServerStarted à chaque nouvelle session pour ne jamais annoncer un faux
+        // changement au tout premier relevé d'une session qui reprend sur un monde/jour
+        // différent de la précédente.
+        private int? _lastKnownDay;
+        private string _lastKnownSeason;
+        private float _dayAndSeasonCheckTimer;
 
         // ZNet.SetServer peut être appelé plus d'une fois par session (transitions de
         // scène) -- l'annonce Discord de démarrage ne doit partir qu'une fois.
@@ -288,6 +301,28 @@ namespace FedoServerTools
                 "World saved.",
                 "Message posted when the world finishes saving.");
 
+            _logNewDay = Config.Bind(
+                "Discord",
+                "LogNewDay",
+                true,
+                "Logs when a new in-game day begins (at dawn, following EnvMan's own day counter). Only fires on the server (or a hosting client).");
+            _newDayTemplate = Config.Bind(
+                "Discord",
+                "NewDayTemplate",
+                "Day **{day}** has begun.",
+                "Message posted when a new in-game day begins. {day} is replaced with the day number.");
+
+            _logSeasonChanged = Config.Bind(
+                "Discord",
+                "LogSeasonChanged",
+                true,
+                "Logs when the season changes (requires the Seasons mod -- simply never fires without it). Only fires on the server (or a hosting client).");
+            _seasonChangedTemplate = Config.Bind(
+                "Discord",
+                "SeasonChangedTemplate",
+                "The season has changed to **{season}**.",
+                "Message posted when the season changes. {season} is replaced with the new season's display name (see [Seasons] above for translating it).");
+
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
 
@@ -322,6 +357,15 @@ namespace FedoServerTools
             {
                 return;
             }
+
+            // Repart de zéro à chaque nouvelle session (voir CheckDayAndSeasonChange) --
+            // sans ça, reprendre sur un monde différent (jour/saison différents de la
+            // session précédente, encore en mémoire ici) déclencherait une fausse
+            // annonce de changement dès le premier relevé. Fait une seule fois par
+            // session réelle (avant que _reportLoop ne soit posé ci-dessous), pas à
+            // chaque rechargement de scène qui rappelle aussi cette méthode.
+            _lastKnownDay = null;
+            _lastKnownSeason = null;
 
             _reportLoop = StartCoroutine(ReportLoop());
         }
@@ -387,6 +431,65 @@ namespace FedoServerTools
             }
 
             RefreshClockOverlay();
+            CheckDayAndSeasonChange();
+        }
+
+        // Indépendant de RefreshClockOverlay ci-dessous (qui ne tourne pas du tout si
+        // ShowClockOverlay est désactivé) -- un jour/une saison qui change doit être
+        // annoncé que l'horloge soit affichée ou non. Throttlé à 5s (pas la peine de
+        // vérifier à un rythme plus fin pour un événement qui n'arrive qu'une fois toutes
+        // les ~30 min de jeu en réel). Serveur/hôte seulement, comme les autres logs de
+        // session (voir SendDiscordMessage).
+        private void CheckDayAndSeasonChange()
+        {
+            if (ZNet.instance == null || !ZNet.instance.IsServer())
+            {
+                return;
+            }
+
+            _dayAndSeasonCheckTimer -= Time.deltaTime;
+            if (_dayAndSeasonCheckTimer > 0f)
+            {
+                return;
+            }
+
+            _dayAndSeasonCheckTimer = 5f;
+
+            if (EnvMan.instance != null)
+            {
+                int currentDay = EnvMan.instance.GetDay();
+                if (_lastKnownDay.HasValue && _lastKnownDay.Value != currentDay)
+                {
+                    AnnounceNewDay(currentDay);
+                }
+
+                _lastKnownDay = currentDay;
+            }
+
+            // GetCurrentSeasonName() (voir plus bas) renvoie déjà `null` si le mod Seasons
+            // n'est pas installé -- dans ce cas `_lastKnownSeason` ne bouge jamais et
+            // cette annonce ne se déclenche donc simplement jamais, comme le reste du
+            // reporting de saison.
+            string currentSeason = GetCurrentSeasonName();
+            if (currentSeason != null)
+            {
+                if (_lastKnownSeason != null && _lastKnownSeason != currentSeason)
+                {
+                    AnnounceSeasonChanged(currentSeason);
+                }
+
+                _lastKnownSeason = currentSeason;
+            }
+        }
+
+        public void AnnounceNewDay(int day)
+        {
+            SendDiscordMessage(_logNewDay, DiscordEventKind.NewDay, _newDayTemplate, null, day: day);
+        }
+
+        public void AnnounceSeasonChanged(string season)
+        {
+            SendDiscordMessage(_logSeasonChanged, DiscordEventKind.SeasonChanged, _seasonChangedTemplate, null, season: season);
         }
 
         // Throttlé à ~1x/seconde (pas la peine de reformater une chaîne à chaque frame
@@ -712,17 +815,61 @@ namespace FedoServerTools
 
         public void AnnouncePlayerConnected(string playerName)
         {
-            SendDiscordMessage(_logPlayerConnected, _playerConnectedTemplate, playerName);
+            SendDiscordMessage(_logPlayerConnected, DiscordEventKind.PlayerConnected, _playerConnectedTemplate, playerName);
         }
 
         public void AnnouncePlayerDisconnected(string playerName)
         {
-            SendDiscordMessage(_logPlayerDisconnected, _playerDisconnectedTemplate, playerName);
+            SendDiscordMessage(_logPlayerDisconnected, DiscordEventKind.PlayerDisconnected, _playerDisconnectedTemplate, playerName);
+        }
+
+        // L'hôte d'une partie solo/hébergée n'a pas de ZNetPeer le représentant (voir
+        // PeerSteamId.cs, même limitation déjà rencontrée pour la liaison de compte) --
+        // ZNetPeerInfoAnnouncePatch/ZNetDisconnectAnnouncePatch (voir
+        // ZNetJoinLeaveAnnouncePatches.cs) ne se déclenchent donc jamais pour lui, et
+        // sans ce cas à part, l'hôte ne voyait jamais son propre connect/disconnect
+        // annoncé sur Discord (seul "Serveur démarré/arrêté" apparaissait).
+        //
+        // Appelé depuis Hud.Awake (voir ZNetLifecyclePatches.cs), pas depuis
+        // ZNet.SetServer comme AnnounceServerStarted ci-dessous -- testé en jeu : à ce
+        // stade précoce, Game.instance.GetPlayerProfile() ne renvoie encore rien
+        // d'exploitable (le profil n'est pleinement disponible qu'une fois le
+        // personnage effectivement chargé dans la partie), donc l'annonce ne partait
+        // jamais. Hud.Awake garantit que ce n'est plus le cas. `_hostConnectAnnounced`
+        // (jamais réinitialisé, même principe que `_serverStartAnnounced`) évite de
+        // ré-annoncer à chaque rechargement de scène (Hud.Awake se redéclenche à
+        // chacun) dans une même session.
+        private bool _hostConnectAnnounced;
+
+        public void AnnounceHostConnected()
+        {
+            if (_hostConnectAnnounced)
+            {
+                return;
+            }
+
+            string hostName = Game.instance?.GetPlayerProfile()?.GetName();
+            if (string.IsNullOrEmpty(hostName))
+            {
+                return;
+            }
+
+            _hostConnectAnnounced = true;
+            AnnouncePlayerConnected(hostName);
+        }
+
+        public void AnnounceHostDisconnected()
+        {
+            string hostName = Game.instance?.GetPlayerProfile()?.GetName();
+            if (!string.IsNullOrEmpty(hostName))
+            {
+                AnnouncePlayerDisconnected(hostName);
+            }
         }
 
         public void AnnouncePlayerDied(string playerName, string cause)
         {
-            SendDiscordMessage(_logPlayerDeath, _playerDeathTemplate, playerName, cause: cause);
+            SendDiscordMessage(_logPlayerDeath, DiscordEventKind.PlayerDeath, _playerDeathTemplate, playerName, cause: cause);
         }
 
         public void AnnounceServerStarted(string worldName)
@@ -733,7 +880,7 @@ namespace FedoServerTools
             }
 
             _serverStartAnnounced = true;
-            SendDiscordMessage(_logServerStarted, _serverStartedTemplate, null, worldName);
+            SendDiscordMessage(_logServerStarted, DiscordEventKind.ServerStarted, _serverStartedTemplate, null, worldName);
         }
 
         public void AnnounceWorldSaved()
@@ -743,7 +890,7 @@ namespace FedoServerTools
                 return;
             }
 
-            SendDiscordMessage(_logWorldSaved, _worldSavedTemplate, null);
+            SendDiscordMessage(_logWorldSaved, DiscordEventKind.WorldSaved, _worldSavedTemplate, null);
         }
 
         public void AnnounceServerStopped()
@@ -752,10 +899,51 @@ namespace FedoServerTools
             // pendant de simples transitions de menu (pas seulement un vrai arrêt de
             // serveur), donc on ne doit surtout pas bloquer le thread principal ici --
             // contrairement à ReportBlocking ci-dessus, qui a une bonne raison de le faire.
-            SendDiscordMessage(_logServerStopped, _serverStoppedTemplate, null);
+            SendDiscordMessage(_logServerStopped, DiscordEventKind.ServerStopped, _serverStoppedTemplate, null);
         }
 
-        private void SendDiscordMessage(ConfigEntry<bool> toggle, ConfigEntry<string> template, string playerName, string worldName = null, string cause = null)
+        // Émoji + titre + couleur (décimal, format embed Discord) par type d'événement --
+        // inspiré de mods communautaires équivalents (barre de couleur + petit titre à
+        // émoji), sans reprendre leur mise en page exacte. Volontairement fixes (pas de
+        // ConfigEntry) : contrairement aux `*Template` ci-dessus (le texte réellement
+        // affiché, personnalisable), ce ne sont que des éléments de mise en forme.
+        private enum DiscordEventKind
+        {
+            PlayerConnected,
+            PlayerDisconnected,
+            PlayerDeath,
+            ServerStarted,
+            ServerStopped,
+            WorldSaved,
+            NewDay,
+            SeasonChanged,
+        }
+
+        private static (string Title, int Color) DescribeEventKind(DiscordEventKind kind)
+        {
+            switch (kind)
+            {
+                case DiscordEventKind.PlayerConnected: return ("👋 Player Joined", 0x57F287);
+                case DiscordEventKind.PlayerDisconnected: return ("🚪 Player Left", 0xED4245);
+                case DiscordEventKind.PlayerDeath: return ("💀 Player Died", 0x992D22);
+                case DiscordEventKind.ServerStarted: return ("🟢 Server Started", 0x57F287);
+                case DiscordEventKind.ServerStopped: return ("🔴 Server Stopped", 0xED4245);
+                case DiscordEventKind.WorldSaved: return ("💾 World Saved", 0x25D3E4);
+                case DiscordEventKind.NewDay: return ("🌅 New Day", 0xF1C40F);
+                case DiscordEventKind.SeasonChanged: return ("🍂 Season Changed", 0x9B59B6);
+                default: return ("Fedoheim", 0x25D3E4);
+            }
+        }
+
+        private void SendDiscordMessage(
+            ConfigEntry<bool> toggle,
+            DiscordEventKind kind,
+            ConfigEntry<string> template,
+            string playerName,
+            string worldName = null,
+            string cause = null,
+            int? day = null,
+            string season = null)
         {
             if (!toggle.Value)
             {
@@ -781,6 +969,40 @@ namespace FedoServerTools
             {
                 message = message.Replace("{cause}", cause);
             }
+            if (day.HasValue)
+            {
+                message = message.Replace("{day}", day.Value.ToString());
+            }
+            if (season != null)
+            {
+                message = message.Replace("{season}", season);
+            }
+
+            var (title, color) = DescribeEventKind(kind);
+            var embed = new DiscordEmbed { Title = title, Description = message, Color = color };
+            if (playerName != null)
+            {
+                embed.Fields.Add(new DiscordEmbedField("Player", playerName));
+            }
+            if (cause != null)
+            {
+                embed.Fields.Add(new DiscordEmbedField("Cause", cause));
+            }
+            if (day.HasValue)
+            {
+                embed.Fields.Add(new DiscordEmbedField("Day", day.Value.ToString()));
+            }
+            if (season != null)
+            {
+                embed.Fields.Add(new DiscordEmbedField("Season", season));
+            }
+
+            // Le nom du monde -- passé explicitement pour "Serveur démarré" (voir
+            // AnnounceServerStarted, seul événement où ZNet.GetWorldName() peut lever une
+            // NullReferenceException juste après SetServer), sinon relu directement :
+            // toujours disponible aux autres points d'appel (bien après SetServer).
+            string footerWorldName = worldName ?? GetWorldNameSafe();
+            embed.FooterText = footerWorldName != null ? $"Fedoheim · {footerWorldName}" : "Fedoheim";
 
             string webhookUrl = _discordWebhookUrl.Value;
             var logger = Logger;
@@ -789,13 +1011,25 @@ namespace FedoServerTools
             {
                 try
                 {
-                    await DiscordWebhook.PostMessageAsync(webhookUrl, message);
+                    await DiscordWebhook.PostEmbedAsync(webhookUrl, embed);
                 }
                 catch (Exception e)
                 {
                     logger.LogError($"FedoServerTools: failed to send Discord message: {e}");
                 }
             });
+        }
+
+        private static string GetWorldNameSafe()
+        {
+            try
+            {
+                return ZNet.instance != null ? ZNet.instance.GetWorldName() : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

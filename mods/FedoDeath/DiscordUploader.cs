@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
-namespace FedoDeathGif
+namespace FedoDeath
 {
     public static class DiscordUploader
     {
@@ -13,7 +13,7 @@ namespace FedoDeathGif
         {
             if (string.IsNullOrWhiteSpace(webhookUrl))
             {
-                throw new InvalidOperationException("Discord webhook not configured (see fedo.deathgif.cfg).");
+                throw new InvalidOperationException("Discord webhook not configured (see fedo.death.cfg).");
             }
 
             using var content = new MultipartFormDataContent();

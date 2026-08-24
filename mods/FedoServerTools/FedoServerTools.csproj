@@ -72,6 +72,12 @@
       <HintPath>$(ValheimManagedDir)/Unity.TextMeshPro.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Texture2D.LoadImage (extension method, voir LoadingLogo.cs), décodage PNG à la
+         volée sans passer par le pipeline d'import de l'éditeur Unity. -->
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <!-- Dépendance douce (voir SeasonReporting.cs) : jamais copiée (Private=false), le
          mod shudnal/Seasons doit être fourni par le modpack lui-même s'il est présent.
          Ce mod fonctionne sans lui (saison simplement non rapportée). -->
@@ -81,13 +87,16 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Copie la DLL compilée dans le dossier plugins réel du jeu -->
+  <!-- Copie la DLL compilée, ainsi que le logo Fedoheim de l'écran de chargement (voir
+       LoadingLogo.cs), dans le dossier plugins réel du jeu -->
   <Target Name="CopyToPlugins" AfterTargets="Build">
     <ItemGroup>
       <PluginOutputFiles Include="$(TargetDir)*.dll" />
+      <PluginAssetFiles Include="fedoheim-logo.png" />
     </ItemGroup>
     <MakeDir Directories="$(ValheimPluginsDir)" Condition="!Exists('$(ValheimPluginsDir)')" />
     <Copy SourceFiles="@(PluginOutputFiles)" DestinationFolder="$(ValheimPluginsDir)" />
+    <Copy SourceFiles="@(PluginAssetFiles)" DestinationFolder="$(ValheimPluginsDir)" />
   </Target>
 
 </Project>

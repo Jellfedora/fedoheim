@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { ShieldIcon } from "../components/ShieldIcon";
 import { formatDate } from "../utils/date";
 import "./PlayersPage.css";
 
@@ -87,6 +88,7 @@ export function PlayersPage({ slug }: PlayersPageProps) {
               <span className="players-list__name">{player.name}</span>
               {player.armor !== null && (
                 <span className="players-list__armor" title="Armure">
+                  <ShieldIcon className="players-list__shield-icon" />
                   {player.armor}
                 </span>
               )}

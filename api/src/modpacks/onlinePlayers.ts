@@ -264,10 +264,24 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
     const status: ReportedStatus | "offline" = fresh ? report.status : "offline";
     const online = status === "online";
 
+    // Même jointure que GET /modpacks/:slug/player-stats : le compte Fedoheim lié à ce
+    // nom de perso (voir linkCharacterName), pour afficher l'avatar Discord à côté du
+    // joueur sur la page d'accueil — `null` pour un perso jamais lié.
+    const players = (online ? (report?.players ?? []) : []).map((player) => {
+      const linkedUser = db.select().from(users).where(eq(users.characterName, player.name)).get();
+      return {
+        name: player.name,
+        biome: player.biome,
+        armor: player.armor,
+        discordUsername: linkedUser?.discordUsername ?? null,
+        discordAvatar: linkedUser ? discordAvatarUrl(linkedUser) : null,
+      };
+    });
+
     return reply.send({
       status,
       online,
-      players: online ? (report?.players ?? []) : [],
+      players,
       // Même principe que `players` : la dernière saison connue reste dans le rapport
       // le temps que `status` retombe à `offline` (jusqu'à 90s après un arrêt), mais
       // n'a plus de sens à afficher dès que le serveur n'est plus vraiment "online" --

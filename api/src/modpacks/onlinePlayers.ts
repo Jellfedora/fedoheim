@@ -25,6 +25,11 @@ interface OnlinePlayerReport {
   // Fedoheim correspondant (voir linkCharacterName ci-dessous), jamais affiché tel
   // quel.
   steamId: string | null;
+  // `true` uniquement sur le rapport où ce joueur vient de passer vivant->mort (voir
+  // FedoServerToolsPlugin.JustDied) -- un edge détecté côté mod, pas un état ; incrémente
+  // playerStats.deaths une fois par mort (voir upsertPlayerStats ci-dessous), jamais
+  // recompté sur les rapports suivants tant qu'il ne meurt pas à nouveau.
+  died: boolean;
 }
 
 // Envoyé explicitement par le mod : "starting" juste après le chargement du plugin
@@ -35,22 +40,6 @@ interface OnlinePlayerReport {
 // ReportBlocking côté mod). Distinct de la fraîcheur du rapport ci-dessous, qui couvre
 // elle le cas d'un crash (aucun de ces rapports n'a pu partir) — voir "offline" plus bas.
 type ReportedStatus = "starting" | "online" | "stopping";
-
-interface OnlinePlayerReport {
-  name: string;
-  // Texte final déjà traduit par le mod (voir fedo.servertools.cfg, section [Biomes]) —
-  // affiché tel quel, aucun mapping ici. `null` si le joueur a désactivé le partage de
-  // sa position et que ForcePublicPosition ne le contourne pas (voir le mod).
-  biome: string | null;
-  // Armure totale actuelle (Humanoid.GetBodyArmor(), arrondie côté mod) — `null` si le
-  // personnage n'a pas pu être retrouvé côté serveur au moment du rapport.
-  armor: number | null;
-  // SteamID64 du pair connecté, résolu côté serveur (voir FedoServerToolsPlugin) —
-  // `null` si non résolvable. Sert uniquement à lier ce nom de perso au compte
-  // Fedoheim correspondant (voir linkCharacterName ci-dessous), jamais affiché tel
-  // quel.
-  steamId: string | null;
-}
 
 interface OnlineReport {
   players: OnlinePlayerReport[];
@@ -80,6 +69,9 @@ const reportBodySchema = z.object({
         biome: z.string().trim().nullable().default(null),
         armor: z.number().nullable().default(null),
         steamId: z.string().trim().nullable().default(null),
+        // `default(false)` : absent sur un rapport envoyé par une version de
+        // FedoServerTools antérieure à l'ajout de ce champ, pas une vraie mort.
+        died: z.boolean().default(false),
       }),
     )
     .max(500),
@@ -130,12 +122,24 @@ function upsertPlayerStats(modpackId: number, players: OnlinePlayerReport[], now
 
     if (existing) {
       db.update(playerStats)
-        .set({ biome: player.biome, armor: player.armor, lastSeenAt: now })
+        .set({
+          biome: player.biome,
+          armor: player.armor,
+          deaths: player.died ? existing.deaths + 1 : existing.deaths,
+          lastSeenAt: now,
+        })
         .where(eq(playerStats.id, existing.id))
         .run();
     } else {
       db.insert(playerStats)
-        .values({ modpackId, name: player.name, biome: player.biome, armor: player.armor, lastSeenAt: now })
+        .values({
+          modpackId,
+          name: player.name,
+          biome: player.biome,
+          armor: player.armor,
+          deaths: player.died ? 1 : 0,
+          lastSeenAt: now,
+        })
         .run();
     }
   }
@@ -326,6 +330,7 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
           name: row.name,
           biome: row.biome,
           armor: row.armor,
+          deaths: row.deaths,
           online: onlineNames.has(row.name),
           lastSeenAt: row.lastSeenAt.toISOString(),
           discordUsername: linkedUser?.discordUsername ?? null,

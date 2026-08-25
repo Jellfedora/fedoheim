@@ -74,6 +74,7 @@ pub struct PlayerStat {
     pub name: String,
     pub biome: Option<String>,
     pub armor: Option<i64>,
+    pub deaths: i64,
     pub online: bool,
     #[serde(rename = "lastSeenAt")]
     pub last_seen_at: String,

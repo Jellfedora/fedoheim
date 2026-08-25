@@ -148,6 +148,11 @@ export const playerStats = sqliteTable(
     name: text("name").notNull(),
     biome: text("biome"),
     armor: integer("armor"),
+    // Nombre total de morts rapportées pour ce joueur sur ce profil (voir
+    // onlinePlayers.ts::upsertPlayerStats) -- incrémenté une fois par transition
+    // vivant->mort détectée côté mod (FedoServerToolsPlugin.JustDied), jamais remis à
+    // zéro.
+    deaths: integer("deaths").notNull().default(0),
     lastSeenAt: integer("last_seen_at", { mode: "timestamp" }).notNull(),
   },
   (table) => [uniqueIndex("player_stats_modpack_name_idx").on(table.modpackId, table.name)],

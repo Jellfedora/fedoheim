@@ -1,0 +1,1 @@
+ALTER TABLE `player_stats` ADD `deaths` integer DEFAULT 0 NOT NULL;

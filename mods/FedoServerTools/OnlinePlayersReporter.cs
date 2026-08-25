@@ -72,6 +72,7 @@ namespace FedoServerTools
                 sb.Append(players[i].Armor.HasValue ? players[i].Armor.Value.ToString(CultureInfo.InvariantCulture) : "null");
                 sb.Append(",\"steamId\":");
                 sb.Append(players[i].SteamId != null ? JsonEscape(players[i].SteamId) : "null");
+                sb.Append(",\"died\":").Append(players[i].Died ? "true" : "false");
                 sb.Append('}');
             }
             sb.Append(']');

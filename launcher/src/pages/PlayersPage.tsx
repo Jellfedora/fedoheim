@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ShieldIcon } from "../components/ShieldIcon";
+import { SkullIcon } from "../components/SkullIcon";
 import { formatDate } from "../utils/date";
 import "./PlayersPage.css";
 
@@ -17,6 +18,9 @@ interface PlayerStat {
   // jamais résolus (position non publique, personnage introuvable côté serveur...).
   biome: string | null;
   armor: number | null;
+  // Total de morts rapportées pour ce joueur sur ce profil (voir
+  // onlinePlayers.ts::upsertPlayerStats côté API) -- jamais remis à zéro.
+  deaths: number;
   online: boolean;
   lastSeenAt: string;
   // Compte Fedoheim lié à ce nom de perso (voir onlinePlayers.ts::linkCharacterName) --
@@ -61,8 +65,7 @@ export function PlayersPage({ slug }: PlayersPageProps) {
   return (
     <div className="players-page">
       <header className="players-page__header">
-        <h1>Joueurs</h1>
-        <p>Tous les joueurs déjà vus sur ce serveur, avec leur dernier biome et armure connus.</p>
+        <h1>Nos intrépides Vikings</h1>
       </header>
 
       {state.kind === "loading" && <p className="players-page__status">Chargement...</p>}
@@ -90,6 +93,12 @@ export function PlayersPage({ slug }: PlayersPageProps) {
                 <span className="players-list__armor" title="Armure">
                   <ShieldIcon className="players-list__shield-icon" />
                   {player.armor}
+                </span>
+              )}
+              {player.deaths > 0 && (
+                <span className="players-list__deaths" title="Morts">
+                  <SkullIcon className="players-list__skull-icon" />
+                  {player.deaths}
                 </span>
               )}
               {player.biome && <span className="players-list__biome">{player.biome}</span>}

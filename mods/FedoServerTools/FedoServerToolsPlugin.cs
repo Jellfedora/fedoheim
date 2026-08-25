@@ -122,6 +122,14 @@ namespace FedoServerTools
         private string _lastKnownSeason;
         private float _dayAndSeasonCheckTimer;
 
+        // Dernier état vivant/mort connu par nom de joueur (voir GetConnectedPlayers) --
+        // sert uniquement à détecter la transition vivant->mort d'un rapport à l'autre
+        // (PlayerReport.Died), pas un historique. Remis à zéro à chaque nouvelle session
+        // comme _lastKnownDay/_lastKnownSeason ci-dessus, pour la même raison : reprendre
+        // une session ne doit pas compter comme une mort un joueur déjà mort au moment où
+        // ce mod recommence à observer.
+        private readonly Dictionary<string, bool> _lastKnownDead = new Dictionary<string, bool>();
+
         // ZNet.SetServer peut être appelé plus d'une fois par session (transitions de
         // scène) -- l'annonce Discord de démarrage ne doit partir qu'une fois.
         private bool _serverStartAnnounced;
@@ -366,6 +374,7 @@ namespace FedoServerTools
             // chaque rechargement de scène qui rappelle aussi cette méthode.
             _lastKnownDay = null;
             _lastKnownSeason = null;
+            _lastKnownDead.Clear();
 
             _reportLoop = StartCoroutine(ReportLoop());
         }
@@ -574,7 +583,12 @@ namespace FedoServerTools
                 }
 
                 playersByName.TryGetValue(info.m_name, out var player);
-                result.Add(new PlayerReport(info.m_name, GetBiomeName(info), GetArmor(player), PeerSteamId.Resolve(info.m_name)));
+                result.Add(new PlayerReport(
+                    info.m_name,
+                    GetBiomeName(info),
+                    GetArmor(player),
+                    PeerSteamId.Resolve(info.m_name),
+                    JustDied(info.m_name, player)));
             }
 
             return result;
@@ -635,6 +649,36 @@ namespace FedoServerTools
                 Log?.LogWarning($"FedoServerTools: failed to resolve biome for {player.m_name}: {e.Message}");
                 return null;
             }
+        }
+
+        // Détecte la transition vivant->mort d'un rapport à l'autre (voir _lastKnownDead
+        // ci-dessus) pour compter chaque mort une seule fois, même si le joueur reste sur
+        // son écran de tombe pendant plusieurs cycles de rapport (30s par défaut) avant de
+        // respawn. `player == null` (personnage introuvable côté serveur) laisse l'état
+        // précédent inchangé plutôt que de le remettre à "vivant" -- un simple souci de
+        // résolution ne doit pas effacer une mort déjà détectée ni permettre d'en recompter
+        // une au rapport suivant.
+        private static bool JustDied(string name, Player player)
+        {
+            if (player == null)
+            {
+                return false;
+            }
+
+            bool isDeadNow;
+            try
+            {
+                isDeadNow = player.IsDead();
+            }
+            catch (Exception e)
+            {
+                Log?.LogWarning($"FedoServerTools: failed to resolve death state for {name}: {e.Message}");
+                return false;
+            }
+
+            Instance._lastKnownDead.TryGetValue(name, out bool wasDead);
+            Instance._lastKnownDead[name] = isDeadNow;
+            return isDeadNow && !wasDead;
         }
 
         private static int? GetArmor(Player player)

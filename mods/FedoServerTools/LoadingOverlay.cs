@@ -52,7 +52,7 @@ namespace FedoServerTools
                 contentRect.anchorMax = new Vector2(0.5f, 0.5f);
                 contentRect.pivot = new Vector2(0.5f, 0.5f);
                 contentRect.anchoredPosition = Vector2.zero;
-                contentRect.sizeDelta = new Vector2(900f, 160f);
+                contentRect.sizeDelta = new Vector2(900f, 260f);
 
                 Texture2D logoTexture = LoadingLogo.Get();
                 if (logoTexture != null)
@@ -64,7 +64,7 @@ namespace FedoServerTools
                     logoRect.anchorMax = new Vector2(0.5f, 1f);
                     logoRect.pivot = new Vector2(0.5f, 1f);
                     logoRect.anchoredPosition = new Vector2(0f, 0f);
-                    logoRect.sizeDelta = new Vector2(96f, 96f);
+                    logoRect.sizeDelta = new Vector2(160f, 160f);
 
                     var image = logoGo.AddComponent<RawImage>();
                     image.texture = logoTexture;
@@ -78,11 +78,11 @@ namespace FedoServerTools
                 rect.anchorMin = new Vector2(0.5f, 1f);
                 rect.anchorMax = new Vector2(0.5f, 1f);
                 rect.pivot = new Vector2(0.5f, 1f);
-                rect.anchoredPosition = new Vector2(0f, -110f);
+                rect.anchoredPosition = new Vector2(0f, -180f);
                 // Assez large pour ne jamais forcer de retour à la ligne, quel que soit
                 // le texte passé (voir enableWordWrapping ci-dessous, filet de sécurité
                 // supplémentaire si jamais un texte plus long était passé un jour).
-                rect.sizeDelta = new Vector2(900f, 50f);
+                rect.sizeDelta = new Vector2(900f, 70f);
 
                 var label = textGo.AddComponent<TextMeshProUGUI>();
                 // m_csName (le nom du perso sur l'écran de sélection) utilise la police
@@ -94,7 +94,7 @@ namespace FedoServerTools
                 {
                     label.font = font;
                 }
-                label.fontSize = 28f;
+                label.fontSize = 40f;
                 label.alignment = TextAlignmentOptions.Top;
                 label.enableWordWrapping = false;
                 label.color = Color.white;

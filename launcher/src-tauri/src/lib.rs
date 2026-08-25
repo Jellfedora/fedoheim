@@ -226,6 +226,7 @@ async fn play(
 
     valheim::write_mod_session(
         &profile_dir,
+        &slug,
         current_character_name(&state).as_deref(),
         current_discord_username(&state).as_deref(),
         auto_connect.as_ref(),
@@ -351,11 +352,17 @@ async fn send_log_to_discord(app: AppHandle, state: State<'_, AppState>) -> Resu
 async fn launch_only(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let profile_dir = valheim::profile_dir(&app)?;
 
-    let auto_connect = modpack::load_local_manifest(&profile_dir).and_then(|m| m.auto_connect);
+    let local_manifest = modpack::load_local_manifest(&profile_dir);
+    let slug = local_manifest
+        .as_ref()
+        .map(|m| m.slug.clone())
+        .unwrap_or_default();
+    let auto_connect = local_manifest.and_then(|m| m.auto_connect);
     // Best-effort, voir refresh_session_inner et le même appel dans `play` ci-dessus.
     refresh_session_inner(&app, &state).await;
     valheim::write_mod_session(
         &profile_dir,
+        &slug,
         current_character_name(&state).as_deref(),
         current_discord_username(&state).as_deref(),
         auto_connect.as_ref(),

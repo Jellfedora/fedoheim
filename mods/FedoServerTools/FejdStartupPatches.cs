@@ -57,32 +57,61 @@ namespace FedoServerTools
                 // commentaire de tête pour pourquoi pas juste ShowCharacterSelection().
                 __instance.OnStartGame();
 
-                if (!string.IsNullOrEmpty(session.CharacterName) && PlayerProfile.HaveProfile(session.CharacterName)
-                    && SelectExistingProfile(__instance, session.CharacterName))
+                // Statut natif du jeu (ZNet.GetConnectionStatus(), public -- c'est
+                // exactement ce que Valheim utilise lui-même pour son propre écran
+                // d'erreur de connexion, voir ShowConnectError dans le désassemblage)
+                // plutôt qu'un contrôle maison contre l'API Fedoheim : `None` signifie
+                // qu'aucune tentative de connexion n'a encore eu lieu dans ce process --
+                // tout premier lancement, auto-connexion directe. Toute autre valeur
+                // (ErrorConnectFailed, ErrorDisconnected, ErrorKicked, ErrorBanned...)
+                // signifie qu'on revient sur ce menu APRÈS une tentative qui n'a pas
+                // abouti -- ne pas retenter en silence, laisser choisir (voir
+                // DisconnectChoiceOverlay). Remplace l'ancien drapeau maison
+                // `HasConnectedOnce` + la vérification préalable contre l'API : le jeu
+                // sait déjà, de façon fiable et sans appel réseau, si la dernière
+                // tentative a échoué.
+                ZNet.ConnectionStatus status = ZNet.GetConnectionStatus();
+                if (status == ZNet.ConnectionStatus.None)
                 {
-                    FedoServerToolsPlugin.Log?.LogInfo($"FedoServerTools: found local character '{session.CharacterName}', skipping menus.");
-                    // Aucun panneau de menu ne sera plus affiché à partir d'ici jusqu'à
-                    // l'entrée en jeu -- sans ça, écran noir sans texte pendant tout le
-                    // chargement (voir LoadingOverlay.cs).
-                    LoadingOverlay.Show(__instance, "Chargement de Fedoheim");
-                    __instance.OnCharacterStart();
-                    AutoConnect.Connect(__instance, session.AutoConnect);
+                    ProceedToGame(__instance, session);
+                    return;
                 }
-                else
-                {
-                    FedoServerToolsPlugin.Log?.LogInfo("FedoServerTools: no linked/local character yet, jumping to character creation.");
-                    __instance.OnCharacterNew();
-                    PrefillCharacterName(__instance, ResolvePrefillName(session.DiscordUsername));
-                    // "Annuler" ne ramène qu'à l'écran de sélection de perso (jamais au
-                    // menu principal, resté masqué), mais laisserait le joueur reprendre
-                    // la main sur un flux censé être automatique -- masqué tant que
-                    // l'auto-connexion est active.
-                    HideCancelButton(__instance);
-                }
+
+                FedoServerToolsPlugin.Log?.LogInfo($"FedoServerTools: back at the menu with connection status {status}, asking before retrying.");
+                DisconnectChoiceOverlay.Show(__instance, session.Slug, session.AutoConnect.Type == "server", () => ProceedToGame(__instance, session));
             }
             catch (Exception e)
             {
                 FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: auto-navigate failed: {e}");
+            }
+        }
+
+        // Chemin de connexion normal (premier lancement, ou clic sur "Se reconnecter" de
+        // DisconnectChoiceOverlay) -- factorisé pour être appelable des deux endroits sans
+        // dupliquer la logique de sélection de perso.
+        private static void ProceedToGame(FejdStartup instance, SessionFile session)
+        {
+            if (!string.IsNullOrEmpty(session.CharacterName) && PlayerProfile.HaveProfile(session.CharacterName)
+                && SelectExistingProfile(instance, session.CharacterName))
+            {
+                FedoServerToolsPlugin.Log?.LogInfo($"FedoServerTools: found local character '{session.CharacterName}', skipping menus.");
+                // Aucun panneau de menu ne sera plus affiché à partir d'ici jusqu'à
+                // l'entrée en jeu -- sans ça, écran noir sans texte pendant tout le
+                // chargement (voir LoadingOverlay.cs).
+                LoadingOverlay.Show(instance, "Chargement de Fedoheim");
+                instance.OnCharacterStart();
+                AutoConnect.Connect(instance, session.AutoConnect);
+            }
+            else
+            {
+                FedoServerToolsPlugin.Log?.LogInfo("FedoServerTools: no linked/local character yet, jumping to character creation.");
+                instance.OnCharacterNew();
+                PrefillCharacterName(instance, ResolvePrefillName(session.DiscordUsername));
+                // "Annuler" ne ramène qu'à l'écran de sélection de perso (jamais au
+                // menu principal, resté masqué), mais laisserait le joueur reprendre
+                // la main sur un flux censé être automatique -- masqué tant que
+                // l'auto-connexion est active.
+                HideCancelButton(instance);
             }
         }
 

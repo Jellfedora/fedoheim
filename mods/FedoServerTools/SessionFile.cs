@@ -33,6 +33,12 @@ namespace FedoServerTools
         public string DiscordUsername;
         public AutoConnectTarget AutoConnect;
 
+        // Slug du profil de modpack actif au moment du lancement (voir App.tsx::
+        // effectiveModpackSlug côté launcher) -- sert uniquement à interroger l'API
+        // publique GET /modpacks/:slug/online-players (voir ServerStatusLine.cs), pas de
+        // jeton nécessaire pour ça (endpoint public, comme /health).
+        public string Slug;
+
         // Le dossier de travail du jeu au lancement n'est pas forcément le profil
         // externe (voir valheim.rs::profile_dir, notamment sur Windows où c'est
         // l'install Steam) -- on remonte donc depuis l'emplacement de cette DLL
@@ -82,6 +88,7 @@ namespace FedoServerTools
             {
                 CharacterName = Get("character_name"),
                 DiscordUsername = Get("discord_username"),
+                Slug = Get("slug"),
             };
 
             string type = Get("auto_connect_type");

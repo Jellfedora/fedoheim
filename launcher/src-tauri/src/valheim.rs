@@ -124,11 +124,13 @@ fn mod_session_path(profile_dir: &Path) -> PathBuf {
 // le lancement.
 pub fn write_mod_session(
     profile_dir: &Path,
+    slug: &str,
     character_name: Option<&str>,
     discord_username: Option<&str>,
     auto_connect: Option<&crate::modpack::AutoConnectTarget>,
 ) {
     let mut lines = vec![
+        format!("slug={slug}"),
         format!("character_name={}", character_name.unwrap_or("")),
         format!("discord_username={}", discord_username.unwrap_or("")),
     ];

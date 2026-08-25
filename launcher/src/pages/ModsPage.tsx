@@ -247,6 +247,11 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
   const [bepinex, setBepinex] = useState<BepinexConfig | null>(null);
   const [bepinexStatus, setBepinexStatus] = useState<BepinexStatus | null>(null);
   const [bepinexState, setBepinexState] = useState<BepinexState>({ kind: "idle" });
+  // `bepinex`/`bepinexStatus` valent `null` aussi bien "pas encore chargé" que "chargé,
+  // vraiment pas configuré" -- sans ce drapeau, la carte BepInEx affiche l'avertissement
+  // orange pendant l'instant où la requête est encore en vol, avant de retomber sur le
+  // bon état une fois la réponse arrivée (flash visible à chaque ouverture de la page).
+  const [bepinexLoaded, setBepinexLoaded] = useState(false);
 
   const [apiBaseUrl, setApiBaseUrl] = useState("");
 
@@ -258,18 +263,24 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
   // L'admin a besoin de url/sha256 pour préremplir l'éditeur ; un joueur n'a besoin que
   // de savoir si c'est configuré (voir BepinexStatus, endpoint public).
   useEffect(() => {
+    setBepinexLoaded(false);
     if (isAdmin) {
       invoke<BepinexConfig | null>("fetch_bepinex", { slug })
         .then(setBepinex)
-        .catch((err) => setBepinexState({ kind: "error", message: String(err) }));
+        .catch((err) => setBepinexState({ kind: "error", message: String(err) }))
+        .finally(() => setBepinexLoaded(true));
     } else {
       invoke<BepinexStatus>("fetch_bepinex_status", { slug })
         .then(setBepinexStatus)
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setBepinexLoaded(true));
     }
   }, [isAdmin, slug]);
 
   const bepinexConfigured = isAdmin ? !!bepinex : !!bepinexStatus?.configured;
+  // Ne montre l'avertissement "non configuré" qu'une fois la réponse arrivée -- voir
+  // bepinexLoaded ci-dessus.
+  const bepinexMissing = bepinexLoaded && !bepinexConfigured;
   const bepinexVersion = isAdmin ? bepinex?.version : bepinexStatus?.version;
   const bepinexDescription = isAdmin ? bepinex?.description : bepinexStatus?.description;
   const bepinexIconUrl = isAdmin ? bepinex?.iconUrl : bepinexStatus?.iconUrl;
@@ -781,7 +792,7 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
 
       {state.kind === "error" && <p className="mods-page__error">{state.message}</p>}
 
-      {editing ? (
+      {state.kind === "loaded" && (editing ? (
         <div className="mods-editor">
           {isImporting && (
             <div className="mods-editor__overlay">
@@ -838,7 +849,7 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
               {(!editorSearch.trim() ||
                 "bepinex".includes(editorSearch.trim().toLowerCase())) && (
                 <div
-                  className={`mods-editor__card ${!bepinexConfigured ? "mods-editor__card--warning" : ""}`}
+                  className={`mods-editor__card ${bepinexMissing ? "mods-editor__card--warning" : ""}`}
                 >
                   <div className="mods-editor__row">
                     {bepinexIconUrl && (
@@ -853,7 +864,7 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
                       <span className="mods-list__version">v{bepinexVersion}</span>
                     )}
                   </div>
-                  {!bepinexConfigured ? (
+                  {bepinexMissing ? (
                     <p className="mods-page__warning">
                       Non configuré — "Jouer" refusera de lancer le jeu tant que ce n'est pas
                       fait.
@@ -1171,7 +1182,7 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
           <ul className="mods-list">
             {activeCategory === ALL_CATEGORIES && (
               <li
-                className={`mods-list__item ${!bepinexConfigured ? "mods-list__item--warning" : ""}`}
+                className={`mods-list__item ${bepinexMissing ? "mods-list__item--warning" : ""}`}
               >
                 <div className="mods-list__main">
                   {bepinexIconUrl && (
@@ -1180,7 +1191,7 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
                   <span className="mods-list__name">BepInEx</span>
                   {bepinexVersion && <span className="mods-list__version">v{bepinexVersion}</span>}
                 </div>
-                {!bepinexConfigured ? (
+                {bepinexMissing ? (
                   <p className="mods-page__warning">
                     {isAdmin
                       ? "Non configuré — \"Jouer\" refusera de lancer le jeu tant que ce n'est pas fait."
@@ -1218,7 +1229,7 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
             ))}
           </ul>
         </>
-      )}
+      ))}
     </div>
   );
 }

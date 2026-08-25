@@ -318,10 +318,27 @@
   cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
 }
 
-.mods-editor__actions {
+/* Flottant en haut à droite de la fenêtre, dans la marge à droite des cartes plutôt que
+   collé à leur bord (voir .mods-page, max-width: 760px centré) -- position: fixed, pas
+   sticky : sticky reste contraint à la largeur de .mods-page et finissait par chevaucher
+   les cartes au défilement. "Éditer" hors édition, "+ Ajouter des mods"/Fermer/
+   Enregistrer en édition -- toujours visible sans avoir à faire défiler toute la liste
+   des mods pour le retrouver. z-index sous mods-editor__overlay (10) : l'overlay d'import
+   doit continuer à couvrir ces boutons pendant un import, comme avant. */
+.mods-page__floating-actions {
+  position: fixed;
+  top: 1em;
+  right: 1em;
+  z-index: 8;
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  width: fit-content;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.6);
 }
 
 .mods-editor__section-header {
@@ -329,6 +346,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  margin: 0.75rem 0 1.25rem;
 }
 
 .mods-editor__section-header .mods-list__description {

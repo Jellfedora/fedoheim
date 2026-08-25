@@ -4,6 +4,19 @@ Une entrée par version publiée du launcher. Le texte de chaque section est rep
 automatiquement comme description de la release GitHub correspondante (voir
 `.github/workflows/launcher-release.yml`).
 
+## 0.0.7
+
+- La page "Profils" et la page "Paramètres" (admin) sont fusionnées en une seule page
+  "Admin", avec un nouvel onglet "Serveur" pour régler l'heure du jeu, forcer une saison,
+  ou diffuser un message ponctuel sur l'écran de chaque joueur connecté — appliqué par le
+  mod FedoServerTools au prochain rapport du serveur (jusqu'à 30s de latence).
+- L'éditeur de mods a maintenant ses propres onglets de catégorie et une recherche
+  utilisables aussi en dehors du mode édition ; les boutons d'action (Éditer, Ajouter des
+  mods, Enregistrer...) sont désormais flottants en haut de page plutôt qu'en bas de
+  liste.
+- La fenêtre du launcher a une taille fixe plus grande (1200×800, non redimensionnable)
+  pour mieux accueillir ces nouveaux écrans.
+
 ## 0.0.6
 
 - Un build distribué (release) pointe maintenant vers l'API de production

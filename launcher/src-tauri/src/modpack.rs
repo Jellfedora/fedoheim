@@ -52,6 +52,23 @@ pub struct AutoConnectTarget {
     pub password: Option<String>,
 }
 
+// Commande one-shot posée par un admin (page Admin > Serveur) et consommée par le
+// mod serveur FedoServerTools au prochain rapport pour ce profil -- voir
+// api/src/modpacks/onlinePlayers.ts::serverCommandBodySchema (même forme JSON, `command`
+// comme tag) et mods/FedoServerTools/ServerCommands.cs (application côté jeu). Jamais
+// poussée directement au jeu depuis l'API : voir CLAUDE.md, "toujours en sondage depuis
+// le mod, jamais l'inverse".
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "command")]
+pub enum ServerCommand {
+    #[serde(rename = "set-time")]
+    SetTime { hour: u8 },
+    #[serde(rename = "set-season")]
+    SetSeason { season: String },
+    #[serde(rename = "broadcast-message")]
+    BroadcastMessage { message: String },
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Manifest {
     pub slug: String,
@@ -547,6 +564,36 @@ pub async fn regenerate_report_token(
 
     let parsed: ReportTokenResponse = res.json().await.map_err(|e| e.to_string())?;
     Ok(parsed.report_token)
+}
+
+// Voir ServerCommand ci-dessus -- appliquée en jeu par FedoServerTools au prochain
+// rapport pour ce profil, jamais immédiatement.
+pub async fn send_server_command(
+    http: &reqwest::Client,
+    token: &str,
+    slug: &str,
+    command: &ServerCommand,
+) -> Result<(), String> {
+    let res = http
+        .post(format!(
+            "{}/modpacks/{slug}/server-command",
+            config::api_base_url()
+        ))
+        .bearer_auth(token)
+        .json(command)
+        .send()
+        .await
+        .map_err(|e| config::describe_request_error(&e))?;
+
+    if !res.status().is_success() {
+        return Err(format!(
+            "Failed to send server command ({}): {}",
+            res.status(),
+            res.text().await.unwrap_or_default()
+        ));
+    }
+
+    Ok(())
 }
 
 pub async fn set_modpack_color(

@@ -85,6 +85,44 @@ const characterCheckSchema = z.object({
   steamId: z.string().trim().nullable().default(null),
 });
 
+// Commande one-shot posée par un admin depuis le launcher (page Admin > Serveur) --
+// consommée par le tout prochain rapport du mod pour ce profil (voir le handler POST
+// /modpacks/online-players ci-dessous), jamais poussée depuis l'API : le jeu n'expose
+// aucun serveur qu'on pourrait appeler de l'extérieur, seul le mod sonde (même principe
+// que la connexion automatique, voir CLAUDE.md). En mémoire seulement, comme
+// `reportsBySlug` ci-dessus -- une commande perdue par un redémarrage de l'API se limite
+// à devoir recliquer, jamais une vraie perte de données. Une seule commande en attente
+// par profil : un second clic avant que le mod n'ait eu le temps de la consommer
+// remplace la précédente plutôt que d'empiler une file.
+type PendingServerCommand =
+  | { command: "set-time"; hour: 6 | 12 | 18 | 24 }
+  | { command: "set-season"; season: "Spring" | "Summer" | "Fall" | "Winter" | "auto" }
+  // Message ponctuel affiché au centre de l'écran de chaque joueur connecté (en jaune,
+  // voir mods/FedoServerTools/BroadcastMessage.cs) et posté dans le salon Discord des
+  // logs (même webhook/mécanique que les autres événements de session, voir
+  // FedoServerToolsPlugin.AnnounceAdminMessage) -- pas une donnée persistée, juste une
+  // commande one-shot comme les deux ci-dessus.
+  | { command: "broadcast-message"; message: string };
+
+const pendingCommandBySlug = new Map<string, PendingServerCommand>();
+
+const serverCommandBodySchema = z.discriminatedUnion("command", [
+  z.object({
+    command: z.literal("set-time"),
+    hour: z.union([z.literal(6), z.literal(12), z.literal(18), z.literal(24)]),
+  }),
+  z.object({
+    command: z.literal("set-season"),
+    // "auto" désactive la saison forcée côté mod Seasons (shudnal/Seasons) et laisse la
+    // progression naturelle reprendre -- voir mods/FedoServerTools/ServerCommands.cs.
+    season: z.enum(["Spring", "Summer", "Fall", "Winter", "auto"]),
+  }),
+  z.object({
+    command: z.literal("broadcast-message"),
+    message: z.string().trim().min(1).max(200),
+  }),
+]);
+
 function timingSafeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);
@@ -204,8 +242,53 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
       linkCharacterName(parsed.data.players);
     }
 
-    return reply.send({ ok: true });
+    // Consommée ici (jamais renvoyée deux fois) : "at-most-once", cohérent avec le
+    // principe qu'un rapport manqué/en double ne doit jamais rejouer une action déjà
+    // appliquée en jeu (voir ServerCommands.cs côté mod).
+    const pendingCommand = pendingCommandBySlug.get(modpack.slug) ?? null;
+    if (pendingCommand) {
+      pendingCommandBySlug.delete(modpack.slug);
+      // Preuve côté API qu'un rapport a bien récupéré la commande -- utile pour
+      // diagnostiquer "le launcher dit envoyé mais rien ne se passe en jeu" : si cette
+      // ligne n'apparaît jamais, le mod ne rapporte pas sur CE profil (mauvais
+      // ServerToken/profil actif) ou pas du tout (API injoignable depuis le serveur).
+      req.log.info(
+        { slug: modpack.slug, command: pendingCommand },
+        "server command delivered to FedoServerTools report",
+      );
+    }
+
+    return reply.send({
+      ok: true,
+      command: pendingCommand?.command ?? null,
+      hour: pendingCommand?.command === "set-time" ? pendingCommand.hour : null,
+      season: pendingCommand?.command === "set-season" ? pendingCommand.season : null,
+      message: pendingCommand?.command === "broadcast-message" ? pendingCommand.message : null,
+    });
   });
+
+  // Posée par un admin depuis le launcher (page Admin > Serveur) -- voir
+  // PendingServerCommand ci-dessus pour le principe "sonde, jamais poussé".
+  app.post(
+    "/modpacks/:slug/server-command",
+    { preHandler: [app.requireAuth, app.requireAdmin] },
+    async (req, reply) => {
+      const { slug } = req.params as { slug: string };
+      const modpack = db.select().from(modpacks).where(eq(modpacks.slug, slug)).get();
+      if (!modpack) {
+        return reply.code(404).send({ error: "Modpack not found" });
+      }
+
+      const parsed = serverCommandBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: parsed.error.flatten() });
+      }
+
+      pendingCommandBySlug.set(slug, parsed.data);
+      req.log.info({ slug, command: parsed.data }, "server command queued from launcher");
+      return reply.send({ ok: true });
+    },
+  );
 
   // Appelé par FedoServerTools à chaque connexion d'un joueur distant (jamais pour
   // l'hôte lui-même, voir mods/FedoServerTools/PeerSteamId.cs), avant de le laisser

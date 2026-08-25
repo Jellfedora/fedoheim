@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import "./Sidebar.css";
 
-export type Page = "home" | "players" | "mods" | "rules" | "faq" | "profiles" | "settings";
+export type Page = "home" | "players" | "mods" | "rules" | "faq" | "admin";
 
 interface NavItem {
   page: Page;
@@ -49,19 +49,11 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    page: "profiles",
-    label: "Profils",
+    page: "admin",
+    label: "Admin",
     adminOnly: true,
     icon: (
-      <path d="M4 19v-1a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7 9v-1a3.5 3.5 0 0 0-2-3.15M14.5 4.15A3 3 0 0 1 17 7a3 3 0 0 1-1.5 2.6" />
-    ),
-  },
-  {
-    page: "settings",
-    label: "Paramètres",
-    adminOnly: true,
-    icon: (
-      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8-3.5a7.9 7.9 0 0 0-.15-1.5l2.05-1.6-2-3.46-2.4.97a8 8 0 0 0-2.6-1.5L14.5 2h-5l-.4 2.4a8 8 0 0 0-2.6 1.5l-2.4-.97-2 3.46 2.05 1.6a7.9 7.9 0 0 0 0 3l-2.05 1.6 2 3.46 2.4-.97a8 8 0 0 0 2.6 1.5l.4 2.42h5l.4-2.42a8 8 0 0 0 2.6-1.5l2.4.97 2-3.46-2.05-1.6c.1-.5.15-1 .15-1.5Z" />
+      <path d="M12 3 5 6v6c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6l-7-3Zm0 5.2v7.3M9 10.5l3-1.8 3 1.8" />
     ),
   },
 ];

@@ -1,0 +1,124 @@
+.server-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.server-page__header h1 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.server-page__header p {
+  margin: 0 0 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.server-page__status-card {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.server-page__status-line {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.server-page__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #23a55a;
+  box-shadow: 0 0 6px rgba(35, 165, 90, 0.7);
+  flex-shrink: 0;
+}
+
+.server-page__dot--offline {
+  background: var(--text-faint);
+  box-shadow: none;
+}
+
+.server-page__dot--starting,
+.server-page__dot--stopping {
+  background: #eb942a;
+  box-shadow: 0 0 6px rgba(235, 148, 42, 0.6);
+}
+
+.server-page__season {
+  margin: 0.4rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.server-page__hint {
+  margin: 0 0 1.75rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.server-page__section {
+  margin: 0 0 1.75rem;
+}
+
+.server-page__section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.server-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.server-page__hint--tight {
+  margin: 0 0 0.75rem;
+}
+
+.server-page__message-form {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.server-page__message-input {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.server-page__message-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.server-page__feedback {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.server-page__feedback.is-success {
+  color: #23a55a;
+}
+
+.server-page__feedback.is-error {
+  color: var(--danger);
+}

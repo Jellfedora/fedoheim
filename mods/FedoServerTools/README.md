@@ -225,11 +225,14 @@ Settings live under `[Discord]` in `BepInEx/config/fedo.servertools.cfg`:
 - `LogWorldSaved` / `WorldSavedTemplate`
 - `LogNewDay` / `NewDayTemplate`
 - `LogSeasonChanged` / `SeasonChangedTemplate`
+- `LogAdminMessage` / `AdminMessageTemplate` — see "Admin server commands" above
+  (broadcast message).
 
 Each `*Template` supports `{player}` (connected/disconnected/death), `{world}` (server
-started), `{cause}` (death only), `{day}` (new day only), or `{season}` (season changed
+started), `{cause}` (death only), `{day}` (new day only), `{season}` (season changed
 only — the already-translated display name, same as `[Seasons]` above, not the raw
-English key). `{cause}` describes what killed the player: `drowning`, `fall damage`,
+English key), or `{message}` (admin message only, the broadcast text). `{cause}`
+describes what killed the player: `drowning`, `fall damage`,
 `fire`, `the cold`, `poison`, `the edge of the world`, the name of an attacking
 creature/player (e.g. `Greydwarf`), or a few other environmental causes (falling tree,
 cart, boat, turret, catapult, stalactite, the sea, smoke inhalation, unknown causes).
@@ -323,6 +326,51 @@ in reports as if they were the rightful owner.
   this mod's API calls: a network hiccup should never lock out a legitimate player.
 - `ServerToken` empty (the default on a player install) disables this check entirely,
   same as the periodic reporting above.
+
+## Admin server commands
+
+Server-side only (`ServerCommands.cs`) — lets an admin change the current time of day or
+force a season from the launcher (Admin > Serveur), without touching the server console
+directly. Follows the same "poll, never push" principle as the rest of this mod: an admin
+action doesn't call the game, it queues a one-shot command on the API
+(`POST /modpacks/:slug/server-command`) that gets picked up and applied the next time
+this mod reports (`POST /modpacks/online-players`, whose response now also carries the
+pending command for this profile, if any) — so it can take up to `SyncIntervalSeconds`
+(30s default) to actually happen, and only while the server is online to poll for it.
+
+- **Time of day**: sets `ZNet.instance.SetNetTime(...)` to the next occurrence of the
+  requested hour (6h/12h/18h/24h — always jumping forward, never backward, based on
+  `EnvMan.GetDayFraction()`, the same fraction already used for the in-game clock above),
+  then forces an immediate broadcast to already-connected clients (`ZNet.SendNetTime()`,
+  private — invoked via reflection, see `mods/CLAUDE.md`) instead of waiting for the
+  engine's own periodic time sync.
+- **Season**: forces a season via the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/)
+  mod's own public config entries (`Seasons.Seasons.overrideSeason`/`seasonOverrided`,
+  both `ConfigEntry<T>` — this mod just sets `.Value` on them, exactly as if an admin had
+  edited Seasons' own `.cfg`, so its own ServerSync already handles propagating the
+  change to clients). Choosing "Automatique" turns the override back off and lets the
+  season resume its natural progression. Silently ignored if Seasons isn't installed on
+  the server (soft dependency, same `SeasonReporting.IsLoaded` guard as season
+  reporting).
+- Server-only (`ZNet.instance.IsServer()`), same reasoning as `ForcePublicPosition` — a
+  client applying this would just get overwritten by the next sync anyway.
+- The response parsing/application runs off the main Unity thread (the periodic report is
+  fire-and-forget over HTTP) — dispatched back onto the main thread via a small queue
+  drained from `Update()` rather than touching `ZNet`/`EnvMan`/Seasons' config directly
+  from a background thread.
+- **Broadcast message** (`BroadcastMessage.cs`): posts a short admin message (Admin >
+  Serveur, same one-shot polling mechanism as above) that shows up, on every connected
+  player's own client, at the center of the screen in yellow (`MessageHud.ShowMessage`)
+  and in their in-game chat (`Chat.OnNewChatMessage`, styled as a Shout) — also logged to
+  the Discord webhook if configured (see "Discord webhook logging" below). Unlike
+  time/season above, this needs to reach every *client*, not just apply on the server:
+  dispatched over a dedicated `ZRoutedRpc` (registered on both server and client from
+  `ZNet.Awake`, same hook as ServerSync's own RPC registration) targeting
+  `ZRoutedRpc.Everybody` — which also reaches the host's own client in a solo/hosted
+  game. Deliberately uses `Chat.OnNewChatMessage` (the game's own internal *display* step
+  for an incoming chat RPC) rather than `Chat.SendText` (used elsewhere in this repo,
+  e.g. FedoDeath) — `SendText` would itself broadcast a brand new RPC from every single
+  client that receives ours, causing a message storm.
 
 ## Notes
 

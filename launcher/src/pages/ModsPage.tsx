@@ -312,6 +312,19 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
     return tabs;
   }, [mods, isAdmin]);
 
+  // Même principe que `categories` ci-dessus, mais depuis le brouillon en cours
+  // d'édition plutôt que la dernière liste enregistrée — pour qu'un mod tout juste
+  // ajouté (pas encore sauvegardé) avec une nouvelle catégorie ait déjà son propre onglet
+  // de filtre pendant l'édition.
+  const draftCategories = useMemo(() => {
+    const unique = Array.from(new Set(draft.map((m) => m.category)));
+    const tabs = [ALL_CATEGORIES, ...unique];
+    if (draft.some((m) => m.adminOnly)) {
+      tabs.push(ADMIN_ONLY_TAB);
+    }
+    return tabs;
+  }, [draft]);
+
   // Catégories déjà utilisées dans le brouillon en cours d'édition, proposées via
   // <datalist> pour sélection — reste un champ texte libre (voir CLAUDE.md : taper une
   // nouvelle catégorie fait apparaître un nouvel onglet, pas de liste figée).
@@ -777,11 +790,6 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
               Profil : {slug}
             </span>
           )}
-          {isAdmin && !editing && (
-            <button type="button" className="btn btn--ghost" onClick={startEditing}>
-              Éditer
-            </button>
-          )}
         </div>
         <p>
           {state.kind === "loading"
@@ -789,6 +797,14 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
             : `${mods.length + (bepinexConfigured ? 1 : 0)} mods installés et maintenus à jour automatiquement par le launcher.`}
         </p>
       </header>
+
+      {isAdmin && !editing && (
+        <div className="mods-page__floating-actions">
+          <button type="button" className="btn btn--ghost" onClick={startEditing}>
+            Éditer
+          </button>
+        </div>
+      )}
 
       {state.kind === "error" && <p className="mods-page__error">{state.message}</p>}
 
@@ -826,8 +842,64 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
             </button>
           </div>
 
+          <div className="mods-page__floating-actions">
+            {editorView === "mods" && (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={handleAddMods}
+                disabled={addingMod}
+              >
+                {addingMod ? "Import..." : "+ Ajouter des mods"}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={handleCancelEdit}
+              disabled={modsSaveState.kind === "saving" || configSaveState.kind === "saving"}
+            >
+              Fermer
+            </button>
+            {editorView === "mods" && modsDirty && (
+              <button
+                type="button"
+                className="btn btn--accent"
+                onClick={handleSaveMods}
+                disabled={modsSaveState.kind === "saving"}
+              >
+                {modsSaveState.kind === "saving" ? "Enregistrement..." : "Enregistrer les mods"}
+              </button>
+            )}
+            {editorView === "config" && configDirty && (
+              <button
+                type="button"
+                className="btn btn--accent"
+                onClick={handleSaveConfig}
+                disabled={configSaveState.kind === "saving"}
+              >
+                {configSaveState.kind === "saving"
+                  ? "Enregistrement..."
+                  : "Enregistrer les fichiers de config"}
+              </button>
+            )}
+          </div>
+
           {editorView === "mods" && (
             <>
+              <div className="mods-page__tabs">
+                {draftCategories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    className={`mods-page__tab ${activeCategory === category ? "is-active" : ""}`}
+                    onClick={() => setActiveCategory(category)}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+
               <div className="mods-editor__section-header">
                 <input
                   type="search"
@@ -836,17 +908,10 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
                   value={editorSearch}
                   onChange={(e) => setEditorSearch(e.target.value)}
                 />
-                <button
-                  type="button"
-                  className="btn btn--ghost"
-                  onClick={handleAddMods}
-                  disabled={addingMod}
-                >
-                  {addingMod ? "Import..." : "+ Ajouter des mods"}
-                </button>
               </div>
 
-              {(!editorSearch.trim() ||
+              {activeCategory === ALL_CATEGORIES &&
+                (!editorSearch.trim() ||
                 "bepinex".includes(editorSearch.trim().toLowerCase())) && (
                 <div
                   className={`mods-editor__card ${bepinexMissing ? "mods-editor__card--warning" : ""}`}
@@ -893,6 +958,12 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
               )}
 
               {draft.map((mod, i) => {
+                if (
+                  activeCategory !== ALL_CATEGORIES &&
+                  (activeCategory === ADMIN_ONLY_TAB ? !mod.adminOnly : mod.category !== activeCategory)
+                ) {
+                  return null;
+                }
                 if (
                   editorSearch.trim() &&
                   !mod.name.toLowerCase().includes(editorSearch.trim().toLowerCase())
@@ -1130,39 +1201,6 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
           {editorView === "config" && configSaveState.kind === "error" && (
             <p className="mods-page__error">{configSaveState.message}</p>
           )}
-
-          <div className="mods-editor__actions">
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={handleCancelEdit}
-              disabled={modsSaveState.kind === "saving" || configSaveState.kind === "saving"}
-            >
-              Fermer
-            </button>
-            {editorView === "mods" && modsDirty && (
-              <button
-                type="button"
-                className="btn btn--accent"
-                onClick={handleSaveMods}
-                disabled={modsSaveState.kind === "saving"}
-              >
-                {modsSaveState.kind === "saving" ? "Enregistrement..." : "Enregistrer les mods"}
-              </button>
-            )}
-            {editorView === "config" && configDirty && (
-              <button
-                type="button"
-                className="btn btn--accent"
-                onClick={handleSaveConfig}
-                disabled={configSaveState.kind === "saving"}
-              >
-                {configSaveState.kind === "saving"
-                  ? "Enregistrement..."
-                  : "Enregistrer les fichiers de config"}
-              </button>
-            )}
-          </div>
         </div>
       ) : (
         <>
@@ -1179,8 +1217,20 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
             ))}
           </div>
 
+          <div className="mods-editor__section-header">
+            <input
+              type="search"
+              className="mods-editor__search"
+              placeholder="Rechercher un mod..."
+              value={editorSearch}
+              onChange={(e) => setEditorSearch(e.target.value)}
+            />
+          </div>
+
           <ul className="mods-list">
-            {activeCategory === ALL_CATEGORIES && (
+            {activeCategory === ALL_CATEGORIES &&
+              (!editorSearch.trim() ||
+                "bepinex".includes(editorSearch.trim().toLowerCase())) && (
               <li
                 className={`mods-list__item ${bepinexMissing ? "mods-list__item--warning" : ""}`}
               >
@@ -1203,7 +1253,13 @@ export function ModsPage({ slug, isAdmin, onDirtyChange, onModpackUpdated }: Mod
                 <span className="mods-list__tag is-serveur">Système</span>
               </li>
             )}
-            {visibleMods.map((mod) => (
+            {visibleMods
+              .filter(
+                (mod) =>
+                  !editorSearch.trim() ||
+                  mod.name.toLowerCase().includes(editorSearch.trim().toLowerCase()),
+              )
+              .map((mod) => (
               <li
                 key={mod.name}
                 className={`mods-list__item ${mod.enabled === false ? "mods-list__item--disabled" : ""}`}

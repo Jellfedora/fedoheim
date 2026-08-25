@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace FedoServerTools
@@ -15,7 +16,11 @@ namespace FedoServerTools
         // si l'API est injoignable.
         private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
-        public static async Task ReportAsync(
+        // Renvoie le corps brut de la réponse (voir onlinePlayers.ts) -- contient
+        // notamment la commande serveur en attente pour ce profil (voir ServerCommands.
+        // ApplyFromReportResponse), consommée ici même si l'appelant ne s'en sert pas
+        // (ex: ReportBlocking, dernier rapport avant l'arrêt).
+        public static async Task<string> ReportAsync(
             string apiBaseUrl,
             string serverToken,
             IReadOnlyList<PlayerReport> players,
@@ -49,11 +54,13 @@ namespace FedoServerTools
             request.Headers.Add("X-Server-Token", serverToken);
 
             var response = await Http.SendAsync(request).ConfigureAwait(false);
+            var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                throw new Exception($"API responded {(int)response.StatusCode}: {body}");
+                throw new Exception($"API responded {(int)response.StatusCode}: {responseBody}");
             }
+
+            return responseBody;
         }
 
         private static string JsonPlayersArray(IReadOnlyList<PlayerReport> players)
@@ -108,6 +115,23 @@ namespace FedoServerTools
             }
             sb.Append('"');
             return sb.ToString();
+        }
+
+        // Extracteur minimal, pas un vrai parseur JSON (voir CLAUDE.md -- aucun mod de ce
+        // repo n'a de dépendance de parsing JSON) : ne comprend que des champs de premier
+        // niveau à valeur simple (chaîne entre guillemets ou entier), suffisant pour le
+        // format de réponse plat renvoyé par l'API (voir onlinePlayers.ts, réponse de
+        // POST /modpacks/online-players). Utilisé par ServerCommands.cs.
+        internal static string ExtractJsonString(string json, string key)
+        {
+            var match = Regex.Match(json, "\"" + Regex.Escape(key) + "\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+            return match.Success ? match.Groups[1].Value : null;
+        }
+
+        internal static int? ExtractJsonInt(string json, string key)
+        {
+            var match = Regex.Match(json, "\"" + Regex.Escape(key) + "\"\\s*:\\s*(-?\\d+)");
+            return match.Success ? (int?)int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : null;
         }
     }
 }

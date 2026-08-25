@@ -170,3 +170,37 @@
   game event hook -- no such hook was found for either. Both reset their "last known"
   value on every new session (`OnServerStarted`) so resuming on a different world never
   announces a false change left over from the previous session.
+- Added admin server commands (`ServerCommands.cs`): the launcher's Admin > Serveur page
+  can now set the time of day (6h/12h/18h/24h) or force a season, queued on the API
+  (`POST /modpacks/:slug/server-command`) and picked up by the next periodic report --
+  same "poll, never push" principle as the rest of this mod, never called into the game
+  directly. Time is set via `ZNet.SetNetTime` (jumping forward to the next occurrence of
+  the requested hour, based on `EnvMan.GetDayFraction()`) followed by a forced
+  `ZNet.SendNetTime()` broadcast (private, invoked via reflection) so already-connected
+  clients see it immediately. Season is forced through the
+  [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/) mod's own public
+  `overrideSeason`/`seasonOverrided` config entries (soft dependency, silently ignored if
+  Seasons isn't installed) -- not a Harmony hack, this mod just sets `.Value` on Seasons'
+  own ConfigEntry objects, exactly as if an admin had edited its `.cfg`. Server-only
+  (`ZNet.instance.IsServer()`); the response is parsed and applied off the main Unity
+  thread (fire-and-forget HTTP report), so it's dispatched onto the main thread via a
+  small action queue drained from `Update()` rather than touching `ZNet`/`EnvMan`/Seasons'
+  config from a background thread.
+- Added a third admin server command (`BroadcastMessage.cs`): a short message posted from
+  the launcher's Admin > Serveur page now shows up on every connected player's own client,
+  centered on screen in yellow (`MessageHud.ShowMessage`) and in their in-game chat
+  (`Chat.OnNewChatMessage`, styled as a Shout), plus a Discord log entry
+  (`AnnounceAdminMessage`, `[Discord] LogAdminMessage`/`AdminMessageTemplate`). Unlike
+  time/season above, this needs to reach every client rather than just apply on the
+  server, so it's dispatched over a dedicated `ZRoutedRpc` (registered on both server and
+  client from `ZNet.Awake`, same hook as ServerSync's own RPC registration) targeting
+  `ZRoutedRpc.Everybody`. Deliberately calls `Chat.OnNewChatMessage` (the game's own
+  internal display step for an incoming chat RPC) rather than `Chat.SendText` (used
+  elsewhere in this repo, e.g. FedoDeath) -- `SendText` would itself broadcast a brand new
+  RPC from every client that receives ours, causing a message storm.
+- Fixed (found in an actual in-game test): a brand new `UserInfo` (empty `UserId`) passed
+  as the chat message's sender made the game log
+  `Failed to check permission CommunicateWithUsingText: UserID was invalid` on every
+  broadcast -- non-fatal (the message still showed up), but noisy. Now reuses the local
+  player's own `PlatformUserID` (`UserInfo.GetLocalUser().UserId`, always valid) while
+  keeping "Fedoheim" as the displayed name, instead of a blank one.

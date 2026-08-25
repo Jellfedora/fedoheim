@@ -1,0 +1,35 @@
+.admin-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.admin-page__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.admin-page__tab {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: url("/Valheim_Sword_Cursor.cur"), pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.admin-page__tab:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-strong);
+}
+
+.admin-page__tab.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-strong);
+  color: var(--accent);
+}

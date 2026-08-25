@@ -19,8 +19,7 @@ import { PlayersPage } from "./pages/PlayersPage";
 import { ModsPage } from "./pages/ModsPage";
 import { RulesPage } from "./pages/RulesPage";
 import { FaqPage } from "./pages/FaqPage";
-import { ProfilesPage } from "./pages/ProfilesPage";
-import { SettingsPage } from "./pages/SettingsPage";
+import { AdminPage } from "./pages/AdminPage";
 import type { UserInfo } from "./types";
 import "./styles/tokens.css";
 import "./styles/shell.css";
@@ -788,14 +787,14 @@ function App() {
           />
         )}
         {page === "faq" && <FaqPage isAdmin={user?.isAdmin ?? false} />}
-        {page === "profiles" && user?.isAdmin && (
-          <ProfilesPage
+        {page === "admin" && user?.isAdmin && (
+          <AdminPage
             activeSlug={activeProfileSlug}
             onSelect={selectProfile}
             onModpackUpdated={checkForUpdate}
+            onSettingsSaved={setSettings}
           />
         )}
-        {page === "settings" && user?.isAdmin && <SettingsPage onSaved={setSettings} />}
       </main>
 
       <footer className="shell__playbar">

@@ -764,6 +764,16 @@ async fn regenerate_report_token(
     modpack::regenerate_report_token(&state.http, &token, &slug).await
 }
 
+#[tauri::command]
+async fn send_server_command(
+    state: State<'_, AppState>,
+    slug: String,
+    command: modpack::ServerCommand,
+) -> Result<(), String> {
+    let token = current_token(&state)?;
+    modpack::send_server_command(&state.http, &token, &slug, &command).await
+}
+
 // Nettoyage des fichiers importés (zip/icône) qui ne seront finalement pas utilisés —
 // voir le bouton "Annuler" de l'éditeur de mods.
 #[tauri::command]
@@ -953,6 +963,7 @@ pub fn run() {
             fetch_player_stats,
             fetch_report_token,
             regenerate_report_token,
+            send_server_command,
             load_active_profile,
             save_active_profile,
             fetch_rules,

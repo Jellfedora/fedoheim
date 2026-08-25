@@ -498,6 +498,51 @@ serveur au moment du rapport).
   fermé depuis peu, tant que le dernier rapport n'est pas encore périmé) afficherait
   encore une saison alors que le jeu n'est plus joignable.
 
+### Commandes serveur admin (heure / saison)
+
+Page "Admin" du launcher, onglet "Serveur" (admin seulement, `ServerPage.tsx`) : boutons
+pour régler l'heure du jeu (6h/12h/18h/24h) ou forcer une saison, scopés sur le profil
+actif comme le reste de l'onglet "Admin". **Même principe "sondage, jamais l'inverse"
+que la connexion automatique ci-dessous** : un clic ne fait qu'appeler `POST
+/modpacks/:slug/server-command` (admin, `requireAdmin`), qui pose une commande one-shot
+en mémoire (`pendingCommandBySlug`, une seule par profil — un second clic avant
+consommation remplace la précédente plutôt que d'empiler une file). Elle n'est
+appliquée qu'au **prochain rapport** de FedoServerTools pour ce profil (`POST
+/modpacks/online-players`, dont la réponse porte maintenant `command`/`hour`/`season` en
+plus de `{ok:true}`, consommée à cet instant précis — jamais rejouée deux fois) : jusqu'à
+`SyncIntervalSeconds` (30s par défaut) de latence, et sans effet tant que le serveur
+n'est pas en ligne pour interroger l'API.
+
+- **Heure** : `ServerCommands.ApplyTimeOfDay` (mod) avance `ZNet.instance.SetNetTime(...)`
+  jusqu'à la prochaine occurrence de l'heure demandée — toujours vers l'avant, jamais en
+  arrière (échelle 0..24, `24` = minuit du jour suivant, distinct de `0` déjà passé) —,
+  basé sur `EnvMan.GetDayFraction()` (la même fraction déjà utilisée pour l'horloge
+  affichée, voir plus haut). `SendNetTime` (privée) est ensuite invoquée par réflexion
+  pour forcer une diffusion immédiate aux clients déjà connectés plutôt que d'attendre le
+  prochain cycle de synchronisation périodique de `ZNet`.
+- **Saison** : forcée via les propres `ConfigEntry` publiques du mod Seasons
+  (`Seasons.Seasons.overrideSeason`/`seasonOverrided`, type imbriqué
+  `Seasons.Seasons.Season`, vérifié par reflection dump contre le vrai `Seasons.dll` —
+  jamais un type de premier niveau) — écrire `.Value` depuis le process serveur a
+  exactement le même effet que si un admin éditait le `.cfg` de Seasons (source de
+  vérité), sa propre propagation ServerSync aux clients étant déjà gérée par ce mod
+  tiers, rien à refaire ici. Choix "Automatique" repasse `overrideSeason.Value` à
+  `false` et laisse la saison reprendre sa progression naturelle. Même garde
+  `SeasonReporting.IsLoaded` que le reporting : silencieusement ignorée si Seasons n'est
+  pas installé.
+- **Serveur seulement** (`ZNet.instance.IsServer()`), même raisonnement que
+  `ForcePublicPosition` — appliqué sur un simple client, ce serait de toute façon écrasé
+  par la prochaine synchronisation.
+- **Jamais exécuté hors du thread principal Unity** : la continuation qui traite la
+  réponse du rapport tourne sur un thread du pool (`Task.Run` + `ConfigureAwait(false)`),
+  pas le thread principal — la commande est donc mise en file (`ConcurrentQueue<Action>`)
+  et vidée à chaque `Update()` plutôt que d'appeler `ZNet`/`EnvMan`/la config de Seasons
+  directement depuis ce thread.
+- Aucune dépendance de parsing JSON ajoutée (voir `mods/CLAUDE.md`) : la réponse du
+  rapport est lue par un extracteur minimal à base de regex (`OnlinePlayersReporter.
+  ExtractJsonString`/`ExtractJsonInt`), pas un vrai parseur — suffisant pour le format
+  plat et entièrement maîtrisé renvoyé par l'API.
+
 ## Connexion automatique (FedoServerTools)
 
 Partie client de `FedoServerTools` (`AutoConnect.cs`/`FejdStartupPatches.cs`/

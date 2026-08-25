@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -43,6 +44,31 @@ namespace FedoServerTools
         // Idem pour l'avertissement "pas de jeton configuré" -- un seul log tant que
         // ServerToken reste vide, pas un à chaque rapport (SyncIntervalSeconds).
         private bool _missingTokenWarned;
+
+        // Les commandes serveur (ServerCommands.ApplyFromReportResponse) touchent des API
+        // Unity/ZNet -- jamais sûr de les exécuter directement depuis la continuation
+        // async de Report() ci-dessous, qui tourne sur un thread du pool (Task.Run +
+        // ConfigureAwait(false)), pas le thread principal. Mise en file ici, vidée à
+        // chaque Update() (même principe que RefreshClockOverlay/CheckDayAndSeasonChange
+        // déjà pilotés depuis Update()).
+        private static readonly ConcurrentQueue<Action> _mainThreadActions = new ConcurrentQueue<Action>();
+
+        public static void RunOnMainThread(Action action) => _mainThreadActions.Enqueue(action);
+
+        private static void DrainMainThreadActions()
+        {
+            while (_mainThreadActions.TryDequeue(out var action))
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception e)
+                {
+                    Log?.LogWarning($"FedoServerTools: main-thread action failed: {e.Message}");
+                }
+            }
+        }
 
         // Time.realtimeSinceStartup au moment où ce plugin charge -- avant même que
         // ZNet existe, donc bien avant qu'on sache si cette instance sera serveur ou
@@ -112,6 +138,8 @@ namespace FedoServerTools
         private ConfigEntry<string> _newDayTemplate;
         private ConfigEntry<bool> _logSeasonChanged;
         private ConfigEntry<string> _seasonChangedTemplate;
+        private ConfigEntry<bool> _logAdminMessage;
+        private ConfigEntry<string> _adminMessageTemplate;
 
         // État pour détecter un changement (voir CheckDayAndSeasonChange) -- `null`
         // signifie "pas encore observé pour cette session", remis à `null` par
@@ -331,6 +359,17 @@ namespace FedoServerTools
                 "The season has changed to **{season}**.",
                 "Message posted when the season changes. {season} is replaced with the new season's display name (see [Seasons] above for translating it).");
 
+            _logAdminMessage = Config.Bind(
+                "Discord",
+                "LogAdminMessage",
+                true,
+                "Logs an admin message broadcast from the launcher's Admin > Serveur page (also shown on every connected player's screen). Only fires on the server (or a client hosting the game).");
+            _adminMessageTemplate = Config.Bind(
+                "Discord",
+                "AdminMessageTemplate",
+                "📢 {message}",
+                "Message posted when an admin broadcasts a message from the launcher. {message} is replaced with the broadcast text.");
+
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
 
@@ -427,6 +466,8 @@ namespace FedoServerTools
         // solo/hébergée, jamais son propre "pair" côté serveur -- voir cette dernière.
         private void Update()
         {
+            DrainMainThreadActions();
+
             try
             {
                 ForceOwnPublicPosition();
@@ -799,7 +840,8 @@ namespace FedoServerTools
             {
                 try
                 {
-                    await OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, season, time).ConfigureAwait(false);
+                    string responseBody = await OnlinePlayersReporter.ReportAsync(apiBaseUrl, serverToken, players, status, season, time).ConfigureAwait(false);
+                    RunOnMainThread(() => ServerCommands.ApplyFromReportResponse(responseBody, logger));
                     if (_consecutiveReportFailures > 0)
                     {
                         logger.LogInfo($"FedoServerTools: online players report recovered after {_consecutiveReportFailures} consecutive failure(s).");
@@ -937,6 +979,14 @@ namespace FedoServerTools
             SendDiscordMessage(_logWorldSaved, DiscordEventKind.WorldSaved, _worldSavedTemplate, null);
         }
 
+        // Posé par un admin depuis le launcher (Admin > Serveur) -- voir
+        // ServerCommands.ApplyBroadcastMessage, qui appelle aussi BroadcastMessage.Send
+        // pour l'afficher sur l'écran de chaque joueur, indépendamment de ce log Discord.
+        public void AnnounceAdminMessage(string message)
+        {
+            SendDiscordMessage(_logAdminMessage, DiscordEventKind.AdminMessage, _adminMessageTemplate, null, broadcastMessage: message);
+        }
+
         public void AnnounceServerStopped()
         {
             // Fire-and-forget comme les autres annonces : ZNet.OnDestroy peut être appelé
@@ -961,6 +1011,7 @@ namespace FedoServerTools
             WorldSaved,
             NewDay,
             SeasonChanged,
+            AdminMessage,
         }
 
         private static (string Title, int Color) DescribeEventKind(DiscordEventKind kind)
@@ -975,6 +1026,7 @@ namespace FedoServerTools
                 case DiscordEventKind.WorldSaved: return ("💾 World Saved", 0x25D3E4);
                 case DiscordEventKind.NewDay: return ("🌅 New Day", 0xF1C40F);
                 case DiscordEventKind.SeasonChanged: return ("🍂 Season Changed", 0x9B59B6);
+                case DiscordEventKind.AdminMessage: return ("Serveur Fedoheim Message", 0xF1C40F);
                 default: return ("Fedoheim", 0x25D3E4);
             }
         }
@@ -987,7 +1039,8 @@ namespace FedoServerTools
             string worldName = null,
             string cause = null,
             int? day = null,
-            string season = null)
+            string season = null,
+            string broadcastMessage = null)
         {
             if (!toggle.Value)
             {
@@ -1020,6 +1073,10 @@ namespace FedoServerTools
             if (season != null)
             {
                 message = message.Replace("{season}", season);
+            }
+            if (broadcastMessage != null)
+            {
+                message = message.Replace("{message}", broadcastMessage);
             }
 
             var (title, color) = DescribeEventKind(kind);

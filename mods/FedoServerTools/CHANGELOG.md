@@ -204,3 +204,9 @@
   broadcast -- non-fatal (the message still showed up), but noisy. Now reuses the local
   player's own `PlatformUserID` (`UserInfo.GetLocalUser().UserId`, always valid) while
   keeping "Fedoheim" as the displayed name, instead of a blank one.
+- Fixed: the loading overlay's logo/text (`LoadingOverlay.cs`) looked tiny on a real
+  high-resolution monitor -- the `CanvasScaler` was left on its default
+  `ConstantPixelSize` mode, so the pixel sizes below stayed fixed regardless of screen
+  resolution. Switched to `ScaleWithScreenSize` (1920x1080 reference, 0.5 width/height
+  balance) and roughly doubled the base sizes (logo 160px→320px, text 40pt→56pt) for a
+  more prominent loading screen.

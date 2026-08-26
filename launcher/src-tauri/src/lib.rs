@@ -21,7 +21,7 @@ use serde::Serialize;
 use session::{Session, UserInfo};
 use settings::Settings;
 use std::sync::Mutex;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 struct AppState {
     http: reqwest::Client,
@@ -923,6 +923,44 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .setup(|app| {
+            // tauri-plugin-window-state peut restaurer une taille/position corrompue
+            // (vécu en dev : 260x190, position hors écran avec y négatif) -- minWidth/
+            // minHeight de tauri.conf.json ne protègent pas contre ça une fois qu'un état
+            // persisté existe (le plugin l'applique directement, sans repasser par ces
+            // contraintes). Vraie cause probable côté joueur réel (pas juste un fichier
+            // local corrompu à la main) : App.tsx ajuste la hauteur de fenêtre par petits
+            // deltas au fil de l'apparition/disparition des bandeaux (API injoignable, mise
+            // à jour dispo) via un ResizeObserver -- plusieurs de ces ajustements
+            // rapprochés (typiquement au tout premier lancement) pouvaient auparavant
+            // partir en course entre eux et cumuler un delta erroné, que ce plugin
+            // persiste ensuite tel quel pour toujours. Filet de sécurité au démarrage,
+            // en plus du correctif côté frontend (voir App.tsx) : si la fenêtre restaurée
+            // est anormalement petite ou hors écran, on la remet à la taille par défaut de
+            // tauri.conf.json et on la recentre, plutôt que de laisser un joueur bloqué sur
+            // une fenêtre inutilisable sans savoir pourquoi.
+            const MIN_SANE_WIDTH: u32 = 900;
+            const MIN_SANE_HEIGHT: u32 = 600;
+
+            if let Some(window) = app.get_webview_window("main") {
+                let too_small = window
+                    .outer_size()
+                    .map(|size| size.width < MIN_SANE_WIDTH || size.height < MIN_SANE_HEIGHT)
+                    .unwrap_or(false);
+                let off_screen = window
+                    .outer_position()
+                    .map(|pos| pos.y < 0 || pos.x < -10_000)
+                    .unwrap_or(false);
+
+                if too_small || off_screen {
+                    let _ = window
+                        .set_size(tauri::Size::Logical(tauri::LogicalSize::new(1200.0, 800.0)));
+                    let _ = window.center();
+                }
+            }
+
+            Ok(())
+        })
         .manage(AppState {
             http: reqwest::Client::new(),
             session: Mutex::new(None),

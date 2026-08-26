@@ -301,6 +301,12 @@ function App() {
   // la fenêtre manuellement.
   const bannersRef = useRef<HTMLDivElement>(null);
   const bannersHeightRef = useRef(0);
+  // Taille logique de la fenêtre suivie ici, en mémoire, plutôt que relue depuis l'OS
+  // (win.innerSize()) à chaque delta -- voir le commentaire dans l'effet ci-dessous pour
+  // le bug que ça évite.
+  const windowSizeRef = useRef<{ width: number; height: number } | null>(null);
+  // File d'attente séquentielle pour les appels setSize -- voir commentaire ci-dessous.
+  const resizeChainRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     const el = bannersRef.current;
@@ -310,11 +316,30 @@ function App() {
       const delta = newHeight - bannersHeightRef.current;
       if (delta === 0) return;
       bannersHeightRef.current = newHeight;
-      (async () => {
+
+      // Enchaîné (jamais concurrent) plutôt que déclenché à la volée : deux bandeaux qui
+      // apparaissent/disparaissent coup sur coup (typique au tout premier lancement, le
+      // temps que les vérifs API/mise à jour se résolvent) pouvaient auparavant partir en
+      // course l'un contre l'autre -- chacun lisait win.innerSize() de façon asynchrone
+      // AVANT que le setSize précédent n'ait eu le temps de s'appliquer, perdant un delta
+      // ou cumulant les deux sur la même taille de départ obsolète. Résultat vécu : une
+      // fenêtre rétrécie bien plus que prévu, taille que tauri-plugin-window-state
+      // persiste ensuite telle quelle pour toujours (voir le filet de sécurité côté Rust,
+      // lib.rs::run). windowSizeRef élimine la relecture OS racée : une fois connue, la
+      // taille courante n'est plus mise à jour qu'en mémoire, de façon synchrone.
+      resizeChainRef.current = resizeChainRef.current.then(async () => {
         const win = getCurrentWindow();
-        const size = (await win.innerSize()).toLogical(await win.scaleFactor());
-        await win.setSize(new LogicalSize(size.width, size.height + delta));
-      })();
+        if (!windowSizeRef.current) {
+          const size = (await win.innerSize()).toLogical(await win.scaleFactor());
+          windowSizeRef.current = { width: size.width, height: size.height };
+        }
+        const next = {
+          width: windowSizeRef.current.width,
+          height: windowSizeRef.current.height + delta,
+        };
+        windowSizeRef.current = next;
+        await win.setSize(new LogicalSize(next.width, next.height));
+      });
     });
     observer.observe(el);
     return () => observer.disconnect();

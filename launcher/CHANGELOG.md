@@ -4,6 +4,18 @@ Une entrée par version publiée du launcher. Le texte de chaque section est rep
 automatiquement comme description de la release GitHub correspondante (voir
 `.github/workflows/launcher-release.yml`).
 
+## 0.0.8
+
+- Correction : la fenêtre pouvait se retrouver minuscule et hors écran après un lancement
+  (vécu en dev : 260×190, position hors écran) et le rester indéfiniment, la taille/position
+  invalide étant persistée telle quelle d'une ouverture à l'autre. Cause réelle : les
+  bandeaux (API injoignable / mise à jour disponible) ajustent la hauteur de la fenêtre par
+  petits deltas à leur apparition/disparition — plusieurs ajustements rapprochés (typiques
+  au tout premier lancement) pouvaient partir en course les uns contre les autres et cumuler
+  un delta erroné. Un filet de sécurité au démarrage remet en plus la fenêtre à sa taille par
+  défaut et la recentre si elle est anormalement petite ou hors écran, pour quiconque a déjà
+  une taille corrompue enregistrée.
+
 ## 0.0.7
 
 - La page "Profils" et la page "Paramètres" (admin) sont fusionnées en une seule page

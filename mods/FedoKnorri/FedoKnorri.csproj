@@ -10,6 +10,7 @@
     <ValheimManagedDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed</ValheimManagedDir>
     <ValheimBepInExCore>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/core</ValheimBepInExCore>
     <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoKnorri</ValheimPluginsDir>
+    <ValheimJotunnDll>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/jotunn/Jotunn.dll</ValheimJotunnDll>
   </PropertyGroup>
 
   <!-- UnityEngine.CoreModule fournit déjà PublicAPIAttribute/UsedImplicitlyAttribute
@@ -76,6 +77,16 @@
       <HintPath>$(ValheimManagedDir)/Unity.TextMeshPro.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Dépendance dure (contrairement à Seasons dans FedoServerTools.csproj, purement
+         optionnelle) : ce mod ne fonctionne pas sans Jotunn (PrefabManager/ItemManager,
+         voir CompanionPrefabPatch.cs/SummonItemPrefabPatch.cs), d'où [BepInDependency] sur
+         le plugin. Jamais copiée (Private=false) : Jotunn doit être fourni comme un mod à
+         part entière du modpack (dépendance Thunderstore déclarée dans manifest.json), pas
+         embarqué dans le zip de FedoKnorri. -->
+    <Reference Include="Jotunn">
+      <HintPath>$(ValheimJotunnDll)</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Copie la DLL compilée et les assets audio custom dans le dossier plugins réel du jeu -->
@@ -83,6 +94,7 @@
     <ItemGroup>
       <PluginOutputFiles Include="$(TargetDir)*.dll" />
       <PluginAssetFiles Include="$(MSBuildProjectDirectory)/*.mp3" />
+      <PluginAssetFiles Include="$(MSBuildProjectDirectory)/*.jpg" />
     </ItemGroup>
     <MakeDir Directories="$(ValheimPluginsDir)" Condition="!Exists('$(ValheimPluginsDir)')" />
     <Copy SourceFiles="@(PluginOutputFiles)" DestinationFolder="$(ValheimPluginsDir)" />

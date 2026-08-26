@@ -5,6 +5,7 @@
   "website_url": "",
   "description": "Use a charm to summon a tame Greyling that follows you, heals you when hurt, and picks up nearby loot into your inventory.",
   "dependencies": [
-    "denikson-BepInExPack_Valheim-5.4.2333"
+    "denikson-BepInExPack_Valheim-5.4.2333",
+    "ValheimModding-Jotunn-2.29.1"
   ]
 }

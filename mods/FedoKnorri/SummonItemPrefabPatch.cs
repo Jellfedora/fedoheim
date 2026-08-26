@@ -1,64 +1,111 @@
 using System;
+using System.IO;
 using System.Linq;
-using HarmonyLib;
+using System.Reflection;
+using Jotunn.Entities;
+using Jotunn.Managers;
+using Jotunn.Utils;
 using UnityEngine;
 
 namespace FedoKnorri
 {
-    // Même principe que FedoGuardian.SummonWandPrefabPatch : clone d'un item vanilla existant
-    // (configurable, TrophyGreyling par défaut -- en attendant un vrai modèle dédié), renommé,
-    // et enregistré dans ZNetScene.m_prefabs + ObjectDB.m_items avec le même Postfix
-    // auto-réparant sur les méthodes de résolution par nom/hash.
+    // Item custom cloné via Jotunn (PrefabManager + ItemManager) plutôt que par les patches
+    // Harmony "auto-réparants" documentés dans mods/CLAUDE.md (Postfix maison sur
+    // ZNetScene.Awake/GetPrefab/HasPrefab + ObjectDB.Awake/GetItemPrefab, quatre surcharges
+    // comprises) : ItemManager.AddItem s'occupe lui-même d'enregistrer le prefab dans
+    // ObjectDB.m_items (et ses dictionnaires internes de résolution par hash/nom/SharedData,
+    // jamais mis à jour côté vanilla pour un item ajouté après coup -- exactement ce que ces
+    // Postfix contournaient à la main) au bon moment du chargement.
+    //
+    // Point d'entrée : PrefabManager.OnVanillaPrefabsAvailable (ItemManager.OnVanillaItemsAvailable
+    // existe aussi mais est marqué [Obsolete] par Jotunn au profit de celui-ci) -- se déclenche
+    // aussi bien au menu principal (avant qu'un ZNetScene existe) qu'au chargement réel d'une
+    // partie, d'où le même besoin de retenter tant que _clone reste null (voir CreateItem).
+    // ItemManager.AddItem, appelé une seule fois ci-dessous dès que le clone réussit, se charge
+    // ensuite lui-même de rejouer l'enregistrement dans ObjectDB à chaque rechargement suivant.
     internal static class SummonItemPrefabPatch
     {
         public const string PrefabName = "Fedo_KnorriCharm";
 
-        private static readonly int PrefabHash = PrefabName.GetStableHashCode();
+        // Icône custom (voir FedoKnorriPlugin.SummonItemName) déployée à côté de la DLL par
+        // le .csproj (CopyToPlugins), même mécanisme que shiny.mp3/healing.mp3. Remplace
+        // uniquement l'icône affichée dans l'inventaire -- le modèle 3D en main/au sol reste
+        // celui de SummonItemSourceItem tant qu'aucun vrai modèle dédié n'existe.
+        // Extension ".jpg" obligatoire -- AssetUtils.LoadTexture (utilisée par
+        // LoadSpriteFromFile) vérifie l'EXTENSION du fichier, pas son contenu, et lève
+        // "LoadTexture can only load png or jpg textures" pour un ".jpeg" (vécu en jeu :
+        // exception non rattrapée dans LoadIcon(), qui faisait échouer TOUTE la création de
+        // l'item -- voir le try/catch autour de l'appel ci-dessous).
+        private const string IconFileName = "knorri_seed.jpg";
 
         private static GameObject _clone;
 
-        // Cf. commentaire équivalent dans SummonWandPrefabPatch.SharedData : identifié par
-        // nom plutôt que par identité d'objet, ObjectDB.Awake() pouvant reconstruire un
-        // nouveau clone (donc une nouvelle SharedData) plusieurs fois pendant le chargement.
-        public static ItemDrop.ItemData.SharedData SharedData { get; private set; }
+        // Identifié par le nom FIGÉ AU MOMENT DE LA CRÉATION du prefab, mis en cache ici --
+        // pas en relisant SummonItemName.Value à chaque appel (l'ancien bug : les .cfg se
+        // rechargent à chaud, voir CLAUDE.md, donc renommer l'item pendant que le serveur
+        // tourne cassait silencieusement la reconnaissance de toutes les graines déjà en
+        // circulation), et pas non plus par identité d'objet SharedData (essayé, puis
+        // abandonné -- vécu en jeu : un exemplaire obtenu via Easy Spawner/additem ne
+        // partage PAS forcément la même instance SharedData que celle créée dans CreateItem,
+        // sans doute copiée par valeur quelque part dans le pipeline vanilla plutôt que
+        // partagée par référence -- la comparaison échouait alors TOUJOURS, l'item retombait
+        // dans la vraie logique Consumable vanilla et se consommait pour rien, sans jamais
+        // invoquer le compagnon). Une chaîne mise en cache une fois n'a aucun de ces deux
+        // problèmes : stable quel que soit le chemin d'obtention de l'item, insensible à un
+        // renommage ultérieur du .cfg.
+        private static string _createdWithName;
 
         public static bool IsSummonItem(ItemDrop.ItemData item)
         {
-            return item?.m_shared != null && item.m_shared.m_name == FedoKnorriPlugin.Instance.SummonItemName.Value;
+            return _createdWithName != null && item?.m_shared != null && item.m_shared.m_name == _createdWithName;
         }
 
         public static GameObject GetPrefab()
         {
-            return GetOrCreate();
+            return _clone;
         }
 
-        private static GameObject BuildClone()
+        // Appelée une fois depuis FedoKnorriPlugin.Awake -- ne fait que s'abonner, la
+        // construction elle-même attend qu'ObjectDB/ZNetScene existent (voir CreateItem).
+        public static void Init()
         {
-            string sourceName = FedoKnorriPlugin.Instance.SummonItemSourceItem.Value;
+            PrefabManager.OnVanillaPrefabsAvailable += CreateItem;
+        }
 
-            GameObject source = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(sourceName) : null;
-            if (source == null && ZNetScene.instance != null)
+        // Rappelée à chaque fois qu'ObjectDB redevient disponible (menu principal ET/OU
+        // chargement réel d'une partie, cf. commentaire de classe) -- une exception ici
+        // couperait la diffusion de l'événement Jotunn aux autres abonnés éventuels (délégué
+        // multicast), d'où le try/catch, même principe défensif que documenté dans l'ancienne
+        // version pour les Postfix Harmony partagés.
+        private static void CreateItem()
+        {
+            if (_clone != null)
             {
-                source = ZNetScene.instance.GetPrefab(sourceName);
+                return;
             }
 
-            if (source == null)
+            try
             {
-                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: prefab source '{sourceName}' introuvable, impossible de créer le charme d'invocation.");
-                LogSimilarItemNames(sourceName);
-                return null;
-            }
+                string sourceName = FedoKnorriPlugin.Instance.SummonItemSourceItem.Value;
 
-            // Enfant du conteneur racine désactivé : aucun script (ItemDrop.Awake compris) ne
-            // s'exécute tant qu'il reste là -- cf. note dans CompanionPrefabPatch pour le pourquoi.
-            var clone = UnityEngine.Object.Instantiate(source, FedoKnorriPlugin.TemplateRoot, worldPositionStays: false);
-            clone.name = PrefabName;
+                GameObject clone = PrefabManager.Instance.CreateClonedPrefab(PrefabName, sourceName);
+                if (clone == null)
+                {
+                    FedoKnorriPlugin.Log?.LogError($"FedoKnorri: prefab source '{sourceName}' introuvable, impossible de créer l'item d'invocation.");
+                    LogSimilarItemNames(sourceName);
+                    return;
+                }
 
-            var itemDrop = clone.GetComponent<ItemDrop>();
-            if (itemDrop != null)
-            {
+                var itemDrop = clone.GetComponent<ItemDrop>();
+                if (itemDrop == null)
+                {
+                    FedoKnorriPlugin.Log?.LogError($"FedoKnorri: '{sourceName}' n'a pas de composant ItemDrop, impossible d'en faire un item d'invocation.");
+                    return;
+                }
+
                 itemDrop.m_itemData.m_shared.m_name = FedoKnorriPlugin.Instance.SummonItemName.Value;
                 itemDrop.m_itemData.m_shared.m_description = FedoKnorriPlugin.Instance.SummonItemDescription.Value;
+                _createdWithName = itemDrop.m_itemData.m_shared.m_name;
 
                 // Forcé en Consumable quel que soit le type d'origine (Trophy par défaut n'a
                 // pas de bouton "Utiliser" dans l'inventaire vanilla) : c'est ce type qui
@@ -66,10 +113,123 @@ namespace FedoKnorri
                 // simple support visuel.
                 itemDrop.m_itemData.m_shared.m_itemType = ItemDrop.ItemData.ItemType.Consumable;
 
-                SharedData = itemDrop.m_itemData.m_shared;
-            }
+                Sprite icon = LoadIcon();
+                if (icon != null)
+                {
+                    itemDrop.m_itemData.m_shared.m_icons = new[] { icon };
+                }
 
-            return clone;
+                SummonItemSparkleEffect.Attach(clone);
+                ApplyPurpleTint(clone);
+
+                // fixReference: false -- le clone référence déjà de vrais assets vanilla
+                // (hérités de sourceName), pas des Mock<T> Jotunn à résoudre.
+                ItemManager.Instance.AddItem(new CustomItem(clone, fixReference: false));
+
+                _clone = clone;
+            }
+            catch (Exception e)
+            {
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: échec de création de l'item d'invocation : {e}");
+            }
+        }
+
+        // AssetUtils.LoadSpriteFromFile lit le fichier (PNG/JPG uniquement -- vérifié par
+        // EXTENSION, pas par contenu, voir le commentaire sur IconFileName) et en fait un
+        // Sprite directement, sans passer par la coroutine UnityWebRequest utilisée ailleurs
+        // dans ce mod pour l'audio (pas de format compressé à streamer ici, juste une image
+        // locale). Son propre try/catch, séparé de celui de CreateItem : une icône ratée
+        // (fichier absent, mauvaise extension, image corrompue...) ne doit jamais empêcher
+        // l'item lui-même d'exister -- juste garder l'icône vanilla de secours -- vécu en jeu
+        // avec la mauvaise extension avant ce correctif : l'exception non rattrapée ici
+        // remontait jusqu'au try/catch de CreateItem, qui abandonnait la création de l'item
+        // ENTIER (jamais enregistré du tout) pour un problème purement cosmétique.
+        private static Sprite LoadIcon()
+        {
+            try
+            {
+                string dllDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                string path = Path.Combine(dllDir ?? "", IconFileName);
+                if (!File.Exists(path))
+                {
+                    FedoKnorriPlugin.Log?.LogWarning($"FedoKnorri: '{IconFileName}' introuvable à côté de la DLL, l'item d'invocation gardera l'icône vanilla de '{FedoKnorriPlugin.Instance.SummonItemSourceItem.Value}'.");
+                    return null;
+                }
+
+                Sprite sprite = AssetUtils.LoadSpriteFromFile(path);
+                if (sprite == null)
+                {
+                    FedoKnorriPlugin.Log?.LogWarning($"FedoKnorri: échec du chargement de '{IconFileName}' en icône, l'item d'invocation gardera l'icône vanilla de '{FedoKnorriPlugin.Instance.SummonItemSourceItem.Value}'.");
+                }
+
+                return sprite;
+            }
+            catch (Exception e)
+            {
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: échec du chargement de '{IconFileName}' en icône, l'item d'invocation gardera l'icône vanilla de '{FedoKnorriPlugin.Instance.SummonItemSourceItem.Value}' : {e}");
+                return null;
+            }
+        }
+
+        // Teinte le modèle 3D vanilla hérité de SummonItemSourceItem vers le violet, en
+        // attendant un vrai modèle dédié -- cohérent avec l'icône et les particules
+        // (SummonItemSparkleEffect). Renderer.material (pas .sharedMaterial) instancie
+        // automatiquement une copie du matériau propre à ce renderer au premier accès --
+        // jamais l'asset original partagé par d'autres objets utilisant le même matériau.
+        //
+        // Ni "_Color" ni "_BaseColor" (essayés en premier) n'ont d'effet visible en jeu -- les
+        // shaders custom de Valheim pour les items/props n'exposent apparemment aucun des deux
+        // sous ce nom. Plutôt que deviner un troisième nom au hasard, on interroge le shader
+        // lui-même (Shader.GetPropertyCount/GetPropertyType, réflexion de shader native Unity,
+        // pas de la réflexion .NET) pour trouver TOUTES ses propriétés de type Couleur et les
+        // teinter, quel que soit leur nom réel -- sauf celles qui ressemblent à de l'émission,
+        // qu'on ne veut surtout pas transformer en halo lumineux inattendu.
+        private static readonly Color PrefabTintColor = new Color(0.55f, 0.3f, 0.85f);
+
+        private static void ApplyPurpleTint(GameObject root)
+        {
+            try
+            {
+                Renderer[] renderers = root.GetComponentsInChildren<Renderer>(includeInactive: true);
+                FedoKnorriPlugin.Log?.LogInfo($"FedoKnorri: teinte violette -- {renderers.Length} renderer(s) trouvé(s) sur l'item d'invocation.");
+
+                foreach (var meshRenderer in renderers)
+                {
+                    Material material = meshRenderer.material;
+                    Shader shader = material.shader;
+                    bool tinted = false;
+
+                    int propertyCount = shader.GetPropertyCount();
+                    for (int i = 0; i < propertyCount; i++)
+                    {
+                        if (shader.GetPropertyType(i) != UnityEngine.Rendering.ShaderPropertyType.Color)
+                        {
+                            continue;
+                        }
+
+                        string propName = shader.GetPropertyName(i);
+                        if (propName.IndexOf("Emission", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            continue;
+                        }
+
+                        Color before = material.GetColor(propName);
+                        Color after = Color.Lerp(before, PrefabTintColor, 0.6f);
+                        material.SetColor(propName, after);
+                        tinted = true;
+                        FedoKnorriPlugin.Log?.LogInfo($"FedoKnorri: '{meshRenderer.name}' (shader '{shader.name}') teinté via '{propName}' : {before} -> {after}.");
+                    }
+
+                    if (!tinted)
+                    {
+                        FedoKnorriPlugin.Log?.LogWarning($"FedoKnorri: aucune propriété de couleur exploitable trouvée sur le shader '{shader.name}' ({meshRenderer.name}), l'item d'invocation gardera son apparence vanilla d'origine.");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                FedoKnorriPlugin.Log?.LogWarning($"FedoKnorri: échec de la teinte violette de l'item d'invocation : {e}");
+            }
         }
 
         // Aide au diagnostic : si le nom configuré ne correspond à aucun prefab, on liste les
@@ -94,7 +254,7 @@ namespace FedoKnorri
             }
 
             var matches = ObjectDB.instance.m_items
-                .Where(go => go != null && keywords.Any(k => go.name.IndexOf(k, System.StringComparison.OrdinalIgnoreCase) >= 0))
+                .Where(go => go != null && keywords.Any(k => go.name.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0))
                 .Select(go => go.name)
                 .Distinct()
                 .OrderBy(n => n)
@@ -103,160 +263,6 @@ namespace FedoKnorri
             FedoKnorriPlugin.Log?.LogWarning(matches.Count > 0
                 ? $"FedoKnorri: noms de prefabs ressemblants trouvés dans ObjectDB -> {string.Join(", ", matches)}"
                 : $"FedoKnorri: aucun prefab ressemblant à '{sourceName}' trouvé dans ObjectDB.m_items.");
-        }
-
-        // Cf. commentaire équivalent dans CompanionPrefabPatch.GetOrCreate : appelée depuis des
-        // Postfix sur des méthodes vanilla partagées (ObjectDB.Awake/GetItemPrefab, ZNetScene...),
-        // une exception ici casserait toute la chaîne de patches Harmony dessus et peut bloquer
-        // le chargement du monde entier.
-        //
-        // L'enregistrement dans ZNetScene.m_prefabs/ObjectDB.m_items est refait à CHAQUE appel
-        // (pas seulement à la construction du clone) : ObjectDB.Awake se déclenche une première
-        // fois au menu principal, avant que ZNetScene.instance existe -- le clone était alors mis
-        // en cache sans jamais atterrir dans m_prefabs, et le early-return sur _clone empêchait
-        // tout nouvel essai au chargement réel de la partie (item invisible pour un spawner tiers
-        // qui énumère m_prefabs, comme Easy Spawner, même si GetPrefab/HasPrefab restaient
-        // fonctionnels via les Postfix auto-réparants ci-dessous).
-        private static GameObject GetOrCreate()
-        {
-            try
-            {
-                if (_clone == null)
-                {
-                    _clone = BuildClone();
-                }
-
-                if (_clone == null)
-                {
-                    return null;
-                }
-
-                if (ZNetScene.instance != null && !ZNetScene.instance.m_prefabs.Contains(_clone))
-                {
-                    ZNetScene.instance.m_prefabs.Add(_clone);
-                }
-
-                if (ObjectDB.instance != null && !ObjectDB.instance.m_items.Contains(_clone))
-                {
-                    ObjectDB.instance.m_items.Add(_clone);
-                }
-            }
-            catch (Exception e)
-            {
-                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: échec de création du charme d'invocation : {e}");
-                _clone = null;
-            }
-
-            return _clone;
-        }
-
-        [HarmonyPatch(typeof(ObjectDB), "Awake")]
-        private static class ObjectDbAwakePatch
-        {
-            private static void Postfix()
-            {
-                GetOrCreate();
-            }
-        }
-
-        // Second point d'entrée nécessaire (cf. commentaire de GetOrCreate) : au chargement
-        // réel d'une partie, ZNetScene.Awake tourne après le premier ObjectDB.Awake du menu
-        // principal -- c'est cet appel-ci qui réussit enfin à ajouter le clone déjà construit à
-        // ZNetScene.m_prefabs.
-        [HarmonyPatch(typeof(ZNetScene), "Awake")]
-        private static class ZNetSceneAwakePatch
-        {
-            private static void Postfix()
-            {
-                GetOrCreate();
-            }
-        }
-
-        [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.GetPrefab), typeof(int))]
-        private static class GetPrefabByHashPatch
-        {
-            private static void Postfix(int hash, ref GameObject __result)
-            {
-                if (__result != null || hash != PrefabHash)
-                {
-                    return;
-                }
-
-                __result = GetOrCreate();
-            }
-        }
-
-        [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.GetPrefab), typeof(string))]
-        private static class GetPrefabByNamePatch
-        {
-            private static void Postfix(string name, ref GameObject __result)
-            {
-                if (__result != null || name != PrefabName)
-                {
-                    return;
-                }
-
-                __result = GetOrCreate();
-            }
-        }
-
-        [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.HasPrefab))]
-        private static class HasPrefabPatch
-        {
-            private static void Postfix(int hash, ref bool __result)
-            {
-                if (__result || hash != PrefabHash)
-                {
-                    return;
-                }
-
-                __result = true;
-            }
-        }
-
-        [HarmonyPatch(typeof(ObjectDB), nameof(ObjectDB.GetItemPrefab), typeof(int))]
-        private static class GetItemPrefabByHashPatch
-        {
-            private static void Postfix(int hash, ref GameObject __result)
-            {
-                if (__result != null || hash != PrefabHash)
-                {
-                    return;
-                }
-
-                __result = GetOrCreate();
-            }
-        }
-
-        [HarmonyPatch(typeof(ObjectDB), nameof(ObjectDB.GetItemPrefab), typeof(string))]
-        private static class GetItemPrefabByNamePatch
-        {
-            private static void Postfix(string name, ref GameObject __result)
-            {
-                if (__result != null || name != PrefabName)
-                {
-                    return;
-                }
-
-                __result = GetOrCreate();
-            }
-        }
-
-        // Résolution par SharedData -- probablement ce qu'utilise VisEquipment pour retrouver le
-        // modèle visuel à accrocher en main. Basée sur un dictionnaire (m_itemByData) reconstruit
-        // une seule fois par ObjectDB, jamais mis à jour pour un item ajouté après coup à m_items.
-        [HarmonyPatch(typeof(ObjectDB), nameof(ObjectDB.GetItemPrefab), typeof(ItemDrop.ItemData.SharedData))]
-        private static class GetItemPrefabBySharedDataPatch
-        {
-            private static void Postfix(ItemDrop.ItemData.SharedData sharedData, ref GameObject __result)
-            {
-                if (__result != null || sharedData == null || sharedData != SharedData)
-                {
-                    return;
-                }
-
-                __result = GetOrCreate();
-            }
         }
     }
 }

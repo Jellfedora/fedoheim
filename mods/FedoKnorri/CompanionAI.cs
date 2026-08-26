@@ -44,10 +44,6 @@ namespace FedoKnorri
         // ferait passer par le vrai système de dégâts (risque réel de blesser le joueur).
         private const string ThrowAnimationTrigger = "throw";
 
-        // Garde-fou : si jamais l'état lu n'est pas la bonne animation (transition pas encore
-        // effective) et rapporte une durée aberrante, on ne bloque pas le soin indéfiniment.
-        private const float MaxThrowAnimationWaitSeconds = 3f;
-
         private Player _owner;
         private Animator _animator;
         private float _healCooldownTimer;
@@ -339,22 +335,32 @@ namespace FedoKnorri
         }
 
         // L'orbe partait en même temps que l'animation plutôt qu'à la fin de son geste (vécu en
-        // jeu, décalage visuel) -- on attend la durée RÉELLE du clip "throw" plutôt qu'une
-        // valeur devinée (impossible à connaître sans décompiler l'AnimatorController). Un
-        // SetTrigger ne change d'état qu'au prochain passage de l'Animator (pas cette frame-ci),
-        // d'où le "yield return null" avant de lire l'état courant.
+        // jeu, décalage visuel). Trois tentatives successives de lire l'état réel de l'Animator
+        // pour caler l'orbe automatiquement dessus, trois décalages différents, toutes vécues en
+        // jeu et abandonnées :
+        // 1) Lecture immédiate de la durée de l'état courant après un "yield return null" :
+        //    tant que l'AnimatorController est encore en transition vers "throw" (même une
+        //    simple crossfade), GetCurrentAnimatorStateInfo continue de renvoyer l'état
+        //    PRÉCÉDENT (souvent l'idle, une boucle bien plus longue) -- l'orbe partait ~1,5s
+        //    trop tard, décalé de la durée de l'idle mal lue au lieu de celle du vrai clip.
+        // 2) Attendre la fin de la transition (IsInTransition) avant de lire la durée, PUIS
+        //    attendre cette durée en entier -- toujours ~0,5s trop tard : un crossfade joue déjà
+        //    le clip "throw" EN PARALLÈLE de l'ancien état, donc son horloge interne avait déjà
+        //    avancé pendant la transition ; additionner "durée de la transition" PUIS "durée
+        //    totale du clip" comptait ce chevauchement deux fois.
+        // 3) Surveiller AnimatorStateInfo.normalizedTime frame par frame jusqu'à 1 -- encore
+        //    PLUS tard cette fois : l'état "throw" a vraisemblablement sa propre transition de
+        //    SORTIE vers l'idle configurée avant la fin du clip (Exit Time < 1), qui remet
+        //    IsInTransition à true une seconde fois avant que normalizedTime n'atteigne 1,
+        //    obligeant à attendre cette transition de sortie en plus.
+        // Inspecter le vrai AnimatorController pour comprendre son graphe de transitions exact
+        // demanderait de le décompiler (pas juste l'assembly, un asset Unity sérialisé, hors de
+        // portée de MetadataLoadContext) -- retenu à la place : un délai fixe, réglable dans le
+        // .cfg (rechargé à chaud, aucun rebuild nécessaire pour l'ajuster) plutôt que deviné à
+        // l'aveugle à travers d'autres cycles de test.
         private IEnumerator LaunchHealOrbAfterThrow(Player target, float healAmount)
         {
-            if (_animator != null)
-            {
-                yield return null;
-
-                AnimatorStateInfo state = _animator.GetCurrentAnimatorStateInfo(0);
-                if (state.length > 0f && state.length < MaxThrowAnimationWaitSeconds)
-                {
-                    yield return new WaitForSeconds(state.length);
-                }
-            }
+            yield return new WaitForSeconds(FedoKnorriPlugin.Instance.HealThrowDelaySeconds.Value);
 
             if (target == null)
             {

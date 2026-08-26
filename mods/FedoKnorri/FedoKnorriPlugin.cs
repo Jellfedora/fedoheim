@@ -11,6 +11,13 @@ using UnityEngine.Networking;
 
 namespace FedoKnorri
 {
+    // Jotunn doit être chargé avant ce mod : CompanionPrefabPatch/SummonItemPrefabPatch
+    // s'appuient sur son PrefabManager/ItemManager dès Awake() (abonnement à l'événement
+    // PrefabManager.OnVanillaPrefabsAvailable). Sans cette dépendance déclarée, BepInEx
+    // pourrait charger les plugins dans n'importe quel ordre -- avec elle, un serveur sans
+    // Jotunn installé refuse proprement de charger FedoKnorri (message clair dans les logs
+    // BepInEx) plutôt que de planter plus loin sur une NullReferenceException.
+    [BepInDependency(Jotunn.Main.ModGuid)]
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     public class FedoKnorriPlugin : BaseUnityPlugin
     {
@@ -21,12 +28,6 @@ namespace FedoKnorri
         public static FedoKnorriPlugin Instance { get; private set; }
         public static ManualLogSource Log { get; private set; }
 
-        // Même technique que FedoGuardian.TemplateRoot : conteneur racine désactivé en
-        // permanence, destiné à recevoir les gabarits de prefabs clonés (compagnon, charme).
-        // Tant qu'un objet reste enfant d'un parent inactif, Unity ne déclenche jamais
-        // Awake/OnEnable/Start dessus, quel que soit son propre "activeSelf".
-        public static Transform TemplateRoot { get; private set; }
-
         public ConfigEntry<string> CompanionName;
         public ConfigEntry<float> CompanionScale;
         public ConfigEntry<float> FollowDistance;
@@ -36,6 +37,7 @@ namespace FedoKnorri
         public ConfigEntry<float> HealAmount;
         public ConfigEntry<float> HealCooldownSeconds;
         public ConfigEntry<float> HealRange;
+        public ConfigEntry<float> HealThrowDelaySeconds;
 
         public ConfigEntry<float> PickupRange;
         public ConfigEntry<float> PickupIntervalSeconds;
@@ -51,6 +53,8 @@ namespace FedoKnorri
         public ConfigEntry<string> SummonItemDescription;
         public ConfigEntry<float> SummonCooldownSeconds;
         public ConfigEntry<float> SummonDistance;
+        public ConfigEntry<string> SummonItemOwnerLabel;
+        public ConfigEntry<string> SummonItemNotOwnerMessage;
 
         private const string CoinPickupSoundFileName = "shiny.mp3";
         public ConfigEntry<float> CoinPickupSoundVolume;
@@ -78,11 +82,6 @@ namespace FedoKnorri
         {
             Instance = this;
             Log = Logger;
-
-            var root = new GameObject("FedoKnorri_TemplateRoot");
-            Object.DontDestroyOnLoad(root);
-            root.SetActive(false);
-            TemplateRoot = root.transform;
 
             CompanionName = SyncedConfig(
                 "Companion",
@@ -132,6 +131,12 @@ namespace FedoKnorri
                 8f,
                 "Distance (in meters) within which the companion can heal its owner.");
 
+            HealThrowDelaySeconds = SyncedConfig(
+                "Healing",
+                "HealThrowDelaySeconds",
+                0.8f,
+                "Delay (in seconds) between the companion's throw animation starting and the heal orb actually launching -- tune this by eye in game until the orb leaves right at (or a touch before) the end of the throw motion. A fixed, tunable value rather than something read off the Animator at runtime: reading the Animator's real transition/state timing turned out unreliable across multiple attempts (see CompanionAI.LaunchHealOrbAfterThrow).");
+
             PickupRange = SyncedConfig(
                 "Pickup",
                 "PickupRange",
@@ -178,19 +183,19 @@ namespace FedoKnorri
                 "SummonItem",
                 "SummonItemSourceItem",
                 "TrophyGreydwarf",
-                "Name of the vanilla item prefab used as a visual/base for the summoning charm (placeholder until a custom model is made). Greylings don't drop their own trophy in vanilla, hence the adult Greydwarf's.");
+                "Name of the vanilla item prefab used as a base for the summoning item -- still governs its in-world/in-hand 3D model (placeholder until a custom one is made), but no longer its inventory icon, which is always the custom one bundled with this mod (knorri_seed.jpeg, see SummonItemPrefabPatch). Greylings don't drop their own trophy in vanilla, hence the adult Greydwarf's.");
 
             SummonItemName = SyncedConfig(
                 "SummonItem",
                 "SummonItemName",
-                "Greyling Charm",
-                "Display name of the summoning charm item.");
+                "Knorri Seed",
+                "Display name of the summoning item.");
 
             SummonItemDescription = SyncedConfig(
                 "SummonItem",
                 "SummonItemDescription",
-                "Summons a tame Greyling companion when used.",
-                "Description shown in the tooltip of the summoning charm item.");
+                "A strange seed that summons a tame Greyling companion when used.",
+                "Description shown in the tooltip of the summoning item.");
 
             SummonCooldownSeconds = SyncedConfig(
                 "SummonItem",
@@ -203,6 +208,18 @@ namespace FedoKnorri
                 "SummonDistance",
                 2f,
                 "Distance (in meters) in front of the player at which the companion is summoned.");
+
+            SummonItemOwnerLabel = SyncedConfig(
+                "SummonItem",
+                "SummonItemOwnerLabel",
+                "Belongs to: {0}",
+                "Line appended to the summoning item's tooltip once it has bound to an owner (see SummonItemOwnershipPatch). {0} is replaced with the owner's name.");
+
+            SummonItemNotOwnerMessage = SyncedConfig(
+                "SummonItem",
+                "SummonItemNotOwnerMessage",
+                "This seed doesn't answer to you.",
+                "Message shown to a player who tries to use a summoning item that's already bound to someone else.");
 
             CoinPickupSoundVolume = SyncedConfig(
                 "Pickup",
@@ -235,6 +252,13 @@ namespace FedoKnorri
                 "Maximum distance (in meters) at which the heal impact sound can be heard at all.");
 
             _configSync.IsLocked = true;
+
+            // Abonnement aux événements Jotunn qui construiront les prefabs custom dès que
+            // ZNetScene/ObjectDB seront prêts (voir CompanionPrefabPatch.cs/
+            // SummonItemPrefabPatch.cs) -- rien de tout ça ne peut se faire ici, ZNetScene
+            // n'existe pas encore à ce stade du chargement.
+            CompanionPrefabPatch.Init();
+            SummonItemPrefabPatch.Init();
 
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();

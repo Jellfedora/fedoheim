@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using UnityEngine;
 
@@ -12,22 +12,41 @@ namespace FedoKnorri
     // CompanionAI.FindExistingCompanion). Prefix qui renvoie false : le vrai UseItem ne s'exécute
     // jamais dans ce cas -- même principe que FedoGuardian.SummonWandUsePatch, mais sur
     // Humanoid.UseItem (déclenché par le clic "Utiliser" en inventaire) plutôt que StartAttack
-    // (arme en main), le charme n'étant pas destiné à être équipé.
+    // (arme en main), le charme n'étant pas destiné à être équipé. Avant même le cooldown, un
+    // verrou de propriété (SummonItemOwnershipPatch) bloque toute utilisation par quelqu'un
+    // d'autre que le premier joueur à avoir utilisé cet exemplaire précis.
     [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.UseItem))]
     internal static class SummonItemUsePatch
     {
-        private static readonly Dictionary<Humanoid, float> LastUse = new Dictionary<Humanoid, float>();
+        // Un wrapper de classe est nécessaire : ConditionalWeakTable exige une TValue
+        // référence, un float ne peut pas y aller directement.
+        private sealed class CooldownState
+        {
+            // HasUsed distingue "jamais utilisé" de "utilisé à Time.time == 0" (juste après le
+            // chargement de la scène) -- sans lui, la toute première utilisation d'un joueur
+            // dans les premières secondes après le démarrage du serveur pourrait être vue à
+            // tort comme "encore en recharge".
+            public bool HasUsed;
+            public float LastUseTime;
+        }
+
+        // ConditionalWeakTable plutôt qu'un Dictionary<Humanoid, float> classique : une entrée
+        // ne retient jamais son Humanoid en vie (clé à référence faible), et disparaît
+        // automatiquement une fois celui-ci ramassé par le GC (peu après une déconnexion,
+        // n'ayant plus d'autre référent) -- sinon la table grossissait d'une entrée par
+        // connexion de joueur, jamais nettoyée, sur toute la durée de vie du serveur.
+        private static readonly ConditionalWeakTable<Humanoid, CooldownState> LastUse = new ConditionalWeakTable<Humanoid, CooldownState>();
 
         // Utilisé par SummonItemCooldownOverlayPatch pour afficher le compte à rebours visuel
         // sur l'icône du charme dans l'inventaire. 0 = pas (ou plus) en recharge.
         public static float GetRemainingCooldown(Humanoid instance)
         {
-            if (instance == null || !LastUse.TryGetValue(instance, out float last))
+            if (instance == null || !LastUse.TryGetValue(instance, out CooldownState state) || !state.HasUsed)
             {
                 return 0f;
             }
 
-            float remaining = FedoKnorriPlugin.Instance.SummonCooldownSeconds.Value - (Time.time - last);
+            float remaining = FedoKnorriPlugin.Instance.SummonCooldownSeconds.Value - (Time.time - state.LastUseTime);
             return remaining > 0f ? remaining : 0f;
         }
 
@@ -62,13 +81,25 @@ namespace FedoKnorri
                 return false;
             }
 
+            // Verrou de propriété (voir SummonItemOwnershipPatch) : avant même le cooldown,
+            // pour qu'un joueur qui n'est pas le propriétaire ne puisse ni invoquer/ranger le
+            // compagnon de quelqu'un d'autre, ni faire tourner ce cooldown à sa place.
+            if (!SummonItemOwnershipPatch.TryUse(item, owner))
+            {
+                MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, FedoKnorriPlugin.Instance.SummonItemNotOwnerMessage.Value);
+                return true;
+            }
+
+            CooldownState state = LastUse.GetValue(instance, _ => new CooldownState());
+
             float cooldown = FedoKnorriPlugin.Instance.SummonCooldownSeconds.Value;
-            if (LastUse.TryGetValue(instance, out float last) && Time.time - last < cooldown)
+            if (state.HasUsed && Time.time - state.LastUseTime < cooldown)
             {
                 return true;
             }
 
-            LastUse[instance] = Time.time;
+            state.HasUsed = true;
+            state.LastUseTime = Time.time;
 
             GameObject existing = CompanionAI.FindExistingCompanion(owner);
             if (existing != null)

@@ -1,19 +1,27 @@
 using System;
 using UnityEngine;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
-    // Nuage de fumée joué à l'invocation et au rangement du compagnon -- même technique
-    // (ParticleSystem généré à la volée, pas d'asset externe) que
-    // FedoGoldRabbit.GoldRabbitBehaviour.PlayDespawnSmoke, reprise ici pour ne pas dupliquer un
-    // asset alors que le code suffit.
+    // Petite explosion de particules générée à la volée (pas d'asset externe) -- même technique
+    // que FedoGoldRabbit.GoldRabbitBehaviour.PlayDespawnSmoke, reprise et rendue configurable en
+    // couleur pour servir à la fois le nuage de fumée gris (invocation/rangement) et l'impact
+    // vert du soin (voir CompanionHealOrb).
     internal static class CompanionPoofEffect
     {
+        private static readonly Color DefaultSmokeColor = new Color(0.85f, 0.85f, 0.85f, 0.8f);
+        private static readonly Color DefaultSmokeFadeColor = new Color(0.6f, 0.6f, 0.6f);
+
         public static void Show(Vector3 position)
+        {
+            Show(position, DefaultSmokeColor, DefaultSmokeFadeColor);
+        }
+
+        public static void Show(Vector3 position, Color startColor, Color fadeColor)
         {
             try
             {
-                var poofObj = new GameObject("FedoCompanion_Poof");
+                var poofObj = new GameObject("FedoKnorri_Poof");
                 poofObj.transform.position = position + Vector3.up * 0.3f;
 
                 var ps = poofObj.AddComponent<ParticleSystem>();
@@ -23,7 +31,7 @@ namespace FedoCompanion
                 main.startLifetime = 0.8f;
                 main.startSpeed = 1.2f;
                 main.startSize = 0.5f;
-                main.startColor = new Color(0.85f, 0.85f, 0.85f, 0.8f);
+                main.startColor = startColor;
                 main.simulationSpace = ParticleSystemSimulationSpace.World;
 
                 var emission = ps.emission;
@@ -38,7 +46,7 @@ namespace FedoCompanion
                 colorOverLifetime.enabled = true;
                 var gradient = new Gradient();
                 gradient.SetKeys(
-                    new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(0.6f, 0.6f, 0.6f), 1f) },
+                    new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(fadeColor, 1f) },
                     new[] { new GradientAlphaKey(0.8f, 0f), new GradientAlphaKey(0f, 1f) });
                 colorOverLifetime.color = gradient;
 
@@ -58,7 +66,7 @@ namespace FedoCompanion
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: CompanionPoofEffect.Show failed: {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: CompanionPoofEffect.Show failed: {e}");
             }
         }
     }

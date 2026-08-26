@@ -3,7 +3,7 @@ using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // Même principe que FedoGuardian.SummonWandPrefabPatch : clone d'un item vanilla existant
     // (configurable, TrophyGreyling par défaut -- en attendant un vrai modèle dédié), renommé,
@@ -11,7 +11,7 @@ namespace FedoCompanion
     // auto-réparant sur les méthodes de résolution par nom/hash.
     internal static class SummonItemPrefabPatch
     {
-        public const string PrefabName = "Fedo_CompanionCharm";
+        public const string PrefabName = "Fedo_KnorriCharm";
 
         private static readonly int PrefabHash = PrefabName.GetStableHashCode();
 
@@ -24,7 +24,7 @@ namespace FedoCompanion
 
         public static bool IsSummonItem(ItemDrop.ItemData item)
         {
-            return item?.m_shared != null && item.m_shared.m_name == FedoCompanionPlugin.Instance.SummonItemName.Value;
+            return item?.m_shared != null && item.m_shared.m_name == FedoKnorriPlugin.Instance.SummonItemName.Value;
         }
 
         public static GameObject GetPrefab()
@@ -34,7 +34,7 @@ namespace FedoCompanion
 
         private static GameObject BuildClone()
         {
-            string sourceName = FedoCompanionPlugin.Instance.SummonItemSourceItem.Value;
+            string sourceName = FedoKnorriPlugin.Instance.SummonItemSourceItem.Value;
 
             GameObject source = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(sourceName) : null;
             if (source == null && ZNetScene.instance != null)
@@ -44,21 +44,21 @@ namespace FedoCompanion
 
             if (source == null)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: prefab source '{sourceName}' introuvable, impossible de créer le charme d'invocation.");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: prefab source '{sourceName}' introuvable, impossible de créer le charme d'invocation.");
                 LogSimilarItemNames(sourceName);
                 return null;
             }
 
             // Enfant du conteneur racine désactivé : aucun script (ItemDrop.Awake compris) ne
             // s'exécute tant qu'il reste là -- cf. note dans CompanionPrefabPatch pour le pourquoi.
-            var clone = UnityEngine.Object.Instantiate(source, FedoCompanionPlugin.TemplateRoot, worldPositionStays: false);
+            var clone = UnityEngine.Object.Instantiate(source, FedoKnorriPlugin.TemplateRoot, worldPositionStays: false);
             clone.name = PrefabName;
 
             var itemDrop = clone.GetComponent<ItemDrop>();
             if (itemDrop != null)
             {
-                itemDrop.m_itemData.m_shared.m_name = FedoCompanionPlugin.Instance.SummonItemName.Value;
-                itemDrop.m_itemData.m_shared.m_description = "Summons a tame Greyling companion when used.";
+                itemDrop.m_itemData.m_shared.m_name = FedoKnorriPlugin.Instance.SummonItemName.Value;
+                itemDrop.m_itemData.m_shared.m_description = FedoKnorriPlugin.Instance.SummonItemDescription.Value;
 
                 // Forcé en Consumable quel que soit le type d'origine (Trophy par défaut n'a
                 // pas de bouton "Utiliser" dans l'inventaire vanilla) : c'est ce type qui
@@ -100,9 +100,9 @@ namespace FedoCompanion
                 .OrderBy(n => n)
                 .ToList();
 
-            FedoCompanionPlugin.Log?.LogWarning(matches.Count > 0
-                ? $"FedoCompanion: noms de prefabs ressemblants trouvés dans ObjectDB -> {string.Join(", ", matches)}"
-                : $"FedoCompanion: aucun prefab ressemblant à '{sourceName}' trouvé dans ObjectDB.m_items.");
+            FedoKnorriPlugin.Log?.LogWarning(matches.Count > 0
+                ? $"FedoKnorri: noms de prefabs ressemblants trouvés dans ObjectDB -> {string.Join(", ", matches)}"
+                : $"FedoKnorri: aucun prefab ressemblant à '{sourceName}' trouvé dans ObjectDB.m_items.");
         }
 
         // Cf. commentaire équivalent dans CompanionPrefabPatch.GetOrCreate : appelée depuis des
@@ -143,7 +143,7 @@ namespace FedoCompanion
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: échec de création du charme d'invocation : {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: échec de création du charme d'invocation : {e}");
                 _clone = null;
             }
 

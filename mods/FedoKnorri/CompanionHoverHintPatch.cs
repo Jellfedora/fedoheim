@@ -1,7 +1,7 @@
 using System;
 using HarmonyLib;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // Character.GetHoverName()/GetHoverText() ne sont pas overridables ici (le compagnon garde
     // le Character d'origine du Greyling cloné, pas une sous-classe -- voir CompanionPrefabPatch).
@@ -32,7 +32,7 @@ namespace FedoCompanion
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: CompanionHoverNamePatch a levé une exception : {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: CompanionHoverNamePatch a levé une exception : {e}");
                 return true;
             }
         }
@@ -50,12 +50,12 @@ namespace FedoCompanion
                     return true;
                 }
 
-                __result = __instance.m_name + "\n" + FedoCompanionPlugin.Instance.RenameHintText.Value;
+                __result = __instance.m_name + "\n" + FedoKnorriPlugin.Instance.RenameHintText.Value;
                 return false;
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: CompanionHoverHintPatch a levé une exception : {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: CompanionHoverHintPatch a levé une exception : {e}");
                 return true;
             }
         }

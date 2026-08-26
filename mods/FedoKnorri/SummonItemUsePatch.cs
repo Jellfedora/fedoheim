@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // Intercepte "Utiliser" (bouton de l'inventaire, ou touche assignée) quand l'item concerné
     // est le charme d'invocation : au lieu de la vraie logique de consommation (qui n'existe de
@@ -27,7 +27,7 @@ namespace FedoCompanion
                 return 0f;
             }
 
-            float remaining = FedoCompanionPlugin.Instance.SummonCooldownSeconds.Value - (Time.time - last);
+            float remaining = FedoKnorriPlugin.Instance.SummonCooldownSeconds.Value - (Time.time - last);
             return remaining > 0f ? remaining : 0f;
         }
 
@@ -42,7 +42,7 @@ namespace FedoCompanion
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: SummonItemUsePatch a levé une exception : {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: SummonItemUsePatch a levé une exception : {e}");
                 return true;
             }
         }
@@ -62,7 +62,7 @@ namespace FedoCompanion
                 return false;
             }
 
-            float cooldown = FedoCompanionPlugin.Instance.SummonCooldownSeconds.Value;
+            float cooldown = FedoKnorriPlugin.Instance.SummonCooldownSeconds.Value;
             if (LastUse.TryGetValue(instance, out float last) && Time.time - last < cooldown)
             {
                 return true;
@@ -79,7 +79,7 @@ namespace FedoCompanion
             }
 
             Vector3 forward = instance.transform.forward;
-            Vector3 position = instance.transform.position + forward * FedoCompanionPlugin.Instance.SummonDistance.Value;
+            Vector3 position = instance.transform.position + forward * FedoKnorriPlugin.Instance.SummonDistance.Value;
             CompanionSpawner.Spawn(position, instance.transform.rotation, owner);
 
             return true;

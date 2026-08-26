@@ -1,7 +1,8 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // IA du compagnon, écrite par-dessus BaseAI comme FedoGuardian.GuardAI -- mais ici on garde
     // le Character/Animator d'origine du Greyling cloné (voir CompanionPrefabPatch), donc pas
@@ -14,17 +15,17 @@ namespace FedoCompanion
         // lié au profil/à la sauvegarde du personnage), PAS son ZDOID de session -- vécu : le
         // ZDOID d'un joueur change à chaque reconnexion, ce qui laissait le compagnon figé pour
         // toujours après une déco/reco (ResolveOwner ne retrouvait plus jamais personne).
-        private const string ZdoOwnerPlayerId = "FedoCompanion_OwnerPlayerId";
+        private const string ZdoOwnerPlayerId = "FedoKnorri_OwnerPlayerId";
 
         // Nom personnalisé (Maj+E, voir CompanionInteract) persisté sur le ZDO du compagnon --
         // sinon un renommage serait perdu au prochain Awake (CompanionPrefabPatch réapplique le
         // nom par défaut du .cfg sur le gabarit à chaque instanciation).
-        internal const string ZdoCustomName = "FedoCompanion_Name";
+        internal const string ZdoCustomName = "FedoKnorri_Name";
 
         // Pour un renommage (Maj+E) : le ZDO du compagnon (ZdoCustomName) est détruit dès
         // qu'il est rangé (le charme le supprime, voir SummonItemUsePatch) -- sans une copie sur
         // le PROPRIÉTAIRE, le prochain compagnon invoqué repartait sur le nom par défaut du .cfg.
-        private const string CustomDataCompanionName = "FedoCompanion_CompanionName";
+        private const string CustomDataCompanionName = "FedoKnorri_CompanionName";
 
         private const float ArrivalDistance = 0.5f;
         private const float PickupArrivalDistance = 1f;
@@ -36,11 +37,24 @@ namespace FedoCompanion
         // distinguer un joueur posé au sol (ou immobile) d'un joueur en chute/en saut.
         private const float GroundedVerticalVelocityThreshold = 0.3f;
 
+        // Nom du paramètre Trigger de l'Animator vérifié en jeu (voir CompanionAI.Awake, ancien
+        // diagnostic retiré) : le compagnon est en réalité un vrai Humanoid (GetComponent
+        // <Humanoid>() réussit), pas un Character nu comme supposé au départ -- mais on
+        // déclenche l'animation directement via l'Animator plutôt que Humanoid.StartAttack, qui
+        // ferait passer par le vrai système de dégâts (risque réel de blesser le joueur).
+        private const string ThrowAnimationTrigger = "throw";
+
+        // Garde-fou : si jamais l'état lu n'est pas la bonne animation (transition pas encore
+        // effective) et rapporte une durée aberrante, on ne bloque pas le soin indéfiniment.
+        private const float MaxThrowAnimationWaitSeconds = 3f;
+
         private Player _owner;
+        private Animator _animator;
         private float _healCooldownTimer;
         private float _pickupSearchTimer;
         private float _ownershipCheckTimer;
         private float _chatCooldownTimer;
+        private float _coinSoundCooldownTimer;
         private ItemDrop _pickupTarget;
 
         public static void LinkToOwner(GameObject companion, Player owner)
@@ -131,6 +145,8 @@ namespace FedoCompanion
             {
                 m_character.m_name = customName;
             }
+
+            _animator = GetComponentInChildren<Animator>();
         }
 
         public override bool UpdateAI(float dt)
@@ -149,7 +165,7 @@ namespace FedoCompanion
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: CompanionAI.UpdateAI a levé une exception : {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: CompanionAI.UpdateAI a levé une exception : {e}");
             }
 
             return true;
@@ -176,7 +192,7 @@ namespace FedoCompanion
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: CompanionAI.Update a levé une exception : {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: CompanionAI.Update a levé une exception : {e}");
             }
         }
 
@@ -218,7 +234,7 @@ namespace FedoCompanion
             // (chute, saut) : le téléporter à côté d'un point en plein vol pourrait l'envoyer
             // dans le vide ou en pleine chute lui aussi -- on attend qu'il retouche le sol.
             float ownerDistance = Vector3.Distance(base.transform.position, _owner.transform.position);
-            if (ownerDistance > FedoCompanionPlugin.Instance.TeleportDistance.Value && IsOwnerGrounded())
+            if (ownerDistance > FedoKnorriPlugin.Instance.TeleportDistance.Value && IsOwnerGrounded())
             {
                 _pickupTarget = null;
                 Vector3 behindOwner = _owner.transform.position - _owner.transform.forward * ArrivalDistance;
@@ -278,14 +294,14 @@ namespace FedoCompanion
         {
             float distance = Vector3.Distance(base.transform.position, _owner.transform.position);
 
-            float followDistance = FedoCompanionPlugin.Instance.FollowDistance.Value;
+            float followDistance = FedoKnorriPlugin.Instance.FollowDistance.Value;
             if (distance <= followDistance)
             {
                 StopMoving();
                 return;
             }
 
-            bool run = distance > FedoCompanionPlugin.Instance.RunDistance.Value;
+            bool run = distance > FedoKnorriPlugin.Instance.RunDistance.Value;
             MoveTo(dt, _owner.transform.position, followDistance, run);
         }
 
@@ -303,22 +319,60 @@ namespace FedoCompanion
             }
 
             float distance = Vector3.Distance(base.transform.position, _owner.transform.position);
-            if (distance > FedoCompanionPlugin.Instance.HealRange.Value)
+            if (distance > FedoKnorriPlugin.Instance.HealRange.Value)
             {
                 return;
             }
 
-            _owner.Heal(FedoCompanionPlugin.Instance.HealAmount.Value, showText: true);
-            _healCooldownTimer = FedoCompanionPlugin.Instance.HealCooldownSeconds.Value;
+            _healCooldownTimer = FedoKnorriPlugin.Instance.HealCooldownSeconds.Value;
+
+            // Petit geste d'"aim" avant le lancer : le compagnon se tourne vers le joueur, puis
+            // joue sa vraie animation de jet (vérifiée en jeu -- Trigger "throw" sur son
+            // Animator). Uniquement l'animation : SetTrigger ne passe jamais par
+            // Humanoid.StartAttack/le système de dégâts, contrairement à un vrai jet de caillou.
+            // Le vrai soin n'est appliqué qu'à l'arrivée de l'orbe (voir CompanionHealOrb), pas
+            // instantanément ici -- voir LaunchHealOrbAfterThrow pour le timing du lancer.
+            LookAt(_owner.GetTopPoint());
+            _animator?.SetTrigger(ThrowAnimationTrigger);
+
+            StartCoroutine(LaunchHealOrbAfterThrow(_owner, FedoKnorriPlugin.Instance.HealAmount.Value));
+        }
+
+        // L'orbe partait en même temps que l'animation plutôt qu'à la fin de son geste (vécu en
+        // jeu, décalage visuel) -- on attend la durée RÉELLE du clip "throw" plutôt qu'une
+        // valeur devinée (impossible à connaître sans décompiler l'AnimatorController). Un
+        // SetTrigger ne change d'état qu'au prochain passage de l'Animator (pas cette frame-ci),
+        // d'où le "yield return null" avant de lire l'état courant.
+        private IEnumerator LaunchHealOrbAfterThrow(Player target, float healAmount)
+        {
+            if (_animator != null)
+            {
+                yield return null;
+
+                AnimatorStateInfo state = _animator.GetCurrentAnimatorStateInfo(0);
+                if (state.length > 0f && state.length < MaxThrowAnimationWaitSeconds)
+                {
+                    yield return new WaitForSeconds(state.length);
+                }
+            }
+
+            if (target == null)
+            {
+                yield break;
+            }
+
+            Vector3 launchPoint = base.transform.position + Vector3.up * 0.8f;
+            CompanionHealOrb.Launch(launchPoint, target, healAmount);
         }
 
         // Renvoie true si le ramassage a pris la main sur le déplacement ce tick (objet en vue
         // ou en cours d'approche), false si rien à ramasser (Follow doit reprendre la main).
         private bool TryPickup(float dt)
         {
-            // Décrémenté ici (pas seulement dans SayPickupPhrase) pour courir en continu, que le
-            // compagnon soit en train de chercher ou déjà en train de ramasser un objet.
+            // Décrémentés ici (pas seulement au moment où ils servent) pour courir en continu,
+            // que le compagnon soit en train de chercher ou déjà en train de ramasser un objet.
             _chatCooldownTimer -= dt;
+            _coinSoundCooldownTimer -= dt;
 
             if (_pickupTarget != null && !_pickupTarget.CanPickup())
             {
@@ -333,7 +387,7 @@ namespace FedoCompanion
                     return false;
                 }
 
-                _pickupSearchTimer = FedoCompanionPlugin.Instance.PickupIntervalSeconds.Value;
+                _pickupSearchTimer = FedoKnorriPlugin.Instance.PickupIntervalSeconds.Value;
                 _pickupTarget = FindNearestItem();
                 if (_pickupTarget != null)
                 {
@@ -355,9 +409,10 @@ namespace FedoCompanion
                 _pickupTarget.Pickup(_owner);
                 _pickupTarget = null;
 
-                if (isCoins)
+                if (isCoins && _coinSoundCooldownTimer <= 0f)
                 {
-                    FedoCompanionPlugin.Instance.PlayCoinPickupSound(pickupPosition);
+                    _coinSoundCooldownTimer = FedoKnorriPlugin.Instance.CoinPickupSoundCooldownSeconds.Value;
+                    FedoKnorriPlugin.Instance.PlayCoinPickupSound(pickupPosition);
                 }
             }
 
@@ -386,18 +441,18 @@ namespace FedoCompanion
                 return;
             }
 
-            _chatCooldownTimer = FedoCompanionPlugin.Instance.PickupChatCooldownSeconds.Value;
+            _chatCooldownTimer = FedoKnorriPlugin.Instance.PickupChatCooldownSeconds.Value;
 
             string phrase = UnityEngine.Random.Range(0, 2) == 0
-                ? FedoCompanionPlugin.Instance.PickupPhrase1.Value
-                : FedoCompanionPlugin.Instance.PickupPhrase2.Value;
+                ? FedoKnorriPlugin.Instance.PickupPhrase1.Value
+                : FedoKnorriPlugin.Instance.PickupPhrase2.Value;
 
             FloatingSpeechBubble.Show(base.transform, phrase);
         }
 
         private ItemDrop FindNearestItem()
         {
-            float range = FedoCompanionPlugin.Instance.PickupRange.Value;
+            float range = FedoKnorriPlugin.Instance.PickupRange.Value;
             Collider[] hits = Physics.OverlapSphere(base.transform.position, range);
 
             ItemDrop nearest = null;

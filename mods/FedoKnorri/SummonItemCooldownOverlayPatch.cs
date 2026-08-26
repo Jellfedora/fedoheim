@@ -6,7 +6,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // Reconstitue le rendu "objet en recharge" (icône assombrie + compte à rebours) que Valheim
     // n'offre nativement pour aucun item quelconque -- vérifié par dump de réflexion sur
@@ -61,7 +61,7 @@ namespace FedoCompanion
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: SummonItemCooldownOverlayPatch a levé une exception : {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: SummonItemCooldownOverlayPatch a levé une exception : {e}");
             }
         }
 

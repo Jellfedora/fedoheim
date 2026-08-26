@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // Bulle de dialogue maison, indépendante de Talker/RPC_Say -- Talker.Say() plante en
     // profondeur dans du code vanilla (Character.GetHeadPoint(), NullReferenceException sur
@@ -28,7 +28,7 @@ namespace FedoCompanion
                 return;
             }
 
-            var bubbleObj = new GameObject("FedoCompanion_Bubble");
+            var bubbleObj = new GameObject("FedoKnorri_Bubble");
             bubbleObj.transform.SetParent(anchor, worldPositionStays: false);
             bubbleObj.transform.localPosition = Vector3.up * HeightOffset;
 

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // Cf. commentaire équivalent dans FedoGuardian.GuardianSpawner : le prefab gabarit
     // (CompanionPrefabPatch) est volontairement inactif -- Object.Instantiate() d'un objet
@@ -14,7 +14,7 @@ namespace FedoCompanion
             GameObject prefab = CompanionPrefabPatch.GetPrefab();
             if (prefab == null)
             {
-                FedoCompanionPlugin.Log?.LogError("FedoCompanion: impossible de créer le prefab du compagnon, abandon du spawn.");
+                FedoKnorriPlugin.Log?.LogError("FedoKnorri: impossible de créer le prefab du compagnon, abandon du spawn.");
                 return null;
             }
 

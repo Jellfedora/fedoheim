@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>FedoCompanion</AssemblyName>
+    <AssemblyName>FedoKnorri</AssemblyName>
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <RestorePackages>false</RestorePackages>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ValheimManagedDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed</ValheimManagedDir>
     <ValheimBepInExCore>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/core</ValheimBepInExCore>
-    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoCompanion</ValheimPluginsDir>
+    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoKnorri</ValheimPluginsDir>
   </PropertyGroup>
 
   <!-- UnityEngine.CoreModule fournit déjà PublicAPIAttribute/UsedImplicitlyAttribute
@@ -42,6 +42,10 @@
     </Reference>
     <Reference Include="UnityEngine.AudioModule">
       <HintPath>$(ValheimManagedDir)/UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.AnimationModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.ParticleSystemModule">

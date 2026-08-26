@@ -2,7 +2,7 @@ using System;
 using HarmonyLib;
 using UnityEngine;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // Même technique que documentée pour un prefab custom cloné d'un prefab vanilla (voir
     // CLAUDE.md et FedoGuardian.GuardianPrefabPatch) : on ne touche jamais à
@@ -19,7 +19,7 @@ namespace FedoCompanion
     // d'origine intacts.
     internal static class CompanionPrefabPatch
     {
-        public const string PrefabName = "Fedo_Companion";
+        public const string PrefabName = "Fedo_Knorri";
         private const string SourcePrefabName = "Greyling";
 
         private static readonly int PrefabHash = PrefabName.GetStableHashCode();
@@ -36,14 +36,14 @@ namespace FedoCompanion
             GameObject source = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(SourcePrefabName) : null;
             if (source == null)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: prefab source '{SourcePrefabName}' introuvable, impossible de créer le compagnon.");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: prefab source '{SourcePrefabName}' introuvable, impossible de créer le compagnon.");
                 return null;
             }
 
             // Enfant du conteneur racine désactivé : aucun script (ZNetView/Character compris)
             // ne s'exécute tant qu'il reste là -- cf. note dans CLAUDE.md sur le piège vécu
             // avec FedoGoldRabbit (ne jamais SetActive(false) sur le clone lui-même).
-            var clone = UnityEngine.Object.Instantiate(source, FedoCompanionPlugin.TemplateRoot, worldPositionStays: false);
+            var clone = UnityEngine.Object.Instantiate(source, FedoKnorriPlugin.TemplateRoot, worldPositionStays: false);
             clone.name = PrefabName;
 
             // Character.GetRadius() multiplie le rayon du collider par l'échelle du transform
@@ -51,7 +51,7 @@ namespace FedoCompanion
             // dû forcer IsPlayer()=true pour éviter ce même calcul sur un corps de joueur) -- le
             // compagnon (IsPlayer() reste false, c'est un Greyling) est donc redimensionné
             // correctement sans code supplémentaire.
-            clone.transform.localScale = Vector3.one * FedoCompanionPlugin.Instance.CompanionScale.Value;
+            clone.transform.localScale = Vector3.one * FedoKnorriPlugin.Instance.CompanionScale.Value;
 
             UnityEngine.Object.DestroyImmediate(clone.GetComponent<MonsterAI>());
 
@@ -62,7 +62,7 @@ namespace FedoCompanion
                 // un compagnon pacifiste qui ne peut pas se défendre ne doit jamais être une
                 // cible, plutôt que de le rendre invulnérable ou de lui donner une IA de combat.
                 character.m_faction = Character.Faction.Boss;
-                character.m_name = FedoCompanionPlugin.Instance.CompanionName.Value;
+                character.m_name = FedoKnorriPlugin.Instance.CompanionName.Value;
             }
 
             clone.AddComponent<CompanionAI>();
@@ -92,7 +92,7 @@ namespace FedoCompanion
             }
             catch (Exception e)
             {
-                FedoCompanionPlugin.Log?.LogError($"FedoCompanion: échec de création du prefab du compagnon : {e}");
+                FedoKnorriPlugin.Log?.LogError($"FedoKnorri: échec de création du prefab du compagnon : {e}");
                 _clone = null;
             }
 

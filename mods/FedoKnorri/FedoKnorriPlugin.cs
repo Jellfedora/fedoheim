@@ -9,16 +9,16 @@ using ServerSync;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
-    public class FedoCompanionPlugin : BaseUnityPlugin
+    public class FedoKnorriPlugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "fedo.companion";
-        public const string PluginName = "FedoCompanion";
+        public const string PluginGuid = "fedo.knorri";
+        public const string PluginName = "FedoKnorri";
         public const string PluginVersion = "1.0.0";
 
-        public static FedoCompanionPlugin Instance { get; private set; }
+        public static FedoKnorriPlugin Instance { get; private set; }
         public static ManualLogSource Log { get; private set; }
 
         // Même technique que FedoGuardian.TemplateRoot : conteneur racine désactivé en
@@ -48,13 +48,24 @@ namespace FedoCompanion
 
         public ConfigEntry<string> SummonItemSourceItem;
         public ConfigEntry<string> SummonItemName;
+        public ConfigEntry<string> SummonItemDescription;
         public ConfigEntry<float> SummonCooldownSeconds;
         public ConfigEntry<float> SummonDistance;
 
         private const string CoinPickupSoundFileName = "shiny.mp3";
         public ConfigEntry<float> CoinPickupSoundVolume;
         public ConfigEntry<float> CoinPickupSoundMaxDistance;
+        public ConfigEntry<float> CoinPickupSoundCooldownSeconds;
         private AudioClip _coinPickupClip;
+
+        // Pas de cooldown dédié ici : le soin lui-même (HealCooldownSeconds, 10s par défaut)
+        // empêche déjà tout spam. Fichier optionnel -- absent par défaut, LoadHealImpactClip
+        // se contente d'un avertissement (pas d'erreur) tant qu'il n'a pas été déposé à côté de
+        // la DLL, l'impact reste alors muet (juste les particules).
+        private const string HealImpactSoundFileName = "healing.mp3";
+        public ConfigEntry<float> HealImpactSoundVolume;
+        public ConfigEntry<float> HealImpactSoundMaxDistance;
+        private AudioClip _healImpactClip;
 
         // ServerSync (voir mods/_shared/ConfigSync.cs) : réglages du compagnon/du charme
         // partagés par tout le monde sur ce serveur, verrouillés pour éviter qu'un joueur
@@ -68,7 +79,7 @@ namespace FedoCompanion
             Instance = this;
             Log = Logger;
 
-            var root = new GameObject("FedoCompanion_TemplateRoot");
+            var root = new GameObject("FedoKnorri_TemplateRoot");
             Object.DontDestroyOnLoad(root);
             root.SetActive(false);
             TemplateRoot = root.transform;
@@ -76,7 +87,7 @@ namespace FedoCompanion
             CompanionName = SyncedConfig(
                 "Companion",
                 "CompanionName",
-                "Companion",
+                "Knorri",
                 "Display name shown when hovering over the companion.");
 
             CompanionScale = SyncedConfig(
@@ -106,13 +117,13 @@ namespace FedoCompanion
             HealAmount = SyncedConfig(
                 "Healing",
                 "HealAmount",
-                10f,
+                15f,
                 "Health points restored to the owner each time the companion heals them.");
 
             HealCooldownSeconds = SyncedConfig(
                 "Healing",
                 "HealCooldownSeconds",
-                8f,
+                10f,
                 "Minimum delay (in seconds) between two heals from the companion.");
 
             HealRange = SyncedConfig(
@@ -175,6 +186,12 @@ namespace FedoCompanion
                 "Greyling Charm",
                 "Display name of the summoning charm item.");
 
+            SummonItemDescription = SyncedConfig(
+                "SummonItem",
+                "SummonItemDescription",
+                "Summons a tame Greyling companion when used.",
+                "Description shown in the tooltip of the summoning charm item.");
+
             SummonCooldownSeconds = SyncedConfig(
                 "SummonItem",
                 "SummonCooldownSeconds",
@@ -199,12 +216,31 @@ namespace FedoCompanion
                 20f,
                 "Maximum distance (in meters) at which the coin pickup sound can be heard at all.");
 
+            CoinPickupSoundCooldownSeconds = SyncedConfig(
+                "Pickup",
+                "CoinPickupSoundCooldownSeconds",
+                20f,
+                "Minimum delay (in seconds) between two coin pickup sounds, so picking up several coin stacks in a row doesn't spam the chime.");
+
+            HealImpactSoundVolume = SyncedConfig(
+                "Healing",
+                "HealImpactSoundVolume",
+                1.5f,
+                $"Volume of the heal impact sound ({HealImpactSoundFileName}, optional -- drop it next to the DLL to enable it). Still a normal 3D positional sound that fades with distance -- this only boosts how loud it is up close. 1 = normal, higher = louder.");
+
+            HealImpactSoundMaxDistance = SyncedConfig(
+                "Healing",
+                "HealImpactSoundMaxDistance",
+                20f,
+                "Maximum distance (in meters) at which the heal impact sound can be heard at all.");
+
             _configSync.IsLocked = true;
 
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
 
             StartCoroutine(LoadCoinPickupClip());
+            StartCoroutine(LoadHealImpactClip());
         }
 
         private ConfigEntry<T> SyncedConfig<T>(string section, string key, T value, string description)
@@ -224,7 +260,7 @@ namespace FedoCompanion
             string path = Path.Combine(dllDir ?? "", CoinPickupSoundFileName);
             if (!File.Exists(path))
             {
-                Log.LogWarning($"FedoCompanion: '{CoinPickupSoundFileName}' not found next to the plugin DLL, coin pickups will be silent.");
+                Log.LogWarning($"FedoKnorri: '{CoinPickupSoundFileName}' not found next to the plugin DLL, coin pickups will be silent.");
                 yield break;
             }
 
@@ -233,12 +269,12 @@ namespace FedoCompanion
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                Log.LogWarning($"FedoCompanion: failed to load '{CoinPickupSoundFileName}': {request.error}");
+                Log.LogWarning($"FedoKnorri: failed to load '{CoinPickupSoundFileName}': {request.error}");
                 yield break;
             }
 
             _coinPickupClip = DownloadHandlerAudioClip.GetContent(request);
-            Log.LogInfo($"FedoCompanion: loaded coin pickup sound '{CoinPickupSoundFileName}'.");
+            Log.LogInfo($"FedoKnorri: loaded coin pickup sound '{CoinPickupSoundFileName}'.");
         }
 
         public void PlayCoinPickupSound(Vector3 position)
@@ -251,12 +287,47 @@ namespace FedoCompanion
             PlaySpatialSound(_coinPickupClip, position, CoinPickupSoundVolume.Value, CoinPickupSoundMaxDistance.Value);
         }
 
+        // healing.mp3 est optionnel (contrairement à shiny.mp3, requis dès la sortie) -- silence si
+        // absent, LoadHealImpactClip se contente d'un avertissement, pas d'une erreur.
+        private IEnumerator LoadHealImpactClip()
+        {
+            string dllDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string path = Path.Combine(dllDir ?? "", HealImpactSoundFileName);
+            if (!File.Exists(path))
+            {
+                Log.LogWarning($"FedoKnorri: '{HealImpactSoundFileName}' not found next to the plugin DLL, heal impacts will be silent (particles only).");
+                yield break;
+            }
+
+            using var request = UnityWebRequestMultimedia.GetAudioClip("file://" + path, AudioType.MPEG);
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Log.LogWarning($"FedoKnorri: failed to load '{HealImpactSoundFileName}': {request.error}");
+                yield break;
+            }
+
+            _healImpactClip = DownloadHandlerAudioClip.GetContent(request);
+            Log.LogInfo($"FedoKnorri: loaded heal impact sound '{HealImpactSoundFileName}'.");
+        }
+
+        public void PlayHealImpactSound(Vector3 position)
+        {
+            if (_healImpactClip == null)
+            {
+                return;
+            }
+
+            PlaySpatialSound(_healImpactClip, position, HealImpactSoundVolume.Value, HealImpactSoundMaxDistance.Value);
+        }
+
         // Toujours un son 3D positionnel (spatialBlend = 1) qui s'atténue avec la distance -- sur
         // un serveur multijoueur, un joueur loin du compagnon ne doit pas l'entendre. Même
         // technique que FedoGoldRabbit.PlaySpatialSound.
         private void PlaySpatialSound(AudioClip clip, Vector3 position, float volume, float maxDistance)
         {
-            var soundObj = new GameObject("FedoCompanion_SpatialSound");
+            var soundObj = new GameObject("FedoKnorri_SpatialSound");
             soundObj.transform.position = position;
             var source = soundObj.AddComponent<AudioSource>();
             source.clip = clip;

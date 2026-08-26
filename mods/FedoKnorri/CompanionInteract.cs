@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace FedoCompanion
+namespace FedoKnorri
 {
     // Renommage du compagnon (Maj+E, le paramètre "alt" d'Interact correspond au modifier
     // "AltPlace" -- Maj par défaut -- même mécanique que le renommage d'une créature apprivoisée
@@ -17,7 +17,7 @@ namespace FedoCompanion
 
             // Texte littéral plutôt qu'un token de localisation vanilla deviné (ex: "$hud_rename")
             // -- une mauvaise supposition afficherait le token brut non résolu dans la popup.
-            TextInput.instance.RequestText(this, FedoCompanionPlugin.Instance.RenamePromptText.Value, 20);
+            TextInput.instance.RequestText(this, FedoKnorriPlugin.Instance.RenamePromptText.Value, 20);
             return true;
         }
 

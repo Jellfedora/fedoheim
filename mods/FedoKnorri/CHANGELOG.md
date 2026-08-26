@@ -6,11 +6,28 @@
   Greylings don't drop their own trophy) spawns a tame Greyling companion (clone of the vanilla
   `Greyling` prefab, its own MonsterAI swapped for a custom follow/heal/pickup AI).
 - Companion follows its owner (walk/run/teleport depending on distance, never teleporting
-  while the owner is airborne), heals them periodically when hurt and in range, and runs over
-  to pick up nearby ground items into their inventory. Picking up Coins specifically plays a
-  chime (`shiny.mp3`, bundled next to the DLL, loaded via `UnityWebRequestMultimedia` like
-  `FedoGoldRabbit`'s spawn sound) — detected by comparing the picked-up item's prefab hash
-  against `"Coins"` (`ZNetView.GetPrefabName()` being private).
+  while the owner is airborne), heals them periodically (`HealAmount` `15`,
+  `HealCooldownSeconds` `10`) when hurt and in range by launching a small glowing orb their
+  way (`CompanionHealOrb`, a code-generated sphere, `GameObject.CreatePrimitive`), turning to
+  face its owner and playing its real vanilla throw animation first
+  (`Animator.SetTrigger("throw")`, the exact parameter name confirmed in-game — the
+  companion's cloned `Character` turns out to really be a `Humanoid`, same as the vanilla
+  Greydwarf/Greyling rock-throw). Deliberately only the animation:
+  `Humanoid.StartAttack` (the real vanilla attack call) was avoided since it would go through
+  the actual damage pipeline, risking the companion hurting its own owner for what's supposed
+  to be a harmless heal gesture. Fixed: the orb was launching at the same time as the
+  animation instead of waiting for it to finish, looking desynced — `LaunchHealOrbAfterThrow`
+  (a coroutine) now reads the real clip length off the Animator's current state and waits for
+  it before launching, rather than a guessed delay. Followed on arrival by a green particle
+  burst on the owner
+  (`CompanionPoofEffect`, generalized to take a color instead of only the grey spawn/despawn
+  smoke) and, if `healing.mp3` is provided (optional, dropped next to the DLL — silent otherwise,
+  particles only), a matching impact sound. Also runs over to pick up nearby ground items
+  into their inventory — picking up Coins specifically plays a chime (`shiny.mp3`, bundled
+  next to the DLL, loaded via `UnityWebRequestMultimedia` like `FedoGoldRabbit`'s spawn
+  sound, throttled by `CoinPickupSoundCooldownSeconds` so grabbing several coin stacks in a
+  row doesn't spam it) — detected by comparing the picked-up item's prefab hash against
+  `"Coins"` (`ZNetView.GetPrefabName()` being private).
 - Companion is scaled down (`CompanionScale`, `0.7` by default) relative to a vanilla Greyling.
 - One companion per player: the charm toggles it (summon/store away, each with a little poof
   of smoke — `CompanionPoofEffect`, a code-generated particle burst reusing `FedoGoldRabbit`'s
@@ -24,12 +41,16 @@
   object on behalf of the local owning player if it ends up stuck on a disconnected peer —
   otherwise its AI would simply stop running (`BaseAI.UpdateAI` only executes for whichever
   peer owns the ZDO) and it would sit frozen in place after a reconnect.
-- Companion is faction `Boss` (ignored by hostile creatures) and fully invulnerable
-  (`Character.Damage` blocked outright, including from its own owner) — no combat AI, can't
-  fight and can't be hurt. Marked tamed (`Character.SetTamed(true)`, applied per-instance at
-  spawn, not on the template which has no valid ZNetView yet) so its health bar shows green
-  like a tamed animal instead of red — `Faction.Boss` alone reads as an enemy to the player
-  (see `mods/CLAUDE.md`: allied to everything except players).
+- Companion is faction `Boss` and fully invulnerable (`Character.Damage` blocked outright,
+  including from its own owner) — no combat AI, can't fight and can't be hurt. Marked tamed
+  (`Character.SetTamed(true)`, applied per-instance at spawn, not on the template which has
+  no valid ZNetView yet) so its health bar shows green like a tamed animal instead of red —
+  `Faction.Boss` alone reads as an enemy to the player (see `mods/CLAUDE.md`: allied to
+  everything except players). Fixed: `Faction.Boss` alone didn't reliably stop wild creatures
+  from still attacking it in testing (harmless — it can't be damaged — but not meant to
+  happen). `BaseAI.IsEnemy` (both overloads) is now patched directly (`CompanionNeverEnemyPatch`)
+  so no AI ever considers it a valid enemy, regardless of the exact reason the faction check
+  alone wasn't enough.
 - Companion shows one of two random lines above its head (`PickupPhrase1`/`PickupPhrase2`,
   throttled by `PickupChatCooldownSeconds` so it doesn't comment on every single item) when it
   spots an item to fetch — via a small local `FloatingSpeechBubble` (3D `TextMeshPro`, no
@@ -65,8 +86,13 @@
   lowered to `0.5` when clicking twice to toggle felt unresponsive with no visual feedback;
   restored to `3` now that the cooldown is visible.)
 - Settings synced server-wide via ServerSync (`mods/_shared/ConfigSync.cs`).
-- Custom prefabs registered as `Fedo_Companion` / `Fedo_CompanionCharm` (`Fedo_` prefix, same
+- Custom prefabs registered as `Fedo_Knorri` / `Fedo_KnorriCharm` (`Fedo_` prefix, same
   convention as `Fedo_GoldRabbit`) — the charm's registration retries from `ZNetScene.Awake` in
   addition to `ObjectDB.Awake`, since the latter alone can run once at the main menu (before
   `ZNetScene.instance` exists) and cache a template that never made it into
   `ZNetScene.m_prefabs`, leaving it invisible to spawners like Easy Spawner.
+- Renamed the mod from `FedoCompanion` to `FedoKnorri` (plugin GUID `fedo.knorri`, custom
+  prefabs, `.cfg` filename all follow) — `Knorri` is now the companion's default name
+  (`CompanionName`), instead of the generic `Companion`.
+- Added `SummonItemDescription`, making the charm's tooltip text configurable instead of
+  hardcoded (default `Summons a tame Greyling companion when used.`).

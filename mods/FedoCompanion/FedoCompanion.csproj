@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>FedoCompanion</AssemblyName>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RestorePackages>false</RestorePackages>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ValheimManagedDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed</ValheimManagedDir>
+    <ValheimBepInExCore>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/core</ValheimBepInExCore>
+    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoCompanion</ValheimPluginsDir>
+  </PropertyGroup>
+
+  <!-- UnityEngine.CoreModule fournit déjà PublicAPIAttribute/UsedImplicitlyAttribute
+       (mêmes types que le package NuGet JetBrains.Annotations), pas besoin de l'ajouter :
+       ça créerait un conflit de type (CS0433) avec ConfigSync.cs ci-dessous. -->
+  <ItemGroup>
+    <Compile Include="../_shared/ConfigSync.cs" Link="ConfigSync.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(ValheimBepInExCore)/BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(ValheimBepInExCore)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.UnityWebRequestModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestAudioModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_valheim">
+      <HintPath>$(ValheimManagedDir)/assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils">
+      <HintPath>$(ValheimManagedDir)/assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(ValheimManagedDir)/Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Copie la DLL compilée et les assets audio custom dans le dossier plugins réel du jeu -->
+  <Target Name="CopyToPlugins" AfterTargets="Build">
+    <ItemGroup>
+      <PluginOutputFiles Include="$(TargetDir)*.dll" />
+      <PluginAssetFiles Include="$(MSBuildProjectDirectory)/*.mp3" />
+    </ItemGroup>
+    <MakeDir Directories="$(ValheimPluginsDir)" Condition="!Exists('$(ValheimPluginsDir)')" />
+    <Copy SourceFiles="@(PluginOutputFiles)" DestinationFolder="$(ValheimPluginsDir)" />
+    <Copy SourceFiles="@(PluginAssetFiles)" DestinationFolder="$(ValheimPluginsDir)" />
+  </Target>
+
+</Project>

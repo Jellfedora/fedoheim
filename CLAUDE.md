@@ -25,9 +25,9 @@ renommer ces occurrences-là, elles sont correctes telles quelles.
   admin-géré, repost Discord) qui sert de source de vérité pour le website + le launcher.
   Fonctionnel — voir `api/README.md`.
 - **Mods maison** (`mods/`) — mods Valheim (BepInEx) développés en interne, distribués via
-  l'API et installés automatiquement par le launcher. Cinq mods écrits et buildés
-  (`HelloFedo`, `FedoDeath`, `FedoGoldRabbit`, `FedoGuardian`, `FedoServerTools` — voir
-  `mods/CLAUDE.md`; deux fusions dans des mods existants plutôt que de multiplier les
+  l'API et installés automatiquement par le launcher. Six mods écrits et buildés
+  (`HelloFedo`, `FedoDeath`, `FedoGoldRabbit`, `FedoGuardian`, `FedoCompanion`,
+  `FedoServerTools` — voir `mods/CLAUDE.md`; deux fusions dans des mods existants plutôt que de multiplier les
   petits mods maison : `FedoServerTools` a absorbé le logging Discord de l'ancien mod
   `FedoDiscordLogs` et la connexion automatique développée un temps sous le nom
   `FedoAutoJoin` (jamais commité en tant que mod séparé) ; `FedoDeath` a absorbé

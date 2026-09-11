@@ -1,0 +1,10 @@
+{
+  "name": "FedoHud",
+  "author": "Fedo",
+  "version_number": "0.0.1",
+  "website_url": "",
+  "description": "Alpha, not yet fully tested in-game. Custom HUD overlays: a small draggable in-game clock (HH:MM), hover tooltip lines showing how long until a planted crop is ready to harvest and until a beehive produces one more honey, and a floating \"!\" above a ready-to-harvest crop or a full beehive. Purely local, no network call involved.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}

@@ -1,18 +1,16 @@
 # Changelog
 
-## 2.0.0
-
-- Merged the former standalone `FedoDeathGif` mod into `FedoDeath` — one mod now covers the whole death experience, guardian included. `FedoDeathGif` no longer exists as a separate mod; its icon is now used for `FedoDeath`.
-- Death gif capture, Discord webhook posting, on-screen message and chat line on death are unchanged in behavior, just carried over as-is.
-- Gif/webhook/message settings remain local to each client and are never synced (unlike the guardian settings), since a webhook URL is a secret.
-
 ## 1.0.0
 
-- Initial release.
-- On death, a hostile guardian (configurable, defaults to Skeleton) spawns in place of the tombstone, named after the dead player.
-- The guardian stays frozen until a player comes within range (configurable), then hunts them specifically -- it never engages other creatures.
-- It's ignored by every other creature (Boss faction) and its state (loot, owner) is stored in its persistent world data, so it survives disconnects, zone reloads, and server restarts.
-- Defeating the guardian spawns the tombstone, with the player's items, where it died.
-- A removable map pin tracks the guardian and follows it if it moves.
-- On-screen messages for guardian spawn/defeat (configurable).
-- All settings are synced from the server and locked ([ServerSync](https://github.com/blaxxun-boop/ServerSync)) -- a connecting player can't override them from their own local `.cfg`.
+- On death, a hostile guardian (a Skeleton by default, configurable) spawns and stands
+  over your loot instead of your tombstone appearing right away.
+- The guardian stays still until a player gets close, then hunts them specifically —
+  it never picks fights with other creatures.
+- Defeat the guardian to make your tombstone (with everything it was holding) appear
+  where it fell.
+- A removable map pin tracks the guardian so you never lose track of where your loot
+  is, even if it wanders while hunting you.
+- Survives disconnecting, reconnecting, or a server restart — your grave is never lost.
+- Guardian settings (creature, activation range, messages) are the same for everyone on
+  the server and can't be overridden by an individual player.
+- For the gif posted to Discord on death, see the companion mod FedoDeathGif.

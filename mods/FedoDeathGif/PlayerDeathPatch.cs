@@ -1,6 +1,6 @@
 using HarmonyLib;
 
-namespace FedoDeath
+namespace FedoDeathGif
 {
     [HarmonyPatch(typeof(Player), "OnDeath")]
     internal static class PlayerDeathPatch
@@ -12,7 +12,7 @@ namespace FedoDeath
                 return;
             }
 
-            FedoDeathPlugin.Instance.OnLocalPlayerDeath();
+            FedoDeathGifPlugin.Instance.OnLocalPlayerDeath();
         }
     }
 }

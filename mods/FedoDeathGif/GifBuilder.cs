@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace FedoDeath
+namespace FedoDeathGif
 {
     // Encodeur GIF89a minimal, sans dépendance externe (palette fixe 256 couleurs + LZW).
     // Volontairement simple : suffisant pour un gif "mémo de mort", pas pour de l'image de précision.

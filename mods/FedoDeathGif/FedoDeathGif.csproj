@@ -2,19 +2,21 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>FedoDeath</AssemblyName>
+    <AssemblyName>FedoDeathGif</AssemblyName>
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <RestorePackages>false</RestorePackages>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ValheimManagedDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed</ValheimManagedDir>
     <ValheimBepInExCore>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/core</ValheimBepInExCore>
-    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoDeath</ValheimPluginsDir>
+    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoDeathGif</ValheimPluginsDir>
   </PropertyGroup>
 
-  <!-- UnityEngine.CoreModule fournit déjà PublicAPIAttribute/UsedImplicitlyAttribute
-       (mêmes types que le package NuGet JetBrains.Annotations), pas besoin de l'ajouter :
-       ça créerait un conflit de type (CS0433) avec ConfigSync.cs ci-dessous. -->
+  <!-- ServerSync (voir FedoDeathGifPlugin.cs) pour tout sauf WebhookUrl (un secret,
+       jamais synchronisé, voir mods/CLAUDE.md). UnityEngine.CoreModule fournit déjà
+       PublicAPIAttribute/UsedImplicitlyAttribute (mêmes types que le package NuGet
+       JetBrains.Annotations), pas besoin de l'ajouter : ça créerait un conflit de type
+       (CS0433) avec ConfigSync.cs ci-dessous. -->
   <ItemGroup>
     <Compile Include="../_shared/ConfigSync.cs" Link="ConfigSync.cs" />
   </ItemGroup>
@@ -36,6 +38,11 @@
       <HintPath>$(ValheimManagedDir)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- ScreenCapture.CaptureScreenshotIntoRenderTexture (voir FrameBuffer.cs). -->
+    <Reference Include="UnityEngine.ScreenCaptureModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.ScreenCaptureModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="assembly_valheim">
       <HintPath>$(ValheimManagedDir)/assembly_valheim.dll</HintPath>
       <Private>false</Private>
@@ -50,10 +57,6 @@
     </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>$(ValheimManagedDir)/Unity.TextMeshPro.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="Splatform">
-      <HintPath>$(ValheimManagedDir)/Splatform.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

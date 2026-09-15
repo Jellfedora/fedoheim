@@ -2,21 +2,17 @@ using System;
 using HarmonyLib;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace FedoHud
 {
     // Horloge affichée en haut au centre de l'écran, calquée sur le cycle jour/nuit du
     // jeu -- purement locale (voir FedoHudPlugin.GetCurrentGameTime pour le calcul,
-    // dérivé indépendamment de EnvMan.GetDayFraction() ; FedoServerTools calcule la même
-    // chose de son côté pour son propre rapport à l'API/launcher, mais les deux mods ne
-    // partagent pas ce calcul -- deux installations distinctes). Tourne sur toute
+    // dérivé indépendamment de EnvMan.GetDayFraction()). Tourne sur toute
     // installation avec un joueur local (client comme hôte d'une partie solo/hébergée),
     // aucun appel réseau. Le texte lui-même est réutilisé/repositionné plutôt que recréé
     // à chaque rafraîchissement (voir FedoHudPlugin.RefreshClockOverlay).
-    // Déplaçable à la souris (Maj + glisser, voir DragHandler ci-dessous), position
-    // sauvegardée en local.
+    // Déplaçable à la souris (cliquer-glisser directement, voir DraggableAnchor.cs, partagé avec
+    // SkillsOverlay.cs), position sauvegardée en local.
     internal static class ClockOverlay
     {
         private static TMP_Text _text;
@@ -72,86 +68,26 @@ namespace FedoHud
             rect.sizeDelta = new Vector2(220f, 40f);
 
             var text = go.AddComponent<TextMeshProUGUI>();
-            // Réutilise la police déjà chargée par un élément du HUD existant (la jauge de
-            // faim) plutôt que de fournir/référencer un asset de police séparé, jamais
-            // garanti d'être initialisé au bon moment sinon.
-            if (hud.m_foodTime != null && hud.m_foodTime.Length > 0 && hud.m_foodTime[0] != null)
+            // Voir HudFont.cs -- `hud.m_foodTime[0].font` (utilisé avant) n'est pas
+            // toujours prêt à ce moment précis (Hud.Awake), produisant un avertissement
+            // "Font Asset was not found" au lancement même si le texte finissait par
+            // s'afficher correctement.
+            var font = HudFont.Resolve();
+            if (font != null)
             {
-                text.font = hud.m_foodTime[0].font;
+                text.font = font;
             }
             text.fontSize = 24f;
             text.alignment = TextAlignmentOptions.Top;
             text.color = new Color(1f, 1f, 1f, 0.85f);
-            // Faux en temps normal (ne doit jamais intercepter un clic de gameplay à cet
-            // endroit de l'écran) -- DragHandler ci-dessous ne le repasse à vrai que
-            // pendant que Maj est maintenu, la fenêtre où un déplacement est possible.
+            // Repassé à vrai en permanence par DraggableAnchor.cs juste en dessous (pour
+            // détecter le survol -- voir ce fichier pour le compromis que ça implique).
             text.raycastTarget = false;
             text.text = "";
 
-            go.AddComponent<DragHandler>();
+            go.AddComponent<DraggableAnchor>().OnDragEnd = pos => FedoHudPlugin.Instance?.SaveClockPosition(pos);
 
             _text = text;
-        }
-
-        // Glisser-déposer réservé à Maj+clic : le reste du temps, l'horloge reste
-        // "traversable" par les clics de gameplay normaux à cet endroit de l'écran (voir
-        // raycastTarget dans Create ci-dessus). Position finale écrite dans le .cfg local
-        // via FedoHudPlugin.SaveClockPosition -- jamais envoyée au serveur/à l'API, c'est
-        // une préférence purement locale à cette installation.
-        private class DragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
-        {
-            private RectTransform _rect;
-            private Graphic _graphic;
-            private bool _dragging;
-            private Vector2 _dragStartAnchoredPos;
-            private Vector2 _dragStartPointerPos;
-
-            private void Awake()
-            {
-                _rect = GetComponent<RectTransform>();
-                _graphic = GetComponent<Graphic>();
-            }
-
-            private void Update()
-            {
-                if (_graphic != null)
-                {
-                    _graphic.raycastTarget = Input.GetKey(KeyCode.LeftShift);
-                }
-            }
-
-            public void OnBeginDrag(PointerEventData eventData)
-            {
-                _dragging = Input.GetKey(KeyCode.LeftShift);
-                if (!_dragging)
-                {
-                    return;
-                }
-
-                _dragStartAnchoredPos = _rect.anchoredPosition;
-                _dragStartPointerPos = eventData.position;
-            }
-
-            public void OnDrag(PointerEventData eventData)
-            {
-                if (!_dragging)
-                {
-                    return;
-                }
-
-                _rect.anchoredPosition = _dragStartAnchoredPos + (eventData.position - _dragStartPointerPos);
-            }
-
-            public void OnEndDrag(PointerEventData eventData)
-            {
-                if (!_dragging)
-                {
-                    return;
-                }
-
-                _dragging = false;
-                FedoHudPlugin.Instance?.SaveClockPosition(_rect.anchoredPosition);
-            }
         }
 
         public static void SetText(string value)
@@ -167,6 +103,17 @@ namespace FedoHud
             if (_text != null)
             {
                 _text.gameObject.SetActive(visible);
+            }
+        }
+
+        // Appelé par le bouton "Reset positions" du panneau -- déplace l'horloge déjà à
+        // l'écran immédiatement, sans attendre un rechargement de Hud (voir
+        // FedoHudPlugin.ResetOverlayPositions).
+        public static void ResetPosition(Vector2 anchoredPosition)
+        {
+            if (_text != null)
+            {
+                _text.rectTransform.anchoredPosition = anchoredPosition;
             }
         }
     }

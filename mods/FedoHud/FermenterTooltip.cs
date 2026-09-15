@@ -7,7 +7,7 @@ namespace FedoHud
     // que GrowthTooltip.cs/BeehiveTooltip.cs. Contrairement aux deux autres, aucune
     // réflexion n'est nécessaire ici : tout ce qui est utile (durée totale, contenu en
     // cours, moment de départ) est public sur `Fermenter`/`ZDOVars`. Signatures vérifiées
-    // contre assembly_valheim.dll (1.0), rien deviné -- voir mods/CLAUDE.md.
+    // contre assembly_valheim.dll (1.0), rien deviné.
     internal static class FermenterTooltip
     {
         [HarmonyPatch(typeof(Fermenter), nameof(Fermenter.GetHoverText))]

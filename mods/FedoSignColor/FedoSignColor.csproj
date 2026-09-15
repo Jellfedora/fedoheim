@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>FedoHud</AssemblyName>
+    <AssemblyName>FedoSignColor</AssemblyName>
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <RestorePackages>false</RestorePackages>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ValheimManagedDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed</ValheimManagedDir>
     <ValheimBepInExCore>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/core</ValheimBepInExCore>
-    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoHud</ValheimPluginsDir>
+    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoSignColor</ValheimPluginsDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,29 +29,21 @@
       <HintPath>$(ValheimManagedDir)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <!-- Input.GetKey (voir ClockOverlay.cs, glisser-déposer à Maj+clic) : UnityEngine.dll
-         ci-dessus n'en réexporte pas assez pour que le compilateur résolve
-         UnityEngine.Input à partir de lui seul. -->
-    <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>$(ValheimManagedDir)/UnityEngine.InputLegacyModule.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
     <Reference Include="assembly_valheim">
       <HintPath>$(ValheimManagedDir)/assembly_valheim.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <!-- Localization (noms de compétences traduits dans la langue du jeu, voir
-         SkillLocalization.cs), vit dans un DLL séparé de assembly_valheim. -->
-    <Reference Include="assembly_guiutils">
-      <HintPath>$(ValheimManagedDir)/assembly_guiutils.dll</HintPath>
+    <!-- TextInput.m_inputField est typé GUIFramework.GuiInputField (hérite de
+         TMP_InputField), vérifié par réflexion. Ce type vit dans gui_framework.dll,
+         pas dans assembly_valheim. -->
+    <Reference Include="gui_framework">
+      <HintPath>$(ValheimManagedDir)/gui_framework.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>$(ValheimManagedDir)/UnityEngine.UI.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <!-- Canvas/CanvasScaler/RenderMode (voir FedoHudSettingsPanel.cs), module core Unity,
-         distinct de UnityEngine.UI.dll (uGUI : Text/Image/Button...) ci-dessus. -->
     <Reference Include="UnityEngine.UIModule">
       <HintPath>$(ValheimManagedDir)/UnityEngine.UIModule.dll</HintPath>
       <Private>false</Private>

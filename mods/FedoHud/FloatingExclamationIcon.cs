@@ -43,6 +43,12 @@ namespace FedoHud
             {
                 _text.font = font;
             }
+            else
+            {
+                // Diagnostic temporaire (voir CHANGELOG) : si aucune police TMP n'est
+                // trouvée à ce moment, le "!" risque de ne rendre aucun glyphe visible.
+                FedoHudPlugin.Log?.LogWarning("FedoHud: no TMP font resolved for exclamation icon -- it may render invisible.");
+            }
 
             _text.gameObject.SetActive(false);
         }

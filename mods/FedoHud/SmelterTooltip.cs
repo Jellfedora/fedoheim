@@ -10,7 +10,7 @@ namespace FedoHud
     // callbacks privés distincts (fente minerai/bois, sortie, fente carburant) -- les
     // trois sont patchées pour que le compte à rebours apparaisse peu importe l'endroit
     // du bâtiment survolé. Signatures vérifiées contre assembly_valheim.dll (1.0), rien
-    // deviné -- voir mods/CLAUDE.md.
+    // deviné.
     internal static class SmelterTooltip
     {
         [HarmonyPatch(typeof(Smelter), "OnHoverAddOre")]

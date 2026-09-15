@@ -1,0 +1,10 @@
+{
+  "name": "FedoSignColor",
+  "author": "Fedo",
+  "version_number": "1.0.0",
+  "website_url": "",
+  "description": "Adds a color picker next to a sign's text input window, to color your text without typing a color code by hand.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}

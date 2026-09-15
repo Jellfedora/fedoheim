@@ -1,9 +1,9 @@
 {
   "name": "FedoHud",
   "author": "Fedo",
-  "version_number": "0.0.1",
+  "version_number": "1.0.0",
   "website_url": "",
-  "description": "Alpha. Draggable in-game clock, plus hover hints for crops, beehives, fermenters, smelters and charcoal kilns showing time remaining, with a floating \"!\" once a crop or beehive is ready.",
+  "description": "Everything the vanilla HUD forgets to show: a draggable clock, hover timers for crops/beehives/cooking/tamed animals, a skills tracker, a death/weight/armor block, and a recipe tracker, all from a new 'FedoHud' entry in the pause menu.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2350"
   ]

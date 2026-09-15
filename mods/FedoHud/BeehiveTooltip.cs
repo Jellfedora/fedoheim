@@ -8,7 +8,7 @@ namespace FedoHud
     // que GrowthTooltip.cs pour les plantes, mais une ruche n'est pas une `Plant` : pas
     // de "temps de pose" équivalent, la progression est stockée différemment dans la
     // ZDO. Signatures vérifiées par réflexion contre assembly_valheim.dll (1.0), rien
-    // deviné -- voir mods/CLAUDE.md.
+    // deviné.
     internal static class BeehiveTooltip
     {
         // CheckBiome()/HaveFreeSpace() sont privées (conditions qui mettent la

@@ -7,8 +7,7 @@ namespace FedoHud
     // Calcul du temps de pousse restant d'une `Plant`, partagé entre GrowthTooltip.cs
     // (texte au survol) et PlantReadyIndicator.cs (icône "!" une fois prête) -- une seule
     // implémentation de la formule pour ne pas diverger entre les deux. Signatures
-    // vérifiées par réflexion contre assembly_valheim.dll (1.0), rien deviné -- voir
-    // mods/CLAUDE.md.
+    // vérifiées par réflexion contre assembly_valheim.dll (1.0), rien deviné.
     internal static class PlantGrowth
     {
         // Plant.GetGrowTime() est privée (temps de pousse total en secondes, tiré

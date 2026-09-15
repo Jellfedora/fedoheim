@@ -2,20 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>FedoServerTools</AssemblyName>
+    <AssemblyName>FedoClientTools</AssemblyName>
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <RestorePackages>false</RestorePackages>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ValheimManagedDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/valheim.app/Contents/Resources/Data/Managed</ValheimManagedDir>
     <ValheimBepInExCore>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/core</ValheimBepInExCore>
-    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoServerTools</ValheimPluginsDir>
-    <ValheimSeasonsDll>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/seasons/Seasons.dll</ValheimSeasonsDll>
+    <ValheimPluginsDir>/Users/julienlecointe/Library/Application Support/Steam/steamapps/common/Valheim/BepInEx/plugins/FedoClientTools</ValheimPluginsDir>
   </PropertyGroup>
 
-  <!-- BroadcastMessage.cs/ZNetSceneStabilityPatch.cs : fichiers partagés avec
-       FedoClientTools (voir mods/_shared/README.md). Ce mod n'a plus aucun réglage
-       synchronisé depuis le retrait de ForcePublicPosition, pas besoin de
+  <!-- BroadcastMessage.cs/ZNetSceneStabilityPatch.cs : fichiers partagés avec FedoServerTools
+       (voir mods/_shared/README.md), pas de secret/ServerToken dans ce mod donc pas besoin de
        ConfigSync.cs ici. -->
   <ItemGroup>
     <Compile Include="../_shared/BroadcastMessage.cs" Link="BroadcastMessage.cs" />
@@ -43,29 +41,46 @@
       <HintPath>$(ValheimManagedDir)/assembly_valheim.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <!-- IDistributionPlatform/ILocalUser/IUser/PlatformUserID (voir PeerSteamId.cs),
-         pour résoudre le SteamID64 de l'hôte lui-même, qui n'a pas de ZNetPeer le
-         représentant. -->
+    <!-- PlatformUserID (UserInfo.UserId's type) : nécessaire pour mods/_shared/
+         BroadcastMessage.cs (voir ShowInChat), même si ce mod n'a pas besoin du reste de
+         l'API Splatform (contrairement à FedoServerTools/PeerSteamId.cs). -->
     <Reference Include="Splatform">
       <HintPath>$(ValheimManagedDir)/Splatform.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <!-- Dépendance douce (voir SeasonReporting.cs) : jamais copiée (Private=false), le
-         mod shudnal/Seasons doit être fourni par le modpack lui-même s'il est présent.
-         Ce mod fonctionne sans lui (saison simplement non rapportée). -->
-    <Reference Include="Seasons">
-      <HintPath>$(ValheimSeasonsDll)</HintPath>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Canvas/CanvasScaler/RenderMode (voir LoadingOverlay.cs/DisconnectChoiceOverlay.cs),
+         module core Unity, distinct de UnityEngine.UI.dll (uGUI : Text/Image/Button...)
+         ci-dessus. -->
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(ValheimManagedDir)/Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Texture2D.LoadImage (extension method, voir LoadingLogo.cs), décodage PNG à la
+         volée sans passer par le pipeline d'import de l'éditeur Unity. -->
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(ValheimManagedDir)/UnityEngine.ImageConversionModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
 
-  <!-- Copie la DLL compilée dans le dossier plugins réel du jeu -->
+  <!-- Copie la DLL compilée, ainsi que le logo Fedoheim de l'écran de chargement (voir
+       LoadingLogo.cs), dans le dossier plugins réel du jeu -->
   <Target Name="CopyToPlugins" AfterTargets="Build">
     <ItemGroup>
       <PluginOutputFiles Include="$(TargetDir)*.dll" />
+      <PluginAssetFiles Include="fedoheim-logo.png" />
     </ItemGroup>
     <MakeDir Directories="$(ValheimPluginsDir)" Condition="!Exists('$(ValheimPluginsDir)')" />
     <Copy SourceFiles="@(PluginOutputFiles)" DestinationFolder="$(ValheimPluginsDir)" />
+    <Copy SourceFiles="@(PluginAssetFiles)" DestinationFolder="$(ValheimPluginsDir)" />
   </Target>
 
 </Project>

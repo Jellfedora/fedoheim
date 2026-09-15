@@ -3,7 +3,7 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-namespace FedoServerTools
+namespace FedoClientTools
 {
     // Logo Fedoheim de l'écran de chargement (voir LoadingOverlay.cs), livré en fichier
     // brut à côté de la DLL (voir CopyToPlugins du .csproj, même mécanique que le mp3
@@ -40,8 +40,8 @@ namespace FedoServerTools
                 string path = Path.Combine(pluginDirectory ?? "", LogoFileName);
                 if (!File.Exists(path))
                 {
-                    FedoServerToolsPlugin.Log?.LogWarning(
-                        $"FedoServerTools: {LogoFileName} not found next to the plugin, loading screen shows no logo.");
+                    FedoClientToolsPlugin.Log?.LogWarning(
+                        $"FedoClientTools: {LogoFileName} not found next to the plugin, loading screen shows no logo.");
                     return null;
                 }
 
@@ -58,7 +58,7 @@ namespace FedoServerTools
             }
             catch (Exception e)
             {
-                FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: Fedoheim logo loading failed: {e}");
+                FedoClientToolsPlugin.Log?.LogError($"FedoClientTools: Fedoheim logo loading failed: {e}");
                 return null;
             }
         }

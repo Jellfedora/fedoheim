@@ -1,0 +1,10 @@
+{
+  "name": "FedoClientTools",
+  "author": "Fedo",
+  "version_number": "1.1.0",
+  "website_url": "",
+  "description": "Client-only companion to FedoServerTools: skips the main menu straight to character creation/auto-connect when the active profile has an auto-connect target configured, and offers a reconnect/quit screen after a lost connection. No ServerToken, no admin routes -- safe to install on any player's client. The in-game clock moved to the FedoHud mod.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}

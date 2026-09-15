@@ -2,17 +2,11 @@
 
 *By Fedo*
 
-Mostly a server-side mod: talks to the Fedoheim API on behalf of this game server.
-Today that means reporting who's currently online (with biome and armor) and the
-current in-game season (if the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/)
-mod is also installed) so the launcher's home page can show it to every player — no
-login required to see it — but this mod is meant to grow into the general channel
-between this server and the API, in both directions (the API telling the game to do
-something is planned), not just a player-list reporter. It also has a couple of small
-client-side effects (see `ForcePublicPosition` and "Auto-join" below) — safe to install
-on a regular player's client too, see Notes — and a generic game-stability patch (see
-below) unrelated to any of that, kept here for now since this is the closest thing to a
-"misc utilities" mod.
+Server-only: talks to the Fedoheim API on behalf of this game server, and gives an admin
+a few remote controls over it (time of day, season, a broadcast message) from the
+launcher. Only install this on the actual dedicated server -- for the client-side
+companion (auto-connect, in-game clock, reconnect screen), see
+[FedoClientTools](../FedoClientTools/README.md).
 
 ## How it works
 
@@ -27,19 +21,17 @@ below) unrelated to any of that, kept here for now since this is the closest thi
    (`ZNet.GetPlayerList()`) — this includes the host in a solo/hosted game, not just
    remote peers. Each entry also carries the player's current biome (`Heightmap.
    FindBiome`, falling back to `WorldGenerator.GetBiome` if that returns nothing for
-   the zone) and current armor (`Humanoid.GetBodyArmor()`, rounded). Each player's own
-   "Public position" setting (Options > Game) normally has to be enabled for their
-   position to be usable at all — see `ForcePublicPosition` below to force it on for
-   everyone on this server. Reports still say `status: "starting"` (not `"online"`)
-   until `StartingGracePeriodSeconds` has passed since the plugin loaded (default 60s)
-   — increase this if your server has a lot of mods and takes longer to actually
-   become reachable. Each report also carries the current season (`Spring`/`Summer`/
-   `Fall`/`Winter`) if the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/)
-   mod is installed on this server — a soft dependency, entirely optional: this mod
-   works exactly the same without it, it just won't have a season to report. Unlike
-   biome/armor this is one value per report, not per player, since the season is a
-   server-wide setting. Each report also carries the current in-game clock (`HH:MM`,
-   see "In-game clock" below) — same one-value-per-report principle as the season.
+   the zone) and current armor (`Humanoid.GetBodyArmor()`, rounded). Reports still say
+   `status: "starting"` (not `"online"`) until `StartingGracePeriodSeconds` has passed
+   since the plugin loaded (default 60s) — increase this if your server has a lot of
+   mods and takes longer to actually become reachable. Each report also carries the
+   current season (`Spring`/`Summer`/`Fall`/`Winter`) if the
+   [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/) mod is installed on
+   this server — a soft dependency, entirely optional: this mod works exactly the same
+   without it, it just won't have a season to report. Unlike biome/armor this is one
+   value per report, not per player, since the season is a server-wide setting. Each
+   report also carries the current in-game clock (`HH:MM`, from `EnvMan.
+   GetDayFraction()`) — same one-value-per-report principle as the season.
 3. Each report is authenticated with a shared secret (`ServerToken`) tied to one
    modpack profile (see Configuration below) — without it, reports are rejected by
    the API and only a warning is logged locally.
@@ -53,26 +45,9 @@ below) unrelated to any of that, kept here for now since this is the closest thi
    still happens on its own after ~90s if the process is killed outright, e.g. a real
    crash with no chance to report anything).
 
-Besides API reporting, this mod also posts session events (player connect/disconnect/
-death, server start/stop, world saved) straight to a Discord webhook — see "Discord
-webhook logging" below, entirely independent of the API-reporting feature (no
-`ServerToken` involved).
-
-Besides reporting, `ForcePublicPosition` (see below, on by default) forces "Public
-position" (Options > Game) on for the session, two ways at once, belt-and-suspenders:
-- **Server side**: writes directly to the server's copy of that flag for each connected
-  *remote* peer (`ZNetPeer.m_publicRefPos`) every sync cycle — never includes the host
-  itself in a solo/hosted game, since the host isn't its own "peer".
-- **Client side, on every installation with a local player** (not just remote clients —
-  the host of a solo/hosted game needs this too, exactly because the server-side write
-  above never reaches them): simulates a real click on the in-game checkbox
-  (`Minimap.OnTogglePublicPosition()`), going through the game's own normal path
-  (whatever networking that triggers) instead of relying on the server-side write
-  alone. Checked every frame rather than once on a specific lifecycle event — nothing
-  guarantees `Minimap.instance` already exists at any single fixed point (e.g.
-  `Game.Start()`), so a one-shot check could silently do nothing forever if it ran too
-  early. Naturally does nothing on a headless dedicated server (no local `Minimap` to
-  click) and stops re-clicking once the checkbox is already on.
+Player reports also carry each player's resolved SteamID64 (`PeerSteamId.cs`) so the
+API can link a character name to the Fedoheim account that played it, first-come
+first-served — never displayed, used only for that link.
 
 ## Configuration
 
@@ -86,34 +61,13 @@ Settings live in `BepInEx/config/fedo.servertools.cfg`.
   The token already identifies which profile it belongs to, so there's nothing else
   to configure here — no separate slug setting. Required; keep it secret, anyone with
   it could post a fake player list for that profile. **Never let this end up in a
-  player-facing modpack with a real value filled in** — see Notes below.
+  player-facing modpack with a real value filled in** — this mod is server-only, so it
+  should never be in that modpack in the first place, but see Notes below just in case.
 - `SyncIntervalSeconds` — how often this mod talks to the API (default `30`, between
   `10` and `300`).
 - `StartingGracePeriodSeconds` — how long after the plugin loads to keep reporting
   `"starting"` instead of `"online"` (default `60`, between `0` and `600`). Raise this
   for a heavily modded server that takes a while to actually finish loading.
-
-**[Players]**
-- `ForcePublicPosition` (default `true`) — forces "Public position" (Options > Game) on
-  for the duration of the session (server-side write + client-side simulated click, see
-  above). Players show up on each other's map regardless of what they've set locally,
-  and a biome can be reported for everyone. Their own local setting is untouched — it
-  reverts the moment they leave this server. **Synced and locked** (see ServerSync
-  below): only the server admin's own `.cfg` controls this — a connecting player can't
-  disable it by editing their own local copy, it's overridden the moment they connect.
-  Read on both a server and a client install, so it needs no `ServerToken` to take
-  effect on the client side.
-
-### ServerSync
-
-`ForcePublicPosition` is registered with [ServerSync](https://github.com/blaxxun-boop/ServerSync)
-(embedded from `mods/_shared/ConfigSync.cs`, see that folder's README) and locked
-(`ConfigSync.IsLocked = true`): the server pushes its own current value to every
-connecting client and refuses to let the client's local `.cfg` override it in memory,
-for as long as they stay connected to this server. Only this one setting is
-registered — never `ServerToken` or `ApiBaseUrl`, since `AddConfigEntry` broadcasts a
-setting's value to every connected client the moment it changes, which would leak the
-real token to every player.
 
 **[Biomes]**
 - `MeadowsName`, `BlackForestName`, `SwampName`, `MountainName`, `PlainsName`,
@@ -129,180 +83,46 @@ real token to every player.
   on this server; harmless if it isn't.
 
 **[Time]**
-- `ShowClockOverlay` (default `true`) — shows the in-game clock overlay (see "In-game
-  clock" below). Read on both a server and a client install, so it needs no
-  `ServerToken` to take effect on the client side.
-- `TimeOffsetHours` (default `0`, between `-12` and `12`) — shifts the displayed clock
-  (both the overlay and the value sent to the API/launcher) if it doesn't match what
-  the sky looks like. Purely cosmetic, no effect on the actual day/night cycle.
-- `ClockPositionX` / `ClockPositionY` (default `0` / `-18`) — where the overlay sits on
-  screen, in UI pixels from the top-center. Written automatically when a player drags
-  the clock (see below); not meant to be hand-edited, but resettable here.
+- `TimeOffsetHours` (default `0`, between `-12` and `12`) — shifts the in-game clock
+  value sent to the API/launcher if it doesn't match what the sky looks like. Purely
+  cosmetic, no effect on the actual day/night cycle. Independent of FedoClientTools'
+  own clock overlay setting of the same name (not synced between the two mods).
 
-## In-game clock
+## Admin server commands
 
-Independent of the API/Discord features above: shows a small clock (`HH:MM`) at the
-top-center of the screen, following the server's day/night cycle
-(`EnvMan.GetDayFraction()` — the same value the game itself uses for lighting, so it
-stays correctly synced with what the sky looks like). Works on any installation with a
-local player (client or host), no `ServerToken` or network call involved — purely
-local. The same value is also sent in the periodic API report (see "How it works"
-above) so the launcher's home page can show it next to the season.
+Server-side only (`ServerCommands.cs`) — lets an admin change the current time of day or
+force a season from the launcher (Admin > Serveur), without touching the server console
+directly. Follows a "poll, never push" principle: an admin action doesn't call the game,
+it queues a one-shot command on the API (`POST /modpacks/:slug/server-command`) that
+gets picked up and applied the next time this mod reports (`POST
+/modpacks/online-players`, whose response now also carries the pending command for this
+profile, if any) — so it can take up to `SyncIntervalSeconds` (30s default) to actually
+happen, and only while the server is online to poll for it.
 
-**Draggable, position saved locally**: hold **Left Shift** and drag the clock with the
-mouse to move it anywhere on screen. The clock is normally "click-through" (it never
-intercepts a gameplay click at that spot on screen) — holding Shift is what makes it
-draggable, so it never gets in the way otherwise. The new position is written to
-`ClockPositionX`/`ClockPositionY` in this installation's own `.cfg` as soon as you
-release the drag, and is restored on every future launch — this is a per-player, purely
-local preference, never synced through the modpack or the server (unlike
-`ForcePublicPosition`, which is a shared setting on purpose).
-
-## Discord webhook logging
-
-Independent of the API reporting above: posts a running log of session events to a
-Discord channel via a webhook — who connected, who disconnected, who died, when the
-server started/stopped, when the world was saved, when a new in-game day begins, and
-when the season changes.
-
-Each event is posted as a small Discord embed (colored side bar, emoji + title, the
-templated message as the description, a `Player`/`Cause` field where relevant, and a
-"Fedoheim · <world name>" footer with a native timestamp) rather than a plain text
-message — inspired by similar community mods, not copying their exact layout. Title,
-emoji, color and field names are fixed per event (`FedoServerToolsPlugin.
-DescribeEventKind`), not configurable — only the message text itself
-(`*Template` below) is.
-
-- **Player connected / disconnected / server started / server stopped / world saved**
-  only fire on the machine acting as the server (a dedicated server, or a client
-  hosting the game).
-- **The host's own connect/disconnect** is a special case: the normal connect/disconnect
-  patches (`ZNetJoinLeaveAnnouncePatches.cs`) hook `ZNet.RPC_PeerInfo`/`ZNet.Disconnect`,
-  which only ever fire for *remote* peers — the host has no `ZNetPeer` representing
-  themselves (same limitation already found for character↔account linking, see
-  `PeerSteamId.cs`). Without a special case, a host playing solo/hosted would only ever
-  see "server started/stopped" on Discord, never their own join/leave. Fixed by
-  announcing the host's own name (from `Game.instance.GetPlayerProfile()`) via
-  `FedoServerToolsPlugin.AnnounceHostConnected`/`AnnounceHostDisconnected`.
-  `AnnounceHostDisconnected` fires right alongside "server stopped"
-  (`ZNet.OnDestroy`, see `ZNetLifecyclePatches.cs`) — by then the profile is long since
-  available. `AnnounceHostConnected`, on the other hand, does **not** fire alongside
-  "server started" (`ZNet.SetServer`): confirmed by an actual game launch that
-  `Game.instance.GetPlayerProfile()` isn't usable yet at that early point (the
-  announcement silently never went out). It's called from `Hud.Awake` instead
-  (`HudAwakeAnnounceHostPatch`, guarded on `ZNet.instance.IsServer()`) — by the time the
-  HUD exists, the profile is definitely ready. A one-time guard
-  (`_hostConnectAnnounced`, never reset, same principle as `_serverStartAnnounced`)
-  keeps a mid-session scene reload (which re-triggers `Hud.Awake`) from re-announcing.
-- **Player died** fires on whichever machine actually simulates that player's
-  character — normally that player's own client (or the host, for the host's own
-  character). For every player's death to show up, every player needs `WebhookUrl`
-  (below) filled in — it can be the same webhook for everyone.
-- **New day / season changed** are detected by polling (`CheckDayAndSeasonChange`,
-  throttled to once every 5s from `Update()` — independent of the clock overlay's own
-  1s throttle, so it still runs even with `ShowClockOverlay` off), not a game event
-  hook: a new day is `EnvMan.GetDay()` returning a different value than last observed
-  (its own day counter, which only ticks over at dawn — no separate 6 AM check needed);
-  a season change is `SeasonReporting.GetCurrentSeasonKey()` (see below, requires the
-  Seasons mod) returning a different key. Both only fire on the server/hosting client,
-  and both reset their "last known" value on every new session
-  (`FedoServerToolsPlugin.OnServerStarted`) so resuming on a different world never
-  announces a false change from whatever the previous session last saw.
-
-Settings live under `[Discord]` in `BepInEx/config/fedo.servertools.cfg`:
-
-- `WebhookUrl` — your Discord webhook URL (Server Settings > Integrations > Webhooks).
-  Keep it private — anyone who has it can post in that channel. **Unlike `ServerToken`
-  above, it's fine to fill this in on every installation, including players'** — it
-  doesn't grant access to the Fedoheim API, and death logging (see above) needs it set
-  on every client to work for every player. Blank by default (the safe no-op), same as
-  `ServerToken` — an admin has to explicitly decide to hand it out.
-- `LogPlayerConnected` / `PlayerConnectedTemplate`
-- `LogPlayerDisconnected` / `PlayerDisconnectedTemplate`
-- `LogPlayerDeath` / `PlayerDeathTemplate`
-- `LogServerStarted` / `ServerStartedTemplate`
-- `LogServerStopped` / `ServerStoppedTemplate`
-- `LogWorldSaved` / `WorldSavedTemplate`
-- `LogNewDay` / `NewDayTemplate`
-- `LogSeasonChanged` / `SeasonChangedTemplate`
-- `LogAdminMessage` / `AdminMessageTemplate` — see "Admin server commands" above
-  (broadcast message).
-
-Each `*Template` supports `{player}` (connected/disconnected/death), `{world}` (server
-started), `{cause}` (death only), `{day}` (new day only), `{season}` (season changed
-only — the already-translated display name, same as `[Seasons]` above, not the raw
-English key), or `{message}` (admin message only, the broadcast text). `{cause}`
-describes what killed the player: `drowning`, `fall damage`,
-`fire`, `the cold`, `poison`, `the edge of the world`, the name of an attacking
-creature/player (e.g. `Greydwarf`), or a few other environmental causes (falling tree,
-cart, boat, turret, catapult, stalactite, the sea, smoke inhalation, unknown causes).
-
-The "server stopped" message is best-effort: it's sent right as the server shuts down
-(`OnApplicationQuit`), so it won't arrive if the process is force-killed instead of shut
-down normally — unlike the API's own `"stopping"` report, this one isn't waited on
-synchronously.
-
-## Stability patch (unrelated to reporting)
-
-Not part of the API-reporting feature above — a small, generic Harmony patch on
-`ZNetScene.RemoveObjects`, active on any install of this mod (client or server, no
-`ServerToken` needed). It repairs a class of Valheim bug seen on heavily-tested/modded
-saves: if a `ZNetView` instance gets destroyed (or loses its ZDO) without being properly
-removed from `ZNetScene`'s internal instance registry, that vanilla method throws a
-`NullReferenceException` on it *every single frame, forever* — never resolves on its
-own, floods the log, and (depending on what else is affected) can visibly break the
-game. This isn't specific to any one mod or prefab; see e.g.
-[ASharpPen/Valheim.LessZdoZoneCorruption](https://github.com/ASharpPen/Valheim.LessZdoZoneCorruption)
-for the same class of issue in other modded setups.
-
-This patch runs just before `RemoveObjects` each frame, finds any such broken entry,
-logs the affected `GameObject`'s name and prefab hash (`FedoServerTools: repaired a
-broken ZNetScene instance (...)`, useful to track down what actually caused it), removes
-it from the registry, and resets its ZDO's `Created` flag so the game gets a chance to
-recreate it properly on the next pass instead of leaving it permanently broken.
-
-## Auto-join (client menu skip)
-
-Also unrelated to reporting — a client-only Harmony patch on `FejdStartup` (the
-Valheim main menu) that skips it entirely when the active modpack profile has an
-auto-connect target configured (see the Fedoheim launcher's "Profils" page, admin
-only). At boot, it reads a small `fedoheim-session.txt` file dropped by the launcher
-next to `BepInEx/` — never part of this mod's own package, never synced like the rest
-of a modpack (same idea as `ServerToken` above).
-
-- If the profile has no auto-connect target configured, this does nothing — the menu
-  behaves exactly like vanilla Valheim.
-- If the account has no character linked yet, it jumps straight to the "new character"
-  screen. Once the character is created, it connects automatically to the configured
-  target (a local world to host, or a dedicated server to join).
-- If the account already has a linked character (and it exists locally), the whole menu
-  is skipped entirely: the character is selected and the game connects immediately.
-
-The character↔account link itself is decided server-side (see `PeerSteamId.cs` and the
-Fedoheim API's `linkCharacterName`), not by this patch — it only reacts to what the
-launcher tells it.
-
-Since none of the vanilla menu panels are shown once auto-join takes over, Valheim's own
-loading screen never appears either — the whole connection/world-load time would
-otherwise be a plain black screen with no text. `LoadingOverlay.cs` shows the Fedoheim
-logo and a "Chargement de Fedoheim" line below it (single line, word-wrap disabled),
-both centered in the middle of the screen, hidden as soon as the in-game HUD actually
-appears (or after 30s regardless, as a safety net if the connection fails). The text
-uses `fejd.m_csName.font` — the game's regular UI font (used for the character name on
-the character-selection screen), picked after actually comparing it in-game against
-`fejd.m_versionLabel.font` (a much more retro/pixelated look, used at first) — falls
-back to `m_versionLabel` if `m_csName` isn't initialized for some reason. See
-`LoadingLogo.cs` for why a genuinely custom font (Cinzel, matching the launcher home
-page's title) was tried and abandoned instead: the OS resolved the font by name just
-fine, but Unity's own font-rendering engine still couldn't load its actual glyph data
-("Unable to load font face", confirmed by an actual game launch) — a per-process-only
-font registration doesn't appear to be visible to Unity's internal font-file resolution
-in a standalone player, only to the OS's own text layout APIs.
-
-The logo (`fedoheim-logo.png`) isn't embedded as a .NET resource — it's a plain file
-shipped next to the DLL (see the `CopyToPlugins` target in the `.csproj`) and decoded
-straight from its PNG bytes into a `Texture2D` at runtime (`Texture2D.LoadImage`), no
-Unity import pipeline needed.
+- **Time of day**: sets `ZNet.instance.SetNetTime(...)` to the next occurrence of the
+  requested hour (6h/12h/18h/24h — always jumping forward, never backward, based on
+  `EnvMan.GetDayFraction()`), then forces an immediate broadcast to already-connected
+  clients (`ZNet.SendNetTime()`, private — invoked via reflection) instead of waiting for
+  the engine's own periodic time sync.
+- **Season**: forces a season via the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/)
+  mod's own public config entries (`Seasons.Seasons.overrideSeason`/`seasonOverrided`,
+  both `ConfigEntry<T>` — this mod just sets `.Value` on them, exactly as if an admin had
+  edited Seasons' own `.cfg`, so its own ServerSync already handles propagating the
+  change to clients). Choosing "Automatique" turns the override back off and lets the
+  season resume its natural progression. Silently ignored if Seasons isn't installed on
+  the server (soft dependency, same `SeasonReporting.IsLoaded` guard as season
+  reporting).
+- Server-only (`ZNet.instance.IsServer()`) — a client applying this would just get
+  overwritten by the next sync anyway.
+- The response parsing/application runs off the main Unity thread (the periodic report is
+  fire-and-forget over HTTP) — dispatched back onto the main thread via a small queue
+  drained from `Update()` rather than touching `ZNet`/`EnvMan`/Seasons' config directly
+  from a background thread.
+- **Broadcast message** (`mods/_shared/BroadcastMessage.cs`, shared with FedoClientTools):
+  posts a short admin message (Admin > Serveur, same one-shot polling mechanism as
+  above) that shows up, on every connected player's own client, at the center of the
+  screen in yellow and in their in-game chat. The RPC send side lives here; the
+  receive/display side lives in FedoClientTools — see that mod's README.
 
 ## Character ownership check
 
@@ -324,78 +144,34 @@ in reports as if they were the rightful owner.
   (Harmony patches can't be async) — kept deliberately short for that reason. Fails
   open (allows the connection) on any error or timeout, same philosophy as the rest of
   this mod's API calls: a network hiccup should never lock out a legitimate player.
-- `ServerToken` empty (the default on a player install) disables this check entirely,
-  same as the periodic reporting above.
+- `ServerToken` empty disables this check entirely, same as the periodic reporting
+  above.
 
-## Admin server commands
+## Stability patch (unrelated to reporting)
 
-Server-side only (`ServerCommands.cs`) — lets an admin change the current time of day or
-force a season from the launcher (Admin > Serveur), without touching the server console
-directly. Follows the same "poll, never push" principle as the rest of this mod: an admin
-action doesn't call the game, it queues a one-shot command on the API
-(`POST /modpacks/:slug/server-command`) that gets picked up and applied the next time
-this mod reports (`POST /modpacks/online-players`, whose response now also carries the
-pending command for this profile, if any) — so it can take up to `SyncIntervalSeconds`
-(30s default) to actually happen, and only while the server is online to poll for it.
-
-- **Time of day**: sets `ZNet.instance.SetNetTime(...)` to the next occurrence of the
-  requested hour (6h/12h/18h/24h — always jumping forward, never backward, based on
-  `EnvMan.GetDayFraction()`, the same fraction already used for the in-game clock above),
-  then forces an immediate broadcast to already-connected clients (`ZNet.SendNetTime()`,
-  private — invoked via reflection, see `mods/CLAUDE.md`) instead of waiting for the
-  engine's own periodic time sync.
-- **Season**: forces a season via the [Seasons](https://thunderstore.io/c/valheim/p/shudnal/Seasons/)
-  mod's own public config entries (`Seasons.Seasons.overrideSeason`/`seasonOverrided`,
-  both `ConfigEntry<T>` — this mod just sets `.Value` on them, exactly as if an admin had
-  edited Seasons' own `.cfg`, so its own ServerSync already handles propagating the
-  change to clients). Choosing "Automatique" turns the override back off and lets the
-  season resume its natural progression. Silently ignored if Seasons isn't installed on
-  the server (soft dependency, same `SeasonReporting.IsLoaded` guard as season
-  reporting).
-- Server-only (`ZNet.instance.IsServer()`), same reasoning as `ForcePublicPosition` — a
-  client applying this would just get overwritten by the next sync anyway.
-- The response parsing/application runs off the main Unity thread (the periodic report is
-  fire-and-forget over HTTP) — dispatched back onto the main thread via a small queue
-  drained from `Update()` rather than touching `ZNet`/`EnvMan`/Seasons' config directly
-  from a background thread.
-- **Broadcast message** (`BroadcastMessage.cs`): posts a short admin message (Admin >
-  Serveur, same one-shot polling mechanism as above) that shows up, on every connected
-  player's own client, at the center of the screen in yellow (`MessageHud.ShowMessage`)
-  and in their in-game chat (`Chat.OnNewChatMessage`, styled as a Shout) — also logged to
-  the Discord webhook if configured (see "Discord webhook logging" below). Unlike
-  time/season above, this needs to reach every *client*, not just apply on the server:
-  dispatched over a dedicated `ZRoutedRpc` (registered on both server and client from
-  `ZNet.Awake`, same hook as ServerSync's own RPC registration) targeting
-  `ZRoutedRpc.Everybody` — which also reaches the host's own client in a solo/hosted
-  game. Deliberately uses `Chat.OnNewChatMessage` (the game's own internal *display* step
-  for an incoming chat RPC) rather than `Chat.SendText` (used elsewhere in this repo,
-  e.g. FedoDeath) — `SendText` would itself broadcast a brand new RPC from every single
-  client that receives ours, causing a message storm.
+Shared with FedoClientTools (`mods/_shared/ZNetSceneStabilityPatch.cs`) — a small,
+generic Harmony patch on `ZNetScene.RemoveObjects`, active on either mod (client or
+server). It repairs a class of Valheim bug seen on heavily-tested/modded saves: if a
+`ZNetView` instance gets destroyed (or loses its ZDO) without being properly removed
+from `ZNetScene`'s internal instance registry, that vanilla method throws a
+`NullReferenceException` on it *every single frame, forever* — never resolves on its
+own, floods the log, and (depending on what else is affected) can visibly break the
+game. This isn't specific to any one mod or prefab; see e.g.
+[ASharpPen/Valheim.LessZdoZoneCorruption](https://github.com/ASharpPen/Valheim.LessZdoZoneCorruption)
+for the same class of issue in other modded setups.
 
 ## Notes
 
 - **Seasons integration is a soft dependency, detected at runtime** (BepInEx's plugin
-  list is checked for `shudnal.Seasons` before touching any of its API) — this mod
-  loads and works fine whether or not Seasons is part of the modpack, it just won't
-  have a season to report if it isn't. Not listed in `manifest.json`'s `dependencies`
-  for this reason (that field is for hard requirements only).
-- **Reporting is server-only. `ForcePublicPosition`'s client-side half runs everywhere
-  there's a local player**, including the host of a solo/hosted game — not gated on
-  `!ZNet.IsServer()` like the rest of this mod, since the server-side write only
-  reaches *remote* peers and would otherwise never force the host's own checkbox.
-- **If this mod ends up in the player-facing modpack (for the client-side effect),
-  `ServerToken` must stay blank there.** The `.cfg` is resynced identically to everyone
-  who has this modpack — including `ServerToken`. A player hosting their own solo/co-op
-  game becomes a server too (`ZNet.IsServer()` is true for them), and would start
-  posting reports under the community's real token, corrupting the "who's online"
-  display with their private session. With `ServerToken` left blank (the default),
-  reporting is simply skipped with a local log warning — safe, and doesn't affect
-  `ForcePublicPosition` either way. Only the actual dedicated server's own copy,
-  installed manually (not through the modpack sync), should ever have the real token.
-- **`WebhookUrl` does not have this restriction** — see "Discord webhook logging"
-  above. It's a separate secret with a separate risk (someone could post fake messages
-  to that one Discord channel, nothing more), and death logging actually needs it
-  filled in on every player's client to work for everyone. Still blank by default, so
-  nothing is posted anywhere until an admin deliberately fills it in — on the server
-  only (for connect/disconnect/start/stop/saved), on every client (to also get death
-  logging), or both.
+  list is checked for `shudnal.Seasons` before touching any of its API, see
+  `SeasonReporting.IsLoaded`) — this mod loads and works fine whether or not Seasons is
+  part of the modpack, it just won't have a season to report/force if it isn't. Still
+  listed in `manifest.json`'s `dependencies` so the launcher's editor can warn if an
+  admin configures this mod without also adding Seasons to the modpack.
+- **This mod is server-only.** It should never be part of a player-facing modpack — if
+  it ever ended up there by mistake, `ServerToken` must stay blank in that shared
+  `.cfg`: the `.cfg` is resynced identically to everyone who has this modpack, and a
+  player hosting their own solo/co-op game becomes a server too (`ZNet.IsServer()` is
+  true for them), which would start posting reports under the community's real token,
+  corrupting the "who's online" display with their private session. With `ServerToken`
+  left blank (the default), reporting is simply skipped with a local log warning.

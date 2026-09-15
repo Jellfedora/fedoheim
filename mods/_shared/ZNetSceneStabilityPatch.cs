@@ -1,9 +1,15 @@
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
+using UnityEngine;
 
-namespace FedoServerTools
+namespace FedoShared
 {
+    // Fichier partagé (voir mods/_shared/README.md) : compilé à la fois dans FedoServerTools
+    // et FedoClientTools -- ce patch doit tourner sur toute installation (client ou
+    // serveur), voir ci-dessous. Logging générique (UnityEngine.Debug), même convention que
+    // BroadcastMessage.cs et ConfigSync.cs dans ce même dossier.
+    //
     // Filet de sécurité générique, pas spécifique à un mod donné : ZNetScene.RemoveObjects
     // plante en boucle (NullReferenceException à CHAQUE frame, indéfiniment -- observé en jeu,
     // dès le chargement d'une sauvegarde) si une entrée de son dictionnaire privé m_instances
@@ -61,8 +67,8 @@ namespace FedoServerTools
                         // Purement informatif -- ne doit jamais empêcher la réparation ci-dessous.
                     }
 
-                    FedoServerToolsPlugin.Log?.LogWarning(
-                        $"FedoServerTools: repaired a broken ZNetScene instance ({label}) that would otherwise crash RemoveObjects every frame.");
+                    Debug.LogWarning(
+                        $"Fedoheim: repaired a broken ZNetScene instance ({label}) that would otherwise crash RemoveObjects every frame.");
 
                     zdo.Created = false;
                     instances.Remove(zdo);

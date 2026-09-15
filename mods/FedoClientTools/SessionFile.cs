@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
-namespace FedoServerTools
+namespace FedoClientTools
 {
     // Cible d'auto-connexion résolue pour le profil actif (voir GET
     // /modpacks/:slug/manifest côté API) -- soit un monde local à héberger, soit un
@@ -42,13 +42,13 @@ namespace FedoServerTools
         // Le dossier de travail du jeu au lancement n'est pas forcément le profil
         // externe (voir valheim.rs::profile_dir, notamment sur Windows où c'est
         // l'install Steam) -- on remonte donc depuis l'emplacement de cette DLL
-        // (BepInEx/plugins/FedoServerTools/…) plutôt que d'utiliser un chemin courant.
+        // (BepInEx/plugins/FedoClientTools/…) plutôt que d'utiliser un chemin courant.
         public static SessionFile LoadNearPlugin()
         {
             try
             {
                 string pluginDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                // .../BepInEx/plugins/FedoServerTools -> .../BepInEx
+                // .../BepInEx/plugins/FedoClientTools -> .../BepInEx
                 string bepinexDir = Path.GetDirectoryName(Path.GetDirectoryName(pluginDir));
                 if (bepinexDir == null)
                 {
@@ -59,7 +59,7 @@ namespace FedoServerTools
             }
             catch (Exception e)
             {
-                FedoServerToolsPlugin.Log?.LogWarning($"FedoServerTools: could not resolve session file path: {e.Message}");
+                FedoClientToolsPlugin.Log?.LogWarning($"FedoClientTools: could not resolve session file path: {e.Message}");
                 return null;
             }
         }

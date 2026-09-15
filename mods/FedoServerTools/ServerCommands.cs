@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using BepInEx.Logging;
+using FedoShared;
 using UnityEngine;
 
 namespace FedoServerTools
@@ -181,16 +182,11 @@ namespace FedoServerTools
         }
 
         // Diffuse le message au centre de l'écran de chaque joueur connecté (voir
-        // BroadcastMessage.cs, RPC dédiée -- ZRoutedRpc.Everybody inclut l'hôte lui-même
-        // en partie solo/hébergée) et le poste aussi dans le salon Discord des logs
-        // (même webhook/mécanique que les autres événements de session, voir
-        // FedoServerToolsPlugin.AnnounceAdminMessage) -- ces deux effets sont
-        // indépendants l'un de l'autre, chacun best-effort (une RPC sans client connecté,
-        // ou un webhook non configuré, n'empêche jamais l'autre).
+        // mods/_shared/BroadcastMessage.cs, RPC dédiée partagée avec FedoClientTools --
+        // ZRoutedRpc.Everybody inclut l'hôte lui-même en partie solo/hébergée).
         private static void ApplyBroadcastMessage(string message, ManualLogSource log)
         {
             BroadcastMessage.Send(message);
-            FedoServerToolsPlugin.Instance.AnnounceAdminMessage(message);
             log?.LogInfo($"FedoServerTools: admin message broadcast: \"{message}\".");
         }
     }

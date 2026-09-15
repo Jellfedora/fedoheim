@@ -1,8 +1,16 @@
 using System;
 using HarmonyLib;
+using UnityEngine;
 
-namespace FedoServerTools
+namespace FedoShared
 {
+    // Fichier partagé (voir mods/_shared/README.md) : compilé à la fois dans FedoServerTools
+    // (qui appelle Send, voir ServerCommands.cs) et FedoClientTools (qui reçoit/affiche via
+    // RPC_ShowMessage) -- une seule copie du protocole RPC pour éviter que les deux mods
+    // divergent sur le nom de RPC ou le format du message. Logging générique (UnityEngine.
+    // Debug, pas le Log d'un plugin précis) puisqu'il tourne dans deux assemblies distinctes
+    // -- même convention que ConfigSync.cs dans ce même dossier.
+    //
     // Message ponctuel posé par un admin depuis le launcher (Admin > Serveur, voir
     // ServerCommands.cs) et affiché au centre de l'écran de chaque joueur connecté, ainsi
     // que dans son tchat en jeu. MessageHud.ShowMessage/Chat.OnNewChatMessage seules
@@ -11,7 +19,7 @@ namespace FedoServerTools
     // dédiée plutôt qu'un appel direct côté serveur.
     internal static class BroadcastMessage
     {
-        private const string RpcName = "FedoServerTools BroadcastMessage";
+        private const string RpcName = "Fedoheim BroadcastMessage";
 
         // Enregistrée sur CHAQUE instance (serveur comme client) dès que ZRoutedRpc
         // existe -- même point d'accroche que ServerSync (mods/_shared/ConfigSync.cs,
@@ -29,7 +37,7 @@ namespace FedoServerTools
                 }
                 catch (Exception e)
                 {
-                    FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: failed to register {RpcName} RPC: {e}");
+                    Debug.LogError($"Fedoheim: failed to register {RpcName} RPC: {e}");
                 }
             }
         }
@@ -41,7 +49,7 @@ namespace FedoServerTools
         {
             if (ZRoutedRpc.instance == null)
             {
-                FedoServerToolsPlugin.Log?.LogWarning("FedoServerTools: cannot broadcast admin message, ZRoutedRpc not ready.");
+                Debug.LogWarning("Fedoheim: cannot broadcast admin message, ZRoutedRpc not ready.");
                 return;
             }
 
@@ -104,7 +112,7 @@ namespace FedoServerTools
             }
             catch (Exception e)
             {
-                FedoServerToolsPlugin.Log?.LogWarning($"FedoServerTools: failed to show admin message in chat: {e.Message}");
+                Debug.LogWarning($"Fedoheim: failed to show admin message in chat: {e.Message}");
             }
         }
     }

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 
-namespace FedoServerTools
+namespace FedoClientTools
 {
     // Client uniquement (contrairement au reste de ce mod) : saute directement en
     // création de perso (compte pas encore lié, voir CLAUDE.md) ou en connexion (perso
@@ -27,8 +27,8 @@ namespace FedoServerTools
     [HarmonyPatch(typeof(FejdStartup), "Start")]
     internal static class FejdStartupAutoNavigatePatch
     {
-        // m_profiles/SetSelectedProfile sont privés sur FejdStartup -- même style de
-        // reflection que ZNetJoinLeaveAnnouncePatches.cs.
+        // m_profiles/SetSelectedProfile sont privés sur FejdStartup -- accédés par
+        // reflection, comme le reste des accroches FejdStartup de ce fichier.
         private static readonly FieldInfo ProfilesField = AccessTools.Field(typeof(FejdStartup), "m_profiles");
         private static readonly MethodInfo SetSelectedProfileMethod = AccessTools.Method(typeof(FejdStartup), "SetSelectedProfile");
         // m_csNewCharacterName est un GUIFramework.GuiInputField (assembly gui_framework,
@@ -77,12 +77,12 @@ namespace FedoServerTools
                     return;
                 }
 
-                FedoServerToolsPlugin.Log?.LogInfo($"FedoServerTools: back at the menu with connection status {status}, asking before retrying.");
+                FedoClientToolsPlugin.Log?.LogInfo($"FedoClientTools: back at the menu with connection status {status}, asking before retrying.");
                 DisconnectChoiceOverlay.Show(__instance, session.Slug, session.AutoConnect.Type == "server", () => ProceedToGame(__instance, session));
             }
             catch (Exception e)
             {
-                FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: auto-navigate failed: {e}");
+                FedoClientToolsPlugin.Log?.LogError($"FedoClientTools: auto-navigate failed: {e}");
             }
         }
 
@@ -94,7 +94,7 @@ namespace FedoServerTools
             if (!string.IsNullOrEmpty(session.CharacterName) && PlayerProfile.HaveProfile(session.CharacterName)
                 && SelectExistingProfile(instance, session.CharacterName))
             {
-                FedoServerToolsPlugin.Log?.LogInfo($"FedoServerTools: found local character '{session.CharacterName}', skipping menus.");
+                FedoClientToolsPlugin.Log?.LogInfo($"FedoClientTools: found local character '{session.CharacterName}', skipping menus.");
                 // Aucun panneau de menu ne sera plus affiché à partir d'ici jusqu'à
                 // l'entrée en jeu -- sans ça, écran noir sans texte pendant tout le
                 // chargement (voir LoadingOverlay.cs).
@@ -104,7 +104,7 @@ namespace FedoServerTools
             }
             else
             {
-                FedoServerToolsPlugin.Log?.LogInfo("FedoServerTools: no linked/local character yet, jumping to character creation.");
+                FedoClientToolsPlugin.Log?.LogInfo("FedoClientTools: no linked/local character yet, jumping to character creation.");
                 instance.OnCharacterNew();
                 PrefillCharacterName(instance, ResolvePrefillName(session.DiscordUsername));
                 // "Annuler" ne ramène qu'à l'écran de sélection de perso (jamais au
@@ -167,9 +167,12 @@ namespace FedoServerTools
             return discordUsername;
         }
 
-        // Verrouillé une fois pré-rempli (`readOnly`, propriété publique héritée de
-        // TMPro.TMP_InputField) -- le nom vient du pseudo Discord du compte, pas question
-        // de le laisser retaper à la main.
+        // Pré-rempli au pseudo Discord du compte comme suggestion de départ, mais reste
+        // librement modifiable (pas de `readOnly` posé sur le TMP_InputField) -- le joueur
+        // choisit son propre pseudo en jeu s'il préfère. Aucun impact sur la liaison
+        // compte<->perso côté API (linkCharacterName accepte n'importe quel nom, premier
+        // arrivé premier servi) ni sur la protection anti-usurpation (voir
+        // CharacterOwnershipPatch.cs côté FedoServerTools).
         private static void PrefillCharacterName(FejdStartup instance, string name)
         {
             if (string.IsNullOrEmpty(name) || NewCharacterNameField == null)
@@ -185,7 +188,6 @@ namespace FedoServerTools
 
             Type fieldType = inputField.GetType();
             fieldType.GetProperty("text")?.SetValue(inputField, name);
-            fieldType.GetProperty("readOnly")?.SetValue(inputField, true);
         }
 
         private static void HideCancelButton(FejdStartup instance)
@@ -231,7 +233,7 @@ namespace FedoServerTools
             }
             catch (Exception e)
             {
-                FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: post-creation auto-connect failed: {e}");
+                FedoClientToolsPlugin.Log?.LogError($"FedoClientTools: post-creation auto-connect failed: {e}");
             }
         }
     }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 
-namespace FedoServerTools
+namespace FedoClientTools
 {
     // Statut en ligne + nombre de joueurs connectés, affiché sur DisconnectChoiceOverlay
     // pour savoir si le serveur qu'on vient de quitter est de nouveau joignable avant de

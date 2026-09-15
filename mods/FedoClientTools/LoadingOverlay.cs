@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace FedoServerTools
+namespace FedoClientTools
 {
     // Écran affiché en plein milieu de l'écran pendant que la connexion automatique (voir
     // FejdStartupPatches.cs, section "Connexion automatique" de CLAUDE.md) enchaîne
@@ -119,7 +119,7 @@ namespace FedoServerTools
             }
             catch (Exception e)
             {
-                FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: loading overlay creation failed: {e}");
+                FedoClientToolsPlugin.Log?.LogError($"FedoClientTools: loading overlay creation failed: {e}");
             }
         }
 
@@ -148,7 +148,7 @@ namespace FedoServerTools
                 }
                 catch (Exception e)
                 {
-                    FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: loading overlay cleanup failed: {e}");
+                    FedoClientToolsPlugin.Log?.LogError($"FedoClientTools: loading overlay cleanup failed: {e}");
                 }
             }
         }

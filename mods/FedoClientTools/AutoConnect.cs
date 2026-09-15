@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 
-namespace FedoServerTools
+namespace FedoClientTools
 {
     // Déclenche réellement la connexion (host d'un monde local ou join d'un serveur
     // dédié) via les mêmes méthodes que les boutons vanilla du menu -- vérifiées par
@@ -14,8 +14,8 @@ namespace FedoServerTools
     // et SetServerToJoin -> JoinServer sans navigation UI intermédiaire).
     internal static class AutoConnect
     {
-        // m_worlds/SetSelectedWorld sont privés sur FejdStartup -- même style de
-        // reflection que le reste du repo (voir ZNetJoinLeaveAnnouncePatches.cs).
+        // m_worlds/SetSelectedWorld sont privés sur FejdStartup -- accédés par reflection,
+        // même style que les autres accroches FejdStartup de ce mod.
         private static readonly FieldInfo WorldsField = AccessTools.Field(typeof(FejdStartup), "m_worlds");
         private static readonly MethodInfo SetSelectedWorldMethod = AccessTools.Method(typeof(FejdStartup), "SetSelectedWorld");
 
@@ -41,13 +41,13 @@ namespace FedoServerTools
         {
             if (WorldsField == null || SetSelectedWorldMethod == null)
             {
-                FedoServerToolsPlugin.Log?.LogWarning("FedoServerTools: world selection API not found.");
+                FedoClientToolsPlugin.Log?.LogWarning("FedoClientTools: world selection API not found.");
                 return;
             }
 
             if (!(WorldsField.GetValue(instance) is List<World> worlds))
             {
-                FedoServerToolsPlugin.Log?.LogWarning("FedoServerTools: could not read the local world list.");
+                FedoClientToolsPlugin.Log?.LogWarning("FedoClientTools: could not read the local world list.");
                 return;
             }
 
@@ -58,7 +58,7 @@ namespace FedoServerTools
             int index = worlds.FindIndex(w => string.Equals(w.m_name, worldName, StringComparison.OrdinalIgnoreCase));
             if (index < 0)
             {
-                FedoServerToolsPlugin.Log?.LogWarning($"FedoServerTools: world '{worldName}' not found locally -- falling back to the normal menu.");
+                FedoClientToolsPlugin.Log?.LogWarning($"FedoClientTools: world '{worldName}' not found locally -- falling back to the normal menu.");
                 return;
             }
 

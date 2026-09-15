@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace FedoServerTools
+namespace FedoClientTools
 {
     // Affiché à la place de la reconnexion automatique quand on revient sur ce menu avec
     // un statut de connexion natif qui n'est pas `None` (voir
@@ -156,7 +156,7 @@ namespace FedoServerTools
                     label.text = "Vérification du serveur...";
 
                     var runner = _root.AddComponent<CoroutineRunner>();
-                    ServerStatusLine.Fetch(runner, FedoServerToolsPlugin.Instance?.ApiBaseUrl, slug, label, online =>
+                    ServerStatusLine.Fetch(runner, FedoClientToolsPlugin.Instance?.ApiBaseUrl, slug, label, online =>
                     {
                         if (reconnectButton != null)
                         {
@@ -174,7 +174,7 @@ namespace FedoServerTools
             }
             catch (Exception e)
             {
-                FedoServerToolsPlugin.Log?.LogError($"FedoServerTools: disconnect choice overlay creation failed: {e}");
+                FedoClientToolsPlugin.Log?.LogError($"FedoClientTools: disconnect choice overlay creation failed: {e}");
             }
         }
 
@@ -221,7 +221,7 @@ namespace FedoServerTools
             Button source = fejd?.m_csStartButton;
             if (source == null)
             {
-                FedoServerToolsPlugin.Log?.LogWarning("FedoServerTools: FejdStartup.m_csStartButton not found, disconnect overlay button skipped.");
+                FedoClientToolsPlugin.Log?.LogWarning("FedoClientTools: FejdStartup.m_csStartButton not found, disconnect overlay button skipped.");
                 return null;
             }
 

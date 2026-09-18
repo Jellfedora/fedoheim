@@ -1,0 +1,10 @@
+{
+  "name": "FedoSkillSafety",
+  "author": "Fedo",
+  "version_number": "1.0.0",
+  "website_url": "",
+  "description": "Death still lowers your skills, but never below the last tier you reached (every 5 levels by default) -- less frustrating without removing the risk entirely.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}

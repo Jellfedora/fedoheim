@@ -25,14 +25,18 @@ renommer ces occurrences-là, elles sont correctes telles quelles.
   admin-géré, repost Discord) qui sert de source de vérité pour le website + le launcher.
   Fonctionnel — voir `api/README.md`.
 - **Mods maison** (`mods/`) — mods Valheim (BepInEx) développés en interne, distribués via
-  l'API et installés automatiquement par le launcher. Six mods écrits et buildés
-  (`HelloFedo`, `FedoDeath`, `FedoGoldRabbit`, `FedoGuardian`, `FedoKnorri`,
-  `FedoServerTools` — voir `mods/CLAUDE.md`; deux fusions dans des mods existants plutôt que de multiplier les
-  petits mods maison : `FedoServerTools` a absorbé le logging Discord de l'ancien mod
-  `FedoDiscordLogs` et la connexion automatique développée un temps sous le nom
-  `FedoAutoJoin` (jamais commité en tant que mod séparé) ; `FedoDeath` a absorbé
-  `FedoDeathGif` (capture gif + webhook Discord à la mort), en gardant le nom
-  `FedoDeath` mais l'icône de `FedoDeathGif`, packagés en zips dans
+  l'API et installés automatiquement par le launcher. Huit mods écrits et buildés
+  (`HelloFedo`, `FedoDeath`, `FedoDeathGif`, `FedoGoldRabbit`, `FedoGuardian`, `FedoKnorri`,
+  `FedoServerTools`, `FedoClientTools` — voir `mods/CLAUDE.md`). `FedoDeath` (gardien de
+  tombe) et `FedoDeathGif` (capture gif + webhook Discord à la mort) ont brièvement
+  fusionné en un seul mod avant d'être reséparés, `FedoServerTools`/`FedoClientTools`
+  suivent le même principe (reporting API/commandes admin/anti-usurpation côté serveur
+  dédié seulement dans `FedoServerTools` ; auto-connexion/horloge/écran de chargement dans
+  `FedoClientTools`, l'ancienne connexion automatique un temps développée sous le nom
+  `FedoAutoJoin`, jamais commitée en tant que mod séparé, côté modpack joueur). Un logging
+  Discord des événements de session a existé un temps dans `FedoServerTools` (absorbant
+  l'ancien mod `FedoDiscordLogs`) puis a été retiré : un mod Discord tiers couvre déjà bien
+  ce besoin. Packagés en zips dans
   `mods/dist/` prêts à être uploadés via l'éditeur du launcher ; aucun n'est encore
   effectivement configuré dans un profil de modpack en
   base.
@@ -409,37 +413,10 @@ serveur au moment du rapport).
   le `.cfg` généré pour y mettre sa propre traduction (ex: `MeadowsName = Prairies`).
   L'API et le launcher affichent cette valeur telle quelle, sans mapping ni connaissance
   des biomes du jeu.
-- **`ForcePublicPosition` (`.cfg`, section `[Players]`, activé par défaut) force le vrai
-  réglage, des deux côtés à la fois** : la position d'un joueur n'est normalement
-  exploitable que s'il a lui-même activé "Position publique" (Options > Jeu, décoché par
-  défaut chez à peu près tout le monde). Ce mod force ce réglage pour de vrai (le joueur
-  apparaît sur la carte des autres, pas seulement un effet interne à ce mod), en
-  cumulant deux mécanismes complémentaires :
-  - **Côté serveur** : écrit directement `ZNetPeer.m_publicRefPos` (champ public,
-    canonique) à `true` pour chaque pair connecté, à chaque cycle (`GetConnectedPlayers`)
-    — jamais en réécrivant le retour d'une méthode partagée. Une première version
-    patchait `ZNet.GetPlayerList()` en Harmony pour forcer `PlayerInfo.m_publicPosition`
-    dans sa liste de retour — risque réel de corrompre une liste utilisée par d'autres
-    systèmes du jeu (une boucle de `NullReferenceException` dans `ZNetScene.
-    CreateDestroyObjects`/`RemoveObjects` a été observée avec cette approche) ; retirée.
-  - **Côté client** (`ForceOwnPublicPosition`, vérifié à chaque frame depuis `Update()`
-    — pas de check `IsServer()`, nécessaire aussi pour l'hôte d'une partie
-    solo/hébergée) : simule un vrai clic sur la case en jeu (`Minimap.instance.
-    OnTogglePublicPosition()`, méthode publique) pour passer par le chemin normal du jeu
-    plutôt que d'espérer que l'écriture côté serveur seule suffise à déclencher la
-    diffusion aux autres clients — sans certitude à ce sujet faute de pouvoir décompiler.
-    Une première version patchait `Game.Start()` en Harmony (une seule fois) au lieu de
-    vérifier à chaque frame — observé en pratique : la case restait jamais forcée, rien
-    ne garantissant que `Minimap.instance` existe déjà au moment précis où un objet Unity
-    donné exécute son `Start()`/`Update()` par rapport aux autres dans la même frame ;
-    corrigé. C'est le seul morceau de ce mod qui a un effet côté client et qui ne
-    nécessite aucun jeton — voir plus haut, sans danger à distribuer dans le modpack
-    joueur.
-  **Synchronisé et verrouillé via ServerSync** (`mods/_shared/ConfigSync.cs`,
-  `ConfigSync.IsLocked = true`) : seul le `.cfg` du serveur (source de vérité, `IsAdmin`
-  toujours vrai côté serveur) contrôle ce réglage — un joueur ne peut plus le désactiver
-  en éditant son propre `.cfg` local, sa valeur y est écrasée dès la connexion. Voir
-  section "ServerSync" plus bas.
+- **Forcer "Position publique" n'est plus géré par ce mod** : `FedoServerTools` avait un
+  temps un `ForcePublicPosition` (écriture serveur `ZNetPeer.m_publicRefPos` + clic
+  client simulé sur la case, synchronisé/verrouillé via ServerSync) — retiré, un mod
+  tiers couvre déjà ce besoin, pas la peine de le dupliquer ici.
 - **`status` (`starting`/`online`/`stopping`/`offline`) reflète le cycle de vie complet
   du serveur**, pas juste en-ligne/hors-ligne :
   - `starting` est envoyé dès le chargement du plugin (`Awake`), **avant même de savoir**
@@ -530,9 +507,8 @@ n'est pas en ligne pour interroger l'API.
   `false` et laisse la saison reprendre sa progression naturelle. Même garde
   `SeasonReporting.IsLoaded` que le reporting : silencieusement ignorée si Seasons n'est
   pas installé.
-- **Serveur seulement** (`ZNet.instance.IsServer()`), même raisonnement que
-  `ForcePublicPosition` — appliqué sur un simple client, ce serait de toute façon écrasé
-  par la prochaine synchronisation.
+- **Serveur seulement** (`ZNet.instance.IsServer()`) — appliqué sur un simple client, ce
+  serait de toute façon écrasé par la prochaine synchronisation.
 - **Jamais exécuté hors du thread principal Unity** : la continuation qui traite la
   réponse du rapport tourne sur un thread du pool (`Task.Run` + `ConfigureAwait(false)`),
   pas le thread principal — la commande est donc mise en file (`ConcurrentQueue<Action>`)
@@ -543,14 +519,15 @@ n'est pas en ligne pour interroger l'API.
   ExtractJsonString`/`ExtractJsonInt`), pas un vrai parseur — suffisant pour le format
   plat et entièrement maîtrisé renvoyé par l'API.
 
-## Connexion automatique (FedoServerTools)
+## Connexion automatique (FedoClientTools + FedoServerTools)
 
-Partie client de `FedoServerTools` (`AutoConnect.cs`/`FejdStartupPatches.cs`/
-`SessionFile.cs` — le seul patch du mod qui touche l'écran-titre `FejdStartup`, pas le
-gameplay ; développée un temps comme un mod séparé `FedoAutoJoin`, jamais commis en
-tant que tel, fusionnée dedans avant le premier commit pour ne pas multiplier les
-petits mods maison — même raisonnement que l'absorption de `FedoDiscordLogs`, voir
-Vue d'ensemble) qui saute le menu principal de Valheim quand un profil de modpack a une
+`FedoClientTools` (`AutoConnect.cs`/`FejdStartupPatches.cs`/`SessionFile.cs` — le seul
+patch de ce mod qui touche l'écran-titre `FejdStartup`, pas le gameplay ; développée un
+temps comme un mod séparé `FedoAutoJoin`, jamais commis en tant que tel, fusionnée
+d'abord dans `FedoServerTools` avant le premier commit pour ne pas multiplier les petits
+mods maison, puis déplacée dans `FedoClientTools` lors de la scission de ce dernier en
+deux mods — voir Vue d'ensemble) qui saute le menu principal de Valheim quand un profil
+de modpack a une
 **cible d'auto-connexion** configurée (page "Profils" du launcher, admin seulement,
 section "Connexion auto") : soit un monde local à héberger (`autoConnectType: "world"`,
 champ texte libre comparé **insensible à la casse** aux mondes locaux, `AutoConnect.
@@ -561,8 +538,9 @@ comportement 100% vanilla — c'est ce qui permet de n'activer la fonctionnalit�
 un profil de test (ex. `fedodev3`) sans toucher à la production tant qu'elle n'est pas
 validée en conditions réelles.
 
-- **Le nom de personnage est celui imposé (pseudo Discord), pas un choix libre du
-  joueur** — voir ci-dessous ; ce choix **devient définitif pour ce compte** :
+- **Le nom de personnage est pré-rempli au pseudo Discord comme suggestion de départ,
+  mais librement modifiable** — voir ci-dessous ; le choix final **devient définitif
+  pour ce compte** :
   `users.characterName` (API) est posé une seule fois, "premier arrivé, premier servi",
   dès que `FedoServerTools` rapporte un `steamId` connecté correspondant à un compte dont
   `characterName` est encore `null` (voir `onlinePlayers.ts::linkCharacterName` et
@@ -599,9 +577,11 @@ validée en conditions réelles.
     "fermé", pour qu'un souci réseau ne verrouille jamais un joueur légitime dehors.
     `ServerToken` vide désactive ce contrôle, même logique que le reporting.
 - Sans `characterName` lié → `FejdStartup` patché en Postfix de `Start()` saute
-  direct à l'écran de création, nom **imposé au pseudo Discord du joueur** (pas de choix
-  libre du tout — champ pré-rempli puis verrouillé en lecture seule, `readOnly` sur le
-  `TMP_InputField`), `PlayerProfile.HaveProfile` suffixé d'un nombre croissant —
+  direct à l'écran de création, nom **pré-rempli au pseudo Discord du joueur, mais
+  librement modifiable** (pas de verrouillage `readOnly` sur le `TMP_InputField` — le
+  joueur peut retaper ce qu'il veut, sans impact sur la liaison compte↔perso ni sur la
+  protection anti-usurpation ci-dessus), `PlayerProfile.HaveProfile` suffixé d'un nombre
+  croissant —
   `Nom2`, `Nom3`... — si déjà pris localement (voir `ResolvePrefillName`/
   `PrefillCharacterName` dans `FejdStartupPatches.cs`) ; une fois
   "Terminé" cliqué (`OnNewCharacterDone`, patché en Postfix), connexion automatique à la
@@ -672,7 +652,7 @@ validée en conditions réelles.
   `<ServerPassword>k__BackingField` et le point d'accroche `OnWorldStart`/
   `SetServerToJoin`+`JoinServer` restent vérifiés seulement par dump de reflection contre
   le vrai assembly (signatures correctes) avant de considérer cette partie
-  de `FedoServerTools` fiable, même principe que les autres patchs `FejdStartup`/`ZNet`
+  de `FedoClientTools` fiable, même principe que les autres patchs `FejdStartup`/`ZNet`
   de ce repo (voir `mods/CLAUDE.md`, "Notes techniques de modding").
 
 ## ServerSync (synchronisation de config entre serveur et clients)
@@ -689,9 +669,10 @@ dans son `.cfg` local). Avec `configSync.IsLocked = true`, un client connecté n
 plus du tout modifier localement un réglage enregistré — seul le serveur (source de
 vérité, `ConfigSync.IsAdmin` toujours vrai côté serveur) fait autorité.
 
-- **Ne jamais enregistrer un secret** (`ServerToken` de FedoServerTools par exemple) :
-  `AddConfigEntry` diffuse la valeur à tous les clients connectés dès qu'elle change —
-  l'inverse exact de ce qu'on veut pour un jeton.
+- **Ne jamais enregistrer un secret** (`ServerToken` de FedoServerTools par exemple, qui
+  n'a d'ailleurs jamais utilisé ServerSync pour quoi que ce soit) : `AddConfigEntry`
+  diffuse la valeur à tous les clients connectés dès qu'elle change — l'inverse exact de
+  ce qu'on veut pour un jeton.
 - Dépendance NuGet nécessaire dans chaque `.csproj` : **aucune** — `PublicAPIAttribute`/
   `UsedImplicitlyAttribute` (utilisés par `[PublicAPI]` dans `ConfigSync.cs`) sont déjà
   fournis par `UnityEngine.CoreModule` (déjà référencé par tous les mods) ; ajouter le
@@ -699,11 +680,11 @@ vérité, `ConfigSync.IsAdmin` toujours vrai côté serveur) fait autorité.
   fichier a aussi besoin de références déjà présentes dans certains mods mais pas tous :
   `assembly_utils`, `UnityEngine.UI`, `Unity.TextMeshPro` — à ajouter au `.csproj` de
   chaque mod qui l'intègre s'il ne les a pas déjà.
-- Utilisé aujourd'hui uniquement par `FedoServerTools` (`ForcePublicPosition`, voir
-  section précédente). Objectif à terme : l'étendre aux réglages de gameplay des autres
-  mods maison (portée de détection, taux de spawn...) pour que tous les joueurs d'un
-  même modpack jouent avec les mêmes valeurs, peu importe ce que chacun a dans son
-  `.cfg` local.
+- Utilisé aujourd'hui par les mods de gameplay (`FedoDeath`, `FedoGoldRabbit`,
+  `FedoGuardian`, `FedoKnorri` — chacun avec sa propre instance `ConfigSync`, un réglage
+  différent par mod). `FedoServerTools`/`FedoClientTools` n'en ont plus besoin depuis le
+  retrait de `ForcePublicPosition` (voir section précédente), qui en était le seul
+  utilisateur côté outils serveur.
 
 ## Contenu géré par les admins
 
@@ -762,7 +743,7 @@ messages" + "Intégrer des liens" sur ce salon précis.
   macheim pour macOS), pas par un test réel avec Steam + Valheim installés — à faire en
   priorité sur chaque plateforme avant de considérer cette partie fiable.
 - **Testée en jeu, quatre bugs trouvés et corrigés jusqu'ici** : la connexion automatique
-  de `FedoServerTools` (voir section "Connexion automatique" ci-dessus) — menu principal
+  (aujourd'hui dans `FedoClientTools`, voir section "Connexion automatique" ci-dessus) — menu principal
   resté visible sous l'écran de création, connexion ne se déclenchant jamais après
   création d'un nouveau perso (`OnCharacterStart()` jamais appelé), liaison compte↔perso
   ne se faisant jamais pour un admin hébergeant lui-même (l'hôte n'a pas de `ZNetPeer`,

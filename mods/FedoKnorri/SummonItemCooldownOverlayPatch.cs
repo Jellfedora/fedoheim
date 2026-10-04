@@ -92,7 +92,7 @@ namespace FedoKnorri
 
             var pos = (Vector2i)PosField.GetValue(element);
             ItemDrop.ItemData item = inventory.GetItemAt(pos.x, pos.y);
-            if (item == null || !SummonItemPrefabPatch.IsSummonItem(item))
+            if (item == null || SummonItemUsePatch.ResolveTier(item) == null)
             {
                 return;
             }
@@ -170,7 +170,7 @@ namespace FedoKnorri
 
         private static void ApplyCooldownVisual(object element, ItemDrop.ItemData item, float remaining)
         {
-            if (item == null || !SummonItemPrefabPatch.IsSummonItem(item))
+            if (item == null || SummonItemUsePatch.ResolveTier(item) == null)
             {
                 return;
             }

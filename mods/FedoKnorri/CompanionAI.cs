@@ -4,11 +4,39 @@ using UnityEngine;
 
 namespace FedoKnorri
 {
+    // Palier d'évolution du compagnon -- Knorri (Greyling, la graine de base) et Shaman
+    // (Greydwarf_Shaman, obtenu par la recette graine + 5 miels, voir ShamanSummonItemPrefabPatch)
+    // partagent tous deux exactement ce même script CompanionAI : seul le soin (montant/cooldown,
+    // voir TryHeal) diffère par palier, tout le reste (suivi, ramassage, invulnérabilité,
+    // renommage, un seul compagnon par joueur, despawn à la déconnexion...) marche déjà
+    // identiquement pour les deux sans code supplémentaire, puisque tout ce système s'appuie sur
+    // la présence du composant CompanionAI, jamais sur le prefab précis dessous. L'ordre de
+    // l'enum sert aussi de hiérarchie ("Shaman > Knorri") pour bloquer un retour en arrière --
+    // voir SummonItemUsePatch.ShouldSummon.
+    public enum CompanionTier
+    {
+        Knorri = 0,
+        Shaman = 1,
+    }
+
+    // Comportement par défaut du compagnon face au danger, réglable au survol (clic simple sur
+    // E, voir CompanionInteract) et persisté comme le nom (ZdoBehaviorMode/CustomDataBehaviorMode
+    // ci-dessous). Défensif est la valeur par défaut d'un compagnon fraîchement invoqué -- cohérent
+    // avec son comportement d'origine (pacifiste, jamais de combat) avant l'ajout de ce réglage.
+    public enum CompanionBehaviorMode
+    {
+        Defensive = 0,
+        Aggressive = 1,
+    }
+
     // IA du compagnon, écrite par-dessus BaseAI comme FedoGuardian.GuardAI -- mais ici on garde
     // le Character/Animator d'origine du Greyling cloné (voir CompanionPrefabPatch), donc pas
-    // besoin de recréer un Humanoid nu : cette classe ne fait QUE le suivi/soin/ramassage,
-    // jamais de combat (le compagnon est pacifiste, en faction Boss pour être ignoré des
-    // monstres sauvages, et invulnérable -- voir CompanionInvulnerabilityPatch).
+    // besoin de recréer un Humanoid nu. Suivi/soin/ramassage dans tous les cas, plus, selon
+    // CompanionBehaviorMode : en Défensif, il essaie de s'écarter d'une menace qui LE cible
+    // (TryEvade) ; en Agressif, il se bat pour de vrai contre ce qui cible le propriétaire ou
+    // lui-même (TryFight) -- ce dernier utilise Humanoid.StartAttack(target, ...), qui vise une
+    // cible précise plutôt qu'un coup à l'aveugle dans l'arc de la vraie attaque, donc sans
+    // risque de toucher le propriétaire par accident au passage.
     public class CompanionAI : BaseAI
     {
         // Posée sur le ZDO du COMPAGNON : PlayerID stable du propriétaire (Player.GetPlayerID(),
@@ -27,10 +55,19 @@ namespace FedoKnorri
         // le PROPRIÉTAIRE, le prochain compagnon invoqué repartait sur le nom par défaut du .cfg.
         private const string CustomDataCompanionName = "FedoKnorri_CompanionName";
 
+        // Même raisonnement que ZdoCustomName/CustomDataCompanionName ci-dessus, mais pour le
+        // mode de comportement (voir CompanionInteract, clic simple sur E) : persisté à la fois
+        // sur le ZDO du compagnon (survit à un reload) et côté propriétaire (survit à un
+        // ranger/réinvoquer, y compris à travers une évolution -- voir ApplySavedMode).
+        private const string ZdoBehaviorMode = "FedoKnorri_BehaviorMode";
+        private const string CustomDataBehaviorMode = "FedoKnorri_BehaviorMode";
+
         private const float ArrivalDistance = 0.5f;
         private const float PickupArrivalDistance = 1f;
         private const float FullHealthEpsilon = 0.01f;
         private const float OwnershipCheckIntervalSeconds = 2f;
+        private const float AttackRange = 2f;
+        private const float EvadeDistance = 6f;
 
         // Character n'expose aucun "IsOnGround()" public (seul le champ privé m_groundContact
         // existe) -- une vitesse verticale quasi nulle est le meilleur signal disponible pour
@@ -46,12 +83,18 @@ namespace FedoKnorri
 
         private Player _owner;
         private Animator _animator;
+        private Humanoid _humanoid;
+        private CompanionTier _tier;
+        private CompanionBehaviorMode _mode = CompanionBehaviorMode.Defensive;
         private float _healCooldownTimer;
         private float _pickupSearchTimer;
         private float _ownershipCheckTimer;
         private float _chatCooldownTimer;
         private float _coinSoundCooldownTimer;
+        private float _attackCooldownTimer;
         private ItemDrop _pickupTarget;
+
+        public CompanionBehaviorMode Mode => _mode;
 
         public static void LinkToOwner(GameObject companion, Player owner)
         {
@@ -86,6 +129,31 @@ namespace FedoKnorri
             var nview = companion.GetComponent<ZNetView>();
             ZDO zdo = nview != null ? nview.GetZDO() : null;
             zdo?.Set(ZdoCustomName, savedName);
+        }
+
+        // Cf. commentaire équivalent sur ApplySavedName juste au-dessus -- même mécanique pour
+        // le mode de comportement (Défensif/Agressif), survit lui aussi à un ranger/réinvoquer
+        // et à une évolution (voir SummonItemUsePatch.ShouldSummon), puisque
+        // CustomDataBehaviorMode est posé côté propriétaire, pas sur le ZDO du compagnon (détruit
+        // à chaque rangement).
+        public static void ApplySavedMode(GameObject companion, Player owner)
+        {
+            if (owner?.m_customData == null ||
+                !owner.m_customData.TryGetValue(CustomDataBehaviorMode, out string savedMode) ||
+                !Enum.TryParse(savedMode, out CompanionBehaviorMode mode))
+            {
+                return;
+            }
+
+            var ai = companion.GetComponent<CompanionAI>();
+            if (ai != null)
+            {
+                ai._mode = mode;
+            }
+
+            var nview = companion.GetComponent<ZNetView>();
+            ZDO zdo = nview != null ? nview.GetZDO() : null;
+            zdo?.Set(ZdoBehaviorMode, savedMode);
         }
 
         // Utilisé par SummonItemUsePatch pour savoir si ce joueur a déjà un compagnon vivant
@@ -126,6 +194,18 @@ namespace FedoKnorri
             return null;
         }
 
+        // Déduit le palier d'un compagnon depuis le hash de prefab de sa ZDO plutôt qu'un champ
+        // dédié persisté -- ce hash est déjà la source de vérité de "quel objet est-ce", pas
+        // besoin de dupliquer l'info. Utilisé aussi bien en interne (Awake, ci-dessous) que par
+        // SummonItemUsePatch pour savoir si un compagnon déjà présent doit être rangé, remplacé
+        // (évolution) ou laissé tel quel (graine d'un palier inférieur à celui déjà invoqué).
+        public static CompanionTier GetTier(GameObject companion)
+        {
+            ZNetView view = companion != null ? companion.GetComponent<ZNetView>() : null;
+            int prefabHash = view != null ? view.GetZDO()?.GetPrefab() ?? 0 : 0;
+            return prefabHash == ShamanCompanionPrefabPatch.PrefabHash ? CompanionTier.Shaman : CompanionTier.Knorri;
+        }
+
         protected override void Awake()
         {
             base.Awake();
@@ -135,6 +215,8 @@ namespace FedoKnorri
             // correct, d'où des déplacements erratiques/bloqués.
             m_pathAgentType = Pathfinding.AgentType.Humanoid;
 
+            _tier = GetTier(gameObject);
+
             ZDO zdo = m_nview != null ? m_nview.GetZDO() : null;
             string customName = zdo != null ? zdo.GetString(ZdoCustomName, string.Empty) : string.Empty;
             if (!string.IsNullOrEmpty(customName) && m_character != null)
@@ -142,7 +224,19 @@ namespace FedoKnorri
                 m_character.m_name = customName;
             }
 
+            string savedMode = zdo != null ? zdo.GetString(ZdoBehaviorMode, string.Empty) : string.Empty;
+            if (!string.IsNullOrEmpty(savedMode) && Enum.TryParse(savedMode, out CompanionBehaviorMode mode))
+            {
+                _mode = mode;
+            }
+
             _animator = GetComponentInChildren<Animator>();
+            // Confirmé en jeu (voir README) : le compagnon cloné (Greyling/Greydwarf_Shaman) est
+            // réellement un Humanoid, pas un Character nu -- StartAttack (mode Agressif, voir
+            // TryFight) en a besoin, tout comme son arme "à mains nues" d'origine
+            // (Humanoid.m_unarmedWeapon), jamais retirée puisque seul MonsterAI est supprimé du
+            // clone (voir CompanionPrefabPatch), pas le reste de son équipement inné.
+            _humanoid = GetComponent<Humanoid>();
         }
 
         public override bool UpdateAI(float dt)
@@ -240,12 +334,130 @@ namespace FedoKnorri
 
             TryHeal(dt);
 
+            // Combat/esquive prennent la main sur le ramassage/suivi ce tick-ci, selon le mode
+            // (voir CompanionBehaviorMode) -- mais jamais sur le soin ci-dessus, qui reste
+            // prioritaire dans tous les cas.
+            if (_mode == CompanionBehaviorMode.Aggressive && TryFight(dt))
+            {
+                return;
+            }
+
+            if (_mode == CompanionBehaviorMode.Defensive && TryEvade(dt))
+            {
+                return;
+            }
+
             // Le ramassage prend la main sur le déplacement de ce tick (le compagnon marche
             // jusqu'à l'objet) -- Follow ne reprend que quand rien n'est à ramasser.
             if (!TryPickup(dt))
             {
                 Follow(dt);
             }
+        }
+
+        // Cherche un adversaire à traiter comme une menace, parmi les Character non-joueurs
+        // vivants dans CombatEngageRange dont l'IA cible actuellement le propriétaire (si
+        // includeOwnerTargets) ou le compagnon lui-même. Ne cherche jamais "n'importe quel
+        // monstre sauvage à portée" tout seul : ça l'aurait fait s'engager dans des combats qui
+        // ne le concernent pas juste en marchant à travers une Forêt Noire, plutôt que de
+        // réagir à une vraie menace déjà engagée contre le groupe.
+        private Character FindThreat(bool includeOwnerTargets)
+        {
+            float range = FedoKnorriPlugin.Instance.CombatEngageRange.Value;
+            Collider[] hits = Physics.OverlapSphere(base.transform.position, range);
+
+            Character nearest = null;
+            float nearestDistance = float.MaxValue;
+
+            foreach (Collider hit in hits)
+            {
+                Character candidate = hit.GetComponentInParent<Character>();
+                if (candidate == null || candidate == m_character || candidate.IsDead() || candidate.IsPlayer())
+                {
+                    continue;
+                }
+
+                BaseAI candidateAi = candidate.GetComponent<BaseAI>();
+                Character target = candidateAi != null ? candidateAi.GetTargetCreature() : null;
+                bool isThreat = target == m_character || (includeOwnerTargets && _owner != null && target == (Character)_owner);
+                if (!isThreat)
+                {
+                    continue;
+                }
+
+                float distance = Vector3.Distance(base.transform.position, candidate.transform.position);
+                if (distance < nearestDistance)
+                {
+                    nearest = candidate;
+                    nearestDistance = distance;
+                }
+            }
+
+            return nearest;
+        }
+
+        // Mode Agressif : se bat pour de vrai contre ce qui cible le propriétaire ou lui-même --
+        // se rapproche si hors de portée, sinon attaque via Humanoid.StartAttack(target, ...), qui
+        // vise explicitement "target" plutôt qu'un coup dans l'arc de la vraie attaque, donc sans
+        // risque de toucher le propriétaire (ou n'importe qui d'autre) par accident au passage.
+        // Renvoie true si un combat est en cours ce tick (prend la main sur ramassage/suivi).
+        private bool TryFight(float dt)
+        {
+            _attackCooldownTimer -= dt;
+
+            Character threat = FindThreat(includeOwnerTargets: true);
+            if (threat == null)
+            {
+                return false;
+            }
+
+            float distance = Vector3.Distance(base.transform.position, threat.transform.position);
+            if (distance > AttackRange)
+            {
+                MoveTo(dt, threat.transform.position, AttackRange * 0.6f, run: true);
+                return true;
+            }
+
+            StopMoving();
+            LookAt(threat.transform.position);
+
+            if (_humanoid != null && _attackCooldownTimer <= 0f && !_humanoid.InAttack())
+            {
+                if (_humanoid.StartAttack(threat, secondaryAttack: false))
+                {
+                    _attackCooldownTimer = FedoKnorriPlugin.Instance.CombatAttackCooldownSeconds.Value;
+                }
+            }
+
+            return true;
+        }
+
+        // Mode Défensif : essaie de s'écarter d'une menace qui LE cible spécifiquement (jamais
+        // celles qui ciblent seulement le propriétaire -- fuir pour un danger qui n'est même pas
+        // dirigé contre lui n'aurait aucun sens, et gênerait le combat du joueur pour rien).
+        // Renvoie true si une esquive est en cours ce tick.
+        private bool TryEvade(float dt)
+        {
+            Character threat = FindThreat(includeOwnerTargets: false);
+            if (threat == null)
+            {
+                return false;
+            }
+
+            Vector3 away = base.transform.position - threat.transform.position;
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.01f)
+            {
+                // Menace exactement à la même position (cas limite) : direction aléatoire plutôt
+                // que Normalize() sur un vecteur quasi nul, qui donnerait une direction imprévisible.
+                away = UnityEngine.Random.insideUnitSphere;
+                away.y = 0f;
+            }
+            away.Normalize();
+
+            Vector3 fleeTarget = base.transform.position + away * EvadeDistance;
+            MoveTo(dt, fleeTarget, 0f, run: true);
+            return true;
         }
 
         private bool IsOwnerGrounded()
@@ -286,6 +498,29 @@ namespace FedoKnorri
             }
         }
 
+        // Appelée par CompanionInteract (clic simple sur E, voir CompanionInteract.Interact) --
+        // pas de vérification que "user" est bien le propriétaire, même absence de contrôle que
+        // pour le renommage (Maj+E) déjà en place, pour rester cohérent avec lui plutôt que
+        // d'introduire une asymétrie entre les deux seules interactions du compagnon.
+        public void ToggleBehaviorMode()
+        {
+            _mode = _mode == CompanionBehaviorMode.Defensive ? CompanionBehaviorMode.Aggressive : CompanionBehaviorMode.Defensive;
+
+            ZDO zdo = m_nview != null ? m_nview.GetZDO() : null;
+            zdo?.Set(ZdoBehaviorMode, _mode.ToString());
+
+            Player owner = _owner ?? ResolveOwner();
+            if (owner?.m_customData != null)
+            {
+                owner.m_customData[CustomDataBehaviorMode] = _mode.ToString();
+            }
+
+            string message = _mode == CompanionBehaviorMode.Aggressive
+                ? FedoKnorriPlugin.Instance.AggressiveModeMessage.Value
+                : FedoKnorriPlugin.Instance.DefensiveModeMessage.Value;
+            FloatingSpeechBubble.Show(base.transform, message);
+        }
+
         private void Follow(float dt)
         {
             float distance = Vector3.Distance(base.transform.position, _owner.transform.position);
@@ -301,6 +536,17 @@ namespace FedoKnorri
             MoveTo(dt, _owner.transform.position, followDistance, run);
         }
 
+        // Seul le montant/cooldown de soin diffère par palier (voir CompanionTier) -- le Shaman
+        // (recette graine + 5 miels) soigne plus fort mais moins souvent, tout le reste de son
+        // comportement (portée, suivi, ramassage...) reste identique et partagé.
+        private float HealAmount => _tier == CompanionTier.Shaman
+            ? FedoKnorriPlugin.Instance.ShamanHealAmount.Value
+            : FedoKnorriPlugin.Instance.HealAmount.Value;
+
+        private float HealCooldownSeconds => _tier == CompanionTier.Shaman
+            ? FedoKnorriPlugin.Instance.ShamanHealCooldownSeconds.Value
+            : FedoKnorriPlugin.Instance.HealCooldownSeconds.Value;
+
         private void TryHeal(float dt)
         {
             _healCooldownTimer -= dt;
@@ -309,7 +555,11 @@ namespace FedoKnorri
                 return;
             }
 
-            if (_owner.GetHealth() >= _owner.GetMaxHealth() - FullHealthEpsilon)
+            bool ownerHurt = _owner.GetHealth() < _owner.GetMaxHealth() - FullHealthEpsilon;
+            // Plus invulnérable (voir CompanionInvulnerabilityPatch) : il peut maintenant avoir
+            // besoin d'un soin lui aussi.
+            bool selfHurt = m_character != null && m_character.GetHealth() < m_character.GetMaxHealth() - FullHealthEpsilon;
+            if (!ownerHurt && !selfHurt)
             {
                 return;
             }
@@ -320,18 +570,31 @@ namespace FedoKnorri
                 return;
             }
 
-            _healCooldownTimer = FedoKnorriPlugin.Instance.HealCooldownSeconds.Value;
+            // "Il choisit" : soigne qui en a relativement le plus besoin (le plus bas pourcentage
+            // de vie, GetHealthPercentage() -- pas la perte en valeur absolue, pour qu'un Shaman
+            // à 150 PV max ne soit pas systématiquement jugé "plus mal en point" que le
+            // propriétaire juste parce que sa jauge est plus grande). À égalité, ou si lui seul
+            // est blessé, le propriétaire reste prioritaire -- comportement historique inchangé
+            // tant que le compagnon lui-même n'est jamais blessé.
+            Character healTarget = selfHurt && (!ownerHurt || m_character.GetHealthPercentage() < _owner.GetHealthPercentage())
+                ? m_character
+                : _owner;
+
+            _healCooldownTimer = HealCooldownSeconds;
 
             // Petit geste d'"aim" avant le lancer : le compagnon se tourne vers le joueur, puis
             // joue sa vraie animation de jet (vérifiée en jeu -- Trigger "throw" sur son
             // Animator). Uniquement l'animation : SetTrigger ne passe jamais par
             // Humanoid.StartAttack/le système de dégâts, contrairement à un vrai jet de caillou.
             // Le vrai soin n'est appliqué qu'à l'arrivée de l'orbe (voir CompanionHealOrb), pas
-            // instantanément ici -- voir LaunchHealOrbAfterThrow pour le timing du lancer.
+            // instantanément ici -- voir LaunchHealOrbAfterThrow pour le timing du lancer. On
+            // regarde toujours vers le joueur pour ce geste, même en cas d'auto-soin -- c'est sa
+            // direction naturelle puisqu'il le suit en permanence, pas la peine de le faire se
+            // tourner vers lui-même pour "viser".
             LookAt(_owner.GetTopPoint());
             _animator?.SetTrigger(ThrowAnimationTrigger);
 
-            StartCoroutine(LaunchHealOrbAfterThrow(_owner, FedoKnorriPlugin.Instance.HealAmount.Value));
+            StartCoroutine(LaunchHealOrbAfterThrow(healTarget, HealAmount));
         }
 
         // L'orbe partait en même temps que l'animation plutôt qu'à la fin de son geste (vécu en
@@ -358,7 +621,10 @@ namespace FedoKnorri
         // portée de MetadataLoadContext) -- retenu à la place : un délai fixe, réglable dans le
         // .cfg (rechargé à chaud, aucun rebuild nécessaire pour l'ajuster) plutôt que deviné à
         // l'aveugle à travers d'autres cycles de test.
-        private IEnumerator LaunchHealOrbAfterThrow(Player target, float healAmount)
+        // Character plutôt que Player : depuis que TryHeal peut choisir de soigner le compagnon
+        // lui-même, la cible n'est plus systématiquement le propriétaire -- CompanionHealOrb.Launch
+        // accepte déjà un Character générique, rien d'autre à changer côté orbe.
+        private IEnumerator LaunchHealOrbAfterThrow(Character target, float healAmount)
         {
             yield return new WaitForSeconds(FedoKnorriPlugin.Instance.HealThrowDelaySeconds.Value);
 

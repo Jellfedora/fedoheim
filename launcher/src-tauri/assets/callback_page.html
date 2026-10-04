@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{TITLE}} · Fedoheim</title>
+    <link rel="icon" type="image/png" href="data:image/png;base64,{{LOGO}}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Inter:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Mêmes valeurs que launcher/src/styles/tokens.css -- cette page est servie par le
+         loopback local, hors de la webview, donc sans accès aux styles du launcher. */
+      :root {
+        --bg-deepest: #1e1f22;
+        --bg-elevated: #313338;
+        --border: #3f4147;
+        --text-primary: #f2f3f5;
+        --text-muted: #949ba4;
+        --accent: #25d3e4;
+        --accent-soft: rgba(37, 211, 228, 0.14);
+        --danger: #ed4245;
+        --danger-soft: rgba(237, 66, 69, 0.14);
+        --tone: var(--accent);
+        --tone-soft: var(--accent-soft);
+        color-scheme: dark;
+      }
+
+      body.error {
+        --tone: var(--danger);
+        --tone-soft: var(--danger-soft);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        padding: 24px 16px;
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: var(--text-primary);
+        background:
+          radial-gradient(120% 90% at 15% -10%, rgba(37, 211, 228, 0.16) 0%, transparent 55%),
+          radial-gradient(90% 70% at 100% 110%, rgba(88, 101, 242, 0.12) 0%, transparent 60%),
+          var(--bg-deepest);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 420px;
+        padding: 40px 32px 32px;
+        text-align: center;
+        background: rgba(49, 51, 56, 0.72);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(8px);
+        animation: rise 0.45s ease-out both;
+      }
+
+      .logo {
+        display: block;
+        margin: 0 auto;
+        width: 96px;
+        height: 96px;
+        filter: drop-shadow(0 6px 18px rgba(37, 211, 228, 0.35));
+      }
+
+      .badge {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        margin: 20px auto 0;
+        border-radius: 50%;
+        color: var(--tone);
+        background: var(--tone-soft);
+        border: 1px solid var(--tone);
+      }
+
+      .badge svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      h1 {
+        margin: 16px 0 8px;
+        font-family: "Cinzel", "Iowan Old Style", serif;
+        font-weight: 600;
+        font-size: 24px;
+        letter-spacing: 0.04em;
+      }
+
+      p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .hint {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        font-size: 13px;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .card {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="{{TONE}}">
+    <main class="card">
+      <img class="logo" src="data:image/png;base64,{{LOGO}}" alt="Fedoheim" />
+      <div class="badge" aria-hidden="true">{{ICON}}</div>
+      <h1>{{TITLE}}</h1>
+      <p>{{MESSAGE}}</p>
+      <p class="hint">Tu peux fermer cet onglet.</p>
+    </main>
+  </body>
+</html>

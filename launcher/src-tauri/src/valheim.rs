@@ -308,9 +308,24 @@ fn ensure_steam_running() -> Result<(), String> {
 // SteamAPI_Init() exige normalement quand le jeu n'est pas démarré par Steam lui-même.
 // N'écrase jamais un fichier déjà présent (au cas où l'install Steam en fournirait déjà
 // un légitime). Best-effort, jamais bloquant.
+//
+// Toujours à la racine de l'install, jamais dans `valheim.app` : tout fichier ajouté à
+// l'intérieur du bundle casse son sceau de signature de code ("a sealed resource is
+// missing or invalid"). macOS le tolère tant que le binaire déjà validé ne change pas,
+// mais dès que Steam met le jeu à jour, la signature est réévaluée et le jeu est tué au
+// lancement ("Killed: 9", puis "« valheim » est endommagé") -- vécu en vrai, seule une
+// réinstallation complète débloquait. Une ancienne version du launcher écrivait ce
+// fichier dans `Contents/MacOS/` : il y est retiré à chaque lancement (s'il contient
+// bien notre AppID, donc jamais un fichier qui ne viendrait pas de nous), ce qui
+// répare le sceau d'une install déjà touchée sans rien réinstaller.
 #[cfg(target_os = "macos")]
-fn ensure_steam_appid_file(macos_dir: &Path) {
-    let path = macos_dir.join("steam_appid.txt");
+fn ensure_steam_appid_file(install_dir: &Path, macos_dir: &Path) {
+    let legacy = macos_dir.join("steam_appid.txt");
+    if std::fs::read_to_string(&legacy).is_ok_and(|c| c.trim() == VALHEIM_APP_ID) {
+        let _ = std::fs::remove_file(&legacy);
+    }
+
+    let path = install_dir.join("steam_appid.txt");
     if path.exists() {
         return;
     }
@@ -411,7 +426,7 @@ pub fn launch(install_dir: &Path, profile_dir: &Path) -> Result<(), String> {
         // pour vérifier l'AppID — un `steam_appid.txt` contenant l'AppID, présent dans le
         // dossier de travail au démarrage, supprime cette exigence (mécanisme standard du
         // SDK Steamworks). Écrit une seule fois, jamais écrasé ensuite (best-effort).
-        ensure_steam_appid_file(&macos_dir);
+        ensure_steam_appid_file(install_dir, &macos_dir);
 
         // Script généré puis ouvert dans Terminal.app (processus indépendant de l'app
         // Tauri) : reproduit exactement l'invocation de macheim
@@ -422,7 +437,7 @@ pub fn launch(install_dir: &Path, profile_dir: &Path) -> Result<(), String> {
         // celui du `steam_appid.txt` ci-dessus.
         let script = format!(
             "#!/bin/sh\ncd '{}' &&\narch -x86_64 env \\\n  DOORSTOP_ENABLED=1 \\\n  DOORSTOP_TARGET_ASSEMBLY='{}' \\\n  DYLD_LIBRARY_PATH='{}/' \\\n  DYLD_INSERT_LIBRARIES='{}' \\\n  '{}' -console\n",
-            macos_dir.display(),
+            install_dir.display(),
             preloader.display(),
             install_dir.display(),
             doorstop.display(),

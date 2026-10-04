@@ -45,12 +45,17 @@ namespace FedoKnorri
         {
             try
             {
-                if (__instance == null || __instance.GetComponent<CompanionAI>() == null)
+                var ai = __instance != null ? __instance.GetComponent<CompanionAI>() : null;
+                if (ai == null)
                 {
                     return true;
                 }
 
-                __result = __instance.m_name + "\n" + FedoKnorriPlugin.Instance.RenameHintText.Value;
+                string modeLabel = ai.Mode == CompanionBehaviorMode.Aggressive
+                    ? FedoKnorriPlugin.Instance.AggressiveModeLabel.Value
+                    : FedoKnorriPlugin.Instance.DefensiveModeLabel.Value;
+
+                __result = $"{__instance.m_name} ({modeLabel})\n{FedoKnorriPlugin.Instance.RenameHintText.Value}\n{FedoKnorriPlugin.Instance.BehaviorModeHintText.Value}";
                 return false;
             }
             catch (Exception e)

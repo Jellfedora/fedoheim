@@ -14,7 +14,6 @@
     "dialog:allow-confirm",
     "core:window:allow-destroy",
     "updater:default",
-    "process:allow-restart",
-    "window-state:default"
+    "process:allow-restart"
   ]
 }

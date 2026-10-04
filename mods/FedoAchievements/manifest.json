@@ -1,0 +1,10 @@
+{
+  "name": "FedoAchievements",
+  "author": "Fedo",
+  "version_number": "1.0.1",
+  "website_url": "",
+  "description": "Reveals secret achievements and shows the progress of every unlock condition in the in-game achievements panel.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}

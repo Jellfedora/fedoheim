@@ -915,6 +915,34 @@ async fn save_settings(
     settings::save_settings(&state.http, &token, &settings).await
 }
 
+fn fit_window_to_monitor(window: &tauri::WebviewWindow) {
+    let Ok(Some(monitor)) = window.current_monitor() else {
+        return;
+    };
+    let Ok(size) = window.outer_size() else {
+        return;
+    };
+    let area = monitor.work_area().size;
+
+    if size.width <= area.width && size.height <= area.height {
+        return;
+    }
+
+    // Le minimum de tauri.conf.json (900x600) peut lui aussi dépasser un très petit
+    // écran -- abaissé d'abord à la zone utilisable, sinon set_size resterait bloqué
+    // au-dessus.
+    let scale = monitor.scale_factor();
+    let _ = window.set_min_size(Some(tauri::Size::Physical(tauri::PhysicalSize::new(
+        ((900.0 * scale) as u32).min(area.width),
+        ((600.0 * scale) as u32).min(area.height),
+    ))));
+    let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+        size.width.min(area.width),
+        size.height.min(area.height),
+    )));
+    let _ = window.center();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -922,41 +950,15 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|app| {
-            // tauri-plugin-window-state peut restaurer une taille/position corrompue
-            // (vécu en dev : 260x190, position hors écran avec y négatif) -- minWidth/
-            // minHeight de tauri.conf.json ne protègent pas contre ça une fois qu'un état
-            // persisté existe (le plugin l'applique directement, sans repasser par ces
-            // contraintes). Vraie cause probable côté joueur réel (pas juste un fichier
-            // local corrompu à la main) : App.tsx ajuste la hauteur de fenêtre par petits
-            // deltas au fil de l'apparition/disparition des bandeaux (API injoignable, mise
-            // à jour dispo) via un ResizeObserver -- plusieurs de ces ajustements
-            // rapprochés (typiquement au tout premier lancement) pouvaient auparavant
-            // partir en course entre eux et cumuler un delta erroné, que ce plugin
-            // persiste ensuite tel quel pour toujours. Filet de sécurité au démarrage,
-            // en plus du correctif côté frontend (voir App.tsx) : si la fenêtre restaurée
-            // est anormalement petite ou hors écran, on la remet à la taille par défaut de
-            // tauri.conf.json et on la recentre, plutôt que de laisser un joueur bloqué sur
-            // une fenêtre inutilisable sans savoir pourquoi.
-            const MIN_SANE_WIDTH: u32 = 900;
-            const MIN_SANE_HEIGHT: u32 = 600;
-
+            // tauri.conf.json demande 1200x800 logiques, mais un petit écran (portable
+            // 1366x768 en 125% sous Windows, par exemple) n'a pas cette place : sans ce
+            // recalage, la fenêtre débordait de l'écran. On la ramène donc à la zone
+            // utilisable du moniteur (barre des tâches/Dock exclus) si besoin, minimum
+            // compris. Taille jamais persistée d'un lancement à l'autre (pas de
+            // tauri-plugin-window-state) : chaque ouverture repart de la taille par défaut.
             if let Some(window) = app.get_webview_window("main") {
-                let too_small = window
-                    .outer_size()
-                    .map(|size| size.width < MIN_SANE_WIDTH || size.height < MIN_SANE_HEIGHT)
-                    .unwrap_or(false);
-                let off_screen = window
-                    .outer_position()
-                    .map(|pos| pos.y < 0 || pos.x < -10_000)
-                    .unwrap_or(false);
-
-                if too_small || off_screen {
-                    let _ = window
-                        .set_size(tauri::Size::Logical(tauri::LogicalSize::new(1200.0, 800.0)));
-                    let _ = window.center();
-                }
+                fit_window_to_monitor(&window);
             }
 
             Ok(())

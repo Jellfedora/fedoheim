@@ -9,8 +9,20 @@ namespace FedoHud
     // de "temps de pose" équivalent, la progression est stockée différemment dans la
     // ZDO. Signatures vérifiées par réflexion contre assembly_valheim.dll (1.0), rien
     // deviné.
+    //
+    // Le nid d'oiseaux ("piece_birdnest") réutilise ce même composant `Beehive` que la
+    // ruche -- seuls `m_name`/les textes (`m_checkText` etc.)/l'item produit diffèrent
+    // au niveau du prefab, vérifié par décompilation. `IsBirdNest` distingue les deux
+    // pour choisir le bon jeu de textes (plume plutôt que miel) sans dupliquer tout ce
+    // fichier.
     internal static class BeehiveTooltip
     {
+        private static bool IsBirdNest(Beehive beehive)
+        {
+            return beehive.m_checkText != null
+                && beehive.m_checkText.IndexOf("birdnest", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         // CheckBiome()/HaveFreeSpace() sont privées (conditions qui mettent la
         // production en pause -- mauvais biome / pas de place libre autour de la ruche) ;
         // simples vérifications sans effet de bord apparent, sûres à appeler par
@@ -54,17 +66,22 @@ namespace FedoHud
                 return null;
             }
 
+            bool isBirdNest = IsBirdNest(beehive);
+            string fullText = isBirdNest ? FedoHudPlugin.Instance.FeatherFullText : FedoHudPlugin.Instance.HoneyFullText;
+            string pausedText = isBirdNest ? FedoHudPlugin.Instance.FeatherPausedText : FedoHudPlugin.Instance.HoneyPausedText;
+            string remainingPrefix = isBirdNest ? FedoHudPlugin.Instance.FeatherRemainingPrefix : FedoHudPlugin.Instance.HoneyRemainingPrefix;
+
             int honeyLevel = zdo.GetInt(ZDOVars.s_level);
             if (honeyLevel >= beehive.m_maxHoney)
             {
-                return FedoHudPlugin.Instance.HoneyFullText;
+                return fullText;
             }
 
             bool paused = !(bool)CheckBiomeMethod.Invoke(beehive, null)
                 || !(bool)HaveFreeSpaceMethod.Invoke(beehive, null);
             if (paused)
             {
-                return FedoHudPlugin.Instance.HoneyPausedText;
+                return pausedText;
             }
 
             // Reproduit Beehive.UpdateBees() (privée, tickée toutes les 10s réelles côté
@@ -79,10 +96,10 @@ namespace FedoHud
             {
                 // Le tick réel (toutes les 10s côté propriétaire) n'est pas encore passé --
                 // affiche quand même "prêt" plutôt qu'un temps négatif trompeur.
-                return FedoHudPlugin.Instance.HoneyFullText;
+                return fullText;
             }
 
-            return $"{FedoHudPlugin.Instance.HoneyRemainingPrefix} {HudTimeFormat.FormatRemaining(remainingSeconds)}";
+            return $"{remainingPrefix} {HudTimeFormat.FormatRemaining(remainingSeconds)}";
         }
     }
 }

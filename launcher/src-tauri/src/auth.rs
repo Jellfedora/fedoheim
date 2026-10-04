@@ -19,6 +19,48 @@ struct TokenResponse {
     user: UserInfo,
 }
 
+const CALLBACK_PAGE_TEMPLATE: &str = include_str!("../assets/callback_page.html");
+// Logo pré-encodé en base64 (192px, dérivé de public/logo_fedoheim.png) : la page est
+// servie par le loopback, qui se ferme juste après cette unique réponse -- impossible de
+// servir l'image en requête séparée, d'où l'image intégrée en data URI.
+const CALLBACK_LOGO_BASE64: &str = include_str!("../assets/callback_logo.png.b64");
+
+const ICON_CHECK: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>"#;
+const ICON_CROSS: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>"#;
+
+// Page affichée dans le navigateur du joueur au retour de Discord. "Réussie" ne veut dire
+// ici que "code reçu" : l'échange avec l'API (rôle requis, ban...) n'a pas encore eu
+// lieu, d'où le renvoi vers le launcher pour la suite plutôt qu'un "tu es connecté".
+fn callback_page(succeeded: bool) -> Response<std::io::Cursor<Vec<u8>>> {
+    let (tone, icon, title, message) = if succeeded {
+        (
+            "success",
+            ICON_CHECK,
+            "Connexion réussie",
+            "Discord a bien autorisé la connexion. Retourne sur le launcher Fedoheim pour la suite.",
+        )
+    } else {
+        (
+            "error",
+            ICON_CROSS,
+            "Connexion échouée",
+            "La connexion avec Discord n'a pas abouti. Retourne sur le launcher Fedoheim pour réessayer.",
+        )
+    };
+
+    let html = CALLBACK_PAGE_TEMPLATE
+        .replace("{{TONE}}", tone)
+        .replace("{{ICON}}", icon)
+        .replace("{{TITLE}}", title)
+        .replace("{{MESSAGE}}", message)
+        .replace("{{LOGO}}", CALLBACK_LOGO_BASE64.trim());
+
+    let content_type =
+        tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
+            .expect("static header is valid");
+    Response::from_string(html).with_header(content_type)
+}
+
 // Démarre le serveur HTTP loopback local et son thread d'écoute (bloquant), qui capture
 // le `code` renvoyé par Discord sur `/callback` puis se termine après une seule requête
 // (ou plus tôt si `unblock()` est appelé sur le Server retourné).
@@ -50,12 +92,8 @@ fn start_loopback_server(
             let code = params.get("code").map(|c| c.to_string());
             let state = params.get("state").map(|s| s.to_string());
 
-            let body = if code.is_some() && state.as_deref() == Some(expected_state.as_str()) {
-                "Connexion réussie, tu peux fermer cet onglet."
-            } else {
-                "Connexion échouée, tu peux fermer cet onglet et réessayer depuis le launcher."
-            };
-            let _ = request.respond(Response::from_string(body));
+            let succeeded = code.is_some() && state.as_deref() == Some(expected_state.as_str());
+            let _ = request.respond(callback_page(succeeded));
 
             let result = match (code, state) {
                 (Some(code), Some(state)) if state == expected_state => Ok(code),

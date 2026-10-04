@@ -51,7 +51,7 @@ namespace FedoKnorri
             {
                 try
                 {
-                    if (item == null || item.m_crafterID == 0L || !SummonItemPrefabPatch.IsSummonItem(item))
+                    if (item == null || item.m_crafterID == 0L || SummonItemUsePatch.ResolveTier(item) == null)
                     {
                         return;
                     }

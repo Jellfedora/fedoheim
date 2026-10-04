@@ -4,14 +4,22 @@ using HarmonyLib;
 
 namespace FedoHud
 {
-    // Ajoute, pour chaque emplacement occupé d'une broche de cuisson, le temps restant
-    // avant que ce soit cuit (ou avant que ça brûle si déjà cuit) -- architecture
-    // différente des autres tooltips de ce mod : `CookingStation.GetHoverText()` ne
-    // renvoie rien d'exploitable (le vrai texte est assigné en continu à
-    // `m_addFoodSwitch.m_hoverText`, un `Switch` public, depuis `UpdateCooking()`
-    // privée). On patche donc `UpdateCooking()` elle-même en Postfix, et on complète ce
-    // même champ juste après l'original -- rien à casser, on ajoute simplement à la
-    // suite. Signatures vérifiées contre assembly_valheim.dll (1.0), rien deviné.
+    // Ajoute, pour chaque emplacement occupé d'une broche/cuisinière, le temps restant
+    // avant que ce soit cuit (ou avant que ça brûle si déjà cuit).
+    //
+    // Deux points d'affichage possibles côté jeu pour une même station, d'où deux
+    // patches -- vécu en jeu : le premier seul suffisait sur la broche en bois, mais
+    // restait invisible sur la cuisinière en fer (le viseur du joueur n'y retombe pas
+    // forcément sur le même point).
+    // 1) `m_addFoodSwitch.m_hoverText` (un `Switch` public), réassigné en continu par le
+    //    jeu depuis `UpdateCooking()` (privée, patchée en Postfix) -- affiché en
+    //    survolant le point d'interaction "ajouter à cuire" lui-même.
+    // 2) `CookingStation.GetHoverText()` (publique, interface `Hoverable`) -- affichée en
+    //    survolant la station elle-même. Renvoie volontairement "" tant que
+    //    `m_addFoodSwitch` existe (vérifié par décompilation) puisque le jeu compte sur
+    //    le point (1) pour ce cas -- notre Postfix y injecte quand même nos lignes,
+    //    sans que ça casse rien puisque ce texte était vide de toute façon.
+    // Signatures vérifiées contre assembly_valheim.dll (1.0), rien deviné.
     internal static class CookingStationTooltip
     {
         [HarmonyPatch(typeof(CookingStation), "UpdateCooking")]
@@ -26,7 +34,7 @@ namespace FedoHud
 
                 try
                 {
-                    AppendLines(__instance);
+                    AppendToSwitch(__instance);
                 }
                 catch (Exception e)
                 {
@@ -35,18 +43,56 @@ namespace FedoHud
             }
         }
 
-        private static void AppendLines(CookingStation station)
+        [HarmonyPatch(typeof(CookingStation), nameof(CookingStation.GetHoverText))]
+        private static class GetHoverTextPatch
+        {
+            private static void Postfix(CookingStation __instance, ref string __result)
+            {
+                if (FedoHudPlugin.Instance == null || !FedoHudPlugin.Instance.ShowCookingTooltip)
+                {
+                    return;
+                }
+
+                try
+                {
+                    string extra = BuildLines(__instance);
+                    if (!string.IsNullOrEmpty(extra))
+                    {
+                        __result = string.IsNullOrEmpty(__result) ? extra : $"{__result}\n{extra}";
+                    }
+                }
+                catch (Exception e)
+                {
+                    FedoHudPlugin.Log?.LogWarning($"FedoHud: cooking station tooltip failed: {e.Message}");
+                }
+            }
+        }
+
+        private static void AppendToSwitch(CookingStation station)
         {
             if (station.m_addFoodSwitch == null)
             {
                 return;
             }
 
+            string extra = BuildLines(station);
+            if (string.IsNullOrEmpty(extra))
+            {
+                return;
+            }
+
+            station.m_addFoodSwitch.m_hoverText = string.IsNullOrEmpty(station.m_addFoodSwitch.m_hoverText)
+                ? extra
+                : $"{station.m_addFoodSwitch.m_hoverText}\n{extra}";
+        }
+
+        private static string BuildLines(CookingStation station)
+        {
             var nview = station.GetComponent<ZNetView>();
             var zdo = nview != null ? nview.GetZDO() : null;
             if (zdo == null || station.m_slots == null)
             {
-                return;
+                return null;
             }
 
             var lines = new List<string>();
@@ -95,15 +141,7 @@ namespace FedoHud
                 }
             }
 
-            if (lines.Count == 0)
-            {
-                return;
-            }
-
-            string extra = string.Join("\n", lines);
-            station.m_addFoodSwitch.m_hoverText = string.IsNullOrEmpty(station.m_addFoodSwitch.m_hoverText)
-                ? extra
-                : $"{station.m_addFoodSwitch.m_hoverText}\n{extra}";
+            return lines.Count == 0 ? null : string.Join("\n", lines);
         }
 
         // Décompilation : la même entrée sert avant ET après cuisson (le nom d'item en

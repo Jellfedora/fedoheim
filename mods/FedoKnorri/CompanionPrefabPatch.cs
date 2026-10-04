@@ -29,6 +29,10 @@ namespace FedoKnorri
         public const string PrefabName = "Fedo_Knorri";
         private const string SourcePrefabName = "Greyling";
 
+        // Utilisé par CompanionAI.GetTier pour distinguer ce palier de ShamanCompanionPrefabPatch
+        // à partir du seul hash de prefab de la ZDO d'un compagnon déjà invoqué.
+        public static readonly int PrefabHash = PrefabName.GetStableHashCode();
+
         private static GameObject _clone;
 
         public static GameObject GetPrefab()
@@ -75,11 +79,13 @@ namespace FedoKnorri
                 var character = clone.GetComponent<Character>();
                 if (character != null)
                 {
-                    // Ignoré par tous les monstres sauvages (cf. CLAUDE.md,
-                    // "Character.Faction.Boss") : un compagnon pacifiste qui ne peut pas se
-                    // défendre ne doit jamais être une cible, plutôt que de le rendre
-                    // invulnérable ou de lui donner une IA de combat.
-                    character.m_faction = Character.Faction.Boss;
+                    // Faction Players plutôt que Boss : le compagnon doit maintenant être une
+                    // vraie cible pour les monstres sauvages (voir CompanionInvulnerabilityPatch
+                    // pour ce qui, en échange, le protège toujours des joueurs) -- Players le
+                    // rend naturellement hostile à leurs yeux, exactement comme un vrai joueur,
+                    // sans avoir besoin de patcher BaseAI.IsEnemy à la main (l'ancienne approche,
+                    // Boss + un tel patch, empêchait justement tout ciblage).
+                    character.m_faction = Character.Faction.Players;
                     character.m_name = FedoKnorriPlugin.Instance.CompanionName.Value;
                 }
 

@@ -2,22 +2,31 @@ using UnityEngine;
 
 namespace FedoKnorri
 {
-    // Renommage du compagnon (Maj+E, le paramètre "alt" d'Interact correspond au modifier
-    // "AltPlace" -- Maj par défaut -- même mécanique que le renommage d'une créature apprivoisée
-    // vanilla via Tameable, mais sans embarquer tout Tameable (apprivoisement, faim...) qui ne
-    // s'applique pas ici). Passe par le même TextInput/TextReceiver que Sign ou Tameable.
+    // Deux interactions au survol, distinguées par le modifier "alt" d'Interact (Maj par défaut,
+    // "AltPlace") : Maj+E renomme (même mécanique que le renommage d'une créature apprivoisée
+    // vanilla via Tameable, mais sans embarquer tout Tameable -- apprivoisement, faim... -- qui
+    // ne s'applique pas ici), un simple E bascule le mode de comportement (voir
+    // CompanionAI.ToggleBehaviorMode). Aucune vérification que "user" est le propriétaire pour
+    // ni l'une ni l'autre -- cohérence entre les deux plutôt qu'une asymétrie arbitraire.
     public class CompanionInteract : MonoBehaviour, Interactable, TextReceiver
     {
         public bool Interact(Humanoid user, bool hold, bool alt)
         {
-            if (hold || !alt)
+            if (hold)
             {
                 return false;
             }
 
-            // Texte littéral plutôt qu'un token de localisation vanilla deviné (ex: "$hud_rename")
-            // -- une mauvaise supposition afficherait le token brut non résolu dans la popup.
-            TextInput.instance.RequestText(this, FedoKnorriPlugin.Instance.RenamePromptText.Value, 20);
+            if (alt)
+            {
+                // Texte littéral plutôt qu'un token de localisation vanilla deviné (ex:
+                // "$hud_rename") -- une mauvaise supposition afficherait le token brut non
+                // résolu dans la popup.
+                TextInput.instance.RequestText(this, FedoKnorriPlugin.Instance.RenamePromptText.Value, 20);
+                return true;
+            }
+
+            GetComponent<CompanionAI>()?.ToggleBehaviorMode();
             return true;
         }
 

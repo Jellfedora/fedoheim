@@ -1,7 +1,7 @@
 {
   "name": "FedoHud",
   "author": "Fedo",
-  "version_number": "1.0.0",
+  "version_number": "1.1.0",
   "website_url": "",
   "description": "Everything the vanilla HUD forgets to show: a draggable clock, hover timers for crops/beehives/cooking/tamed animals, a skills tracker, a death/weight/armor block, and a recipe tracker, all from a new 'FedoHud' entry in the pause menu.",
   "dependencies": [

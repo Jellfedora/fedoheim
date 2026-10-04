@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using TMPro;
 using UnityEngine;
@@ -20,6 +21,7 @@ namespace FedoHud
         private class Row
         {
             public Skills.SkillType Type;
+            public RectTransform Rect;
             public TMP_Text Label;
             public Image Fill;
         }
@@ -171,7 +173,7 @@ namespace FedoHud
             removeRect.anchorMax = new Vector2(1f, 0.5f);
             removeRect.pivot = new Vector2(1f, 0.5f);
             removeRect.anchoredPosition = Vector2.zero;
-            removeRect.sizeDelta = new Vector2(14f, 14f);
+            removeRect.sizeDelta = new Vector2(10f, 10f);
 
             var removeImage = removeGo.GetComponent<Image>();
             removeImage.sprite = IconSprites.CreateCross(16, 0.22f, new Color(0.8f, 0.3f, 0.3f, 0.9f));
@@ -239,7 +241,7 @@ namespace FedoHud
             fillImage.fillAmount = 0f;
             fillImage.raycastTarget = false;
 
-            return new Row { Type = type, Label = label, Fill = fillImage };
+            return new Row { Type = type, Rect = rowRect, Label = label, Fill = fillImage };
         }
 
         private static Sprite GetWhiteSprite()
@@ -307,6 +309,20 @@ namespace FedoHud
 
                 row.Label.text = $"{SkillLocalization.GetName(row.Type)} {(int)levels[i]} ({Mathf.RoundToInt(progress * 100f)}%)";
                 row.Fill.fillAmount = progress;
+            }
+
+            // Réordonne visuellement les lignes (le plus haut niveau en premier) sans
+            // reconstruire le bloc -- seule la position Y de chaque ligne bouge, pas son
+            // identité (Label/Fill restent liés à la même Row, donc à la même
+            // compétence). `OrderByDescending` (LINQ, stable) garde l'ordre de
+            // `SkillsList` comme départage à niveau égal, plutôt qu'un ordre qui
+            // changerait à chaque frame pour deux compétences au même niveau.
+            var order = Enumerable.Range(0, Rows.Count).OrderByDescending(i => levels[i]);
+            int rank = 0;
+            foreach (var i in order)
+            {
+                Rows[i].Rect.anchoredPosition = new Vector2(8f, -8f - rank * RowHeight);
+                rank++;
             }
         }
 

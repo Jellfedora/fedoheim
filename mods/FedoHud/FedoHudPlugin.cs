@@ -31,7 +31,7 @@ namespace FedoHud
     {
         public const string PluginGuid = "fedo.hud";
         public const string PluginName = "FedoHud";
-        public const string PluginVersion = "1.0.0";
+        public const string PluginVersion = "1.1.0";
 
         public static FedoHudPlugin Instance { get; private set; }
 
@@ -85,6 +85,17 @@ namespace FedoHud
         // indépendants.
         private ConfigEntry<bool> _showBeehiveFullIcon;
         public bool ShowBeehiveFullIcon => _showBeehiveFullIcon.Value;
+
+        // Même ligne que la ruche, mais wording dédié pour le nid d'oiseaux -- même
+        // composant `Beehive` côté jeu (voir BeehiveTooltip.IsBirdNest), contrôlé par le
+        // même ShowBeehiveTooltip ci-dessus (pas de toggle séparé).
+        private ConfigEntry<string> _featherRemainingPrefix;
+        private ConfigEntry<string> _featherFullText;
+        private ConfigEntry<string> _featherPausedText;
+
+        public string FeatherRemainingPrefix => _featherRemainingPrefix.Value;
+        public string FeatherFullText => _featherFullText.Value;
+        public string FeatherPausedText => _featherPausedText.Value;
 
         // Ligne ajoutée au survol d'un fermenteur -- voir FermenterTooltip.cs.
         private ConfigEntry<bool> _showFermenterTooltip;
@@ -162,6 +173,40 @@ namespace FedoHud
             _recipeTrackerPositionX.Value = anchoredPosition.x;
             _recipeTrackerPositionY.Value = anchoredPosition.y;
         }
+
+        // Bloc contextuel (coque + vitesse) affiché seulement pendant que le joueur
+        // tient le gouvernail d'un bateau -- voir ShipOverlay.cs.
+        private ConfigEntry<bool> _showShipOverlay;
+        private ConfigEntry<string> _shipHullPrefix;
+        private ConfigEntry<string> _shipSpeedPrefix;
+        private ConfigEntry<float> _shipPositionX;
+        private ConfigEntry<float> _shipPositionY;
+        private float _shipRefreshTimer;
+
+        public bool ShowShipOverlay => _showShipOverlay.Value;
+        public string ShipHullPrefix => _shipHullPrefix.Value;
+        public string ShipSpeedPrefix => _shipSpeedPrefix.Value;
+        public Vector2 SavedShipPosition => new Vector2(_shipPositionX.Value, _shipPositionY.Value);
+        public Vector2 DefaultShipPosition => new Vector2((float)_shipPositionX.DefaultValue, (float)_shipPositionY.DefaultValue);
+
+        public void SaveShipPosition(Vector2 anchoredPosition)
+        {
+            _shipPositionX.Value = anchoredPosition.x;
+            _shipPositionY.Value = anchoredPosition.y;
+        }
+
+        // Anneaux concentriques dessinés sur la mini-carte ET la grande carte (M),
+        // centrés sur le vrai centre du monde (0,0) -- voir MapDistanceRings.cs. Purement
+        // visuel, pas de position à sauvegarder (toujours calé sur le centre du monde).
+        private ConfigEntry<bool> _showMapDistanceRings;
+        private ConfigEntry<float> _mapDistanceRingStep;
+        private ConfigEntry<int> _mapDistanceRingCount;
+        private ConfigEntry<string> _mapDistanceRingLabelSuffix;
+
+        public bool ShowMapDistanceRings => _showMapDistanceRings.Value;
+        public float MapDistanceRingStep => _mapDistanceRingStep.Value;
+        public int MapDistanceRingCount => _mapDistanceRingCount.Value;
+        public string MapDistanceRingLabelSuffix => _mapDistanceRingLabelSuffix.Value;
 
         // Grossit + anime le chiffre de dégâts natif du jeu quand c'est le joueur local
         // qui vient de frapper -- voir PlayerDamageTextBoost.cs.
@@ -295,6 +340,8 @@ namespace FedoHud
         private ConfigEntry<string> _toggleLabelPlayerDamageTextBoost;
         private ConfigEntry<string> _toggleLabelWeightOverlay;
         private ConfigEntry<string> _toggleLabelArmorOverlay;
+        private ConfigEntry<string> _toggleLabelMapDistanceRings;
+        private ConfigEntry<string> _toggleLabelShipOverlay;
 
         public string SettingsPanelOptionsLabel => _settingsPanelOptionsLabel.Value;
         public string SettingsPanelSkillsLabel => _settingsPanelSkillsLabel.Value;
@@ -322,6 +369,7 @@ namespace FedoHud
             SkillsOverlay.ResetPosition();
             PlayerStatsOverlay.ResetPosition();
             RecipeTrackerOverlay.ResetPosition();
+            ShipOverlay.ResetPosition();
         }
 
         // Consommé par FedoHudSettingsPanel.cs pour générer une ligne par réglage on/off
@@ -347,6 +395,8 @@ namespace FedoHud
             new ToggleOption(_toggleLabelPlayerDamageTextBoost.Value, _showPlayerDamageTextBoost),
             new ToggleOption(_toggleLabelWeightOverlay.Value, _showWeightOverlay),
             new ToggleOption(_toggleLabelArmorOverlay.Value, _showArmorOverlay),
+            new ToggleOption(_toggleLabelMapDistanceRings.Value, _showMapDistanceRings),
+            new ToggleOption(_toggleLabelShipOverlay.Value, _showShipOverlay),
         };
 
         private Harmony _harmony;
@@ -426,6 +476,24 @@ namespace FedoHud
                 "ShowBeehiveFullIcon",
                 true,
                 "Shows a floating \"!\" above a beehive once it holds as much honey as it can. Purely a local HUD addition -- no network call involved.");
+
+            _featherRemainingPrefix = Config.Bind(
+                "BirdNest",
+                "FeatherRemainingPrefix",
+                "Next feather in",
+                "Text shown before the remaining time until the next feather in a bird nest's hover tooltip (bird nests use the same tooltip as beehives -- see ShowBeehiveTooltip above -- but with their own wording), e.g. \"Next feather in 0h45m\".");
+
+            _featherFullText = Config.Bind(
+                "BirdNest",
+                "FeatherFullText",
+                "Storage full!",
+                "Text shown in a bird nest's hover tooltip once it holds as many feathers as it can -- collect some to resume production.");
+
+            _featherPausedText = Config.Bind(
+                "BirdNest",
+                "FeatherPausedText",
+                "Production paused",
+                "Text shown in a bird nest's hover tooltip when it can't currently produce feathers (wrong biome, or no free space around it) -- no countdown shown in that case, since it wouldn't be accurate.");
 
             _showFermenterTooltip = Config.Bind(
                 "Fermenter",
@@ -616,6 +684,59 @@ namespace FedoHud
                 -450f,
                 "Vertical position of the recipe ingredients panel, in UI pixels from the top-right of the screen (negative = downward). Saved automatically when you drag it (click and drag it with the mouse).");
 
+            _showShipOverlay = Config.Bind(
+                "Ship",
+                "ShowShipOverlay",
+                true,
+                "Shows the ship's hull condition and real speed while you're steering it (at the helm) -- neither is shown numerically by the vanilla HUD. Purely a local HUD addition -- no network call involved.");
+
+            _shipHullPrefix = Config.Bind(
+                "Ship",
+                "ShipHullPrefix",
+                "Hull",
+                "Text shown before the ship's hull condition, e.g. \"Hull 82%\".");
+
+            _shipSpeedPrefix = Config.Bind(
+                "Ship",
+                "ShipSpeedPrefix",
+                "Speed",
+                "Text shown before the ship's current speed, e.g. \"Speed 8.4 m/s\".");
+
+            _shipPositionX = Config.Bind(
+                "Ship",
+                "ShipPositionX",
+                20f,
+                "Horizontal position of the ship block, in UI pixels from the top-left of the screen. Saved automatically when you drag it (click and drag it with the mouse) -- not meant to be hand-edited, but you can reset it here.");
+            _shipPositionY = Config.Bind(
+                "Ship",
+                "ShipPositionY",
+                -40f,
+                "Vertical position of the ship block, in UI pixels from the top-left of the screen (negative = downward). Saved automatically when you drag it (click and drag it with the mouse).");
+
+            _showMapDistanceRings = Config.Bind(
+                "MapDistanceRings",
+                "ShowMapDistanceRings",
+                true,
+                "Draws concentric rings on both the corner minimap and the full map (M key), centered on the world's true center (0,0) -- useful to gauge how far you currently are from it, since several biomes (ocean, Mistlands, Ashlands...) start at a fixed distance from there. Purely a local HUD addition -- no network call involved.");
+
+            _mapDistanceRingStep = Config.Bind(
+                "MapDistanceRings",
+                "MapDistanceRingStep",
+                1000f,
+                "Distance in meters between each ring, e.g. 1000 draws rings every 1000m (1000, 2000, 3000...).");
+
+            _mapDistanceRingCount = Config.Bind(
+                "MapDistanceRings",
+                "MapDistanceRingCount",
+                10,
+                "How many rings to draw outward from the world center.");
+
+            _mapDistanceRingLabelSuffix = Config.Bind(
+                "MapDistanceRings",
+                "MapDistanceRingLabelSuffix",
+                "m",
+                "Text shown right after each ring's distance number, e.g. \"1000m\".");
+
             _settingsPanelOptionsLabel = Config.Bind(
                 "SettingsPanel",
                 "OptionsSectionLabel",
@@ -742,6 +863,18 @@ namespace FedoHud
                 "Armor value",
                 "Label of the armor value display's on/off toggle in the in-game FedoHud panel.");
 
+            _toggleLabelMapDistanceRings = Config.Bind(
+                "SettingsPanel",
+                "ToggleLabelMapDistanceRings",
+                "Map distance rings",
+                "Label of the map distance rings' on/off toggle in the in-game FedoHud panel.");
+
+            _toggleLabelShipOverlay = Config.Bind(
+                "SettingsPanel",
+                "ToggleLabelShipOverlay",
+                "Ship hull/speed",
+                "Label of the ship hull/speed block's on/off toggle in the in-game FedoHud panel.");
+
             _showPlayerDamageTextBoost = Config.Bind(
                 "PlayerDamage",
                 "ShowPlayerDamageTextBoost",
@@ -769,6 +902,48 @@ namespace FedoHud
             RefreshSkillsOverlay();
             RefreshPlayerStats();
             RefreshRecipeTracker();
+            RefreshMapDistanceRings();
+            RefreshShipOverlay();
+        }
+
+        // Même throttle qu'RefreshClockOverlay pour le texte -- mais la visibilité
+        // (monter/quitter le gouvernail) est réévaluée à chaque frame, comme pour les
+        // autres blocs, pour apparaître/disparaître sans délai perceptible.
+        private void RefreshShipOverlay()
+        {
+            bool steeringShip = Player.m_localPlayer != null && Player.m_localPlayer.GetControlledShip() != null;
+            bool visible = _showShipOverlay.Value && steeringShip;
+            ShipOverlay.SetVisible(visible);
+            if (!visible)
+            {
+                return;
+            }
+
+            _shipRefreshTimer -= Time.deltaTime;
+            if (_shipRefreshTimer > 0f)
+            {
+                return;
+            }
+
+            _shipRefreshTimer = 1f;
+            ShipOverlay.Refresh();
+        }
+
+        // Pas throttlé comme les autres blocs -- contrairement à eux, la position/taille
+        // des anneaux doit suivre le zoom et le défilement de la carte en continu (le
+        // joueur peut zoomer/scroller la grande carte à tout moment), pas juste une
+        // valeur qui change lentement comme un niveau de compétence. Le coût réel est
+        // minime (quelques `Vector2` par anneau, pas d'allocation) -- voir
+        // MapDistanceRings.cs.
+        private void RefreshMapDistanceRings()
+        {
+            MapDistanceRings.SetVisible(_showMapDistanceRings.Value);
+            if (!_showMapDistanceRings.Value)
+            {
+                return;
+            }
+
+            MapDistanceRings.Refresh();
         }
 
         // Même throttle qu'RefreshClockOverlay -- voir PlayerStatsOverlay.cs pour

@@ -4,7 +4,10 @@ namespace FedoHud
 {
     // Icône "!" flottante au-dessus d'une ruche pleine -- voir FloatingExclamationIcon.cs
     // pour l'implémentation partagée (billboard/throttle), et BeehiveTooltip.cs pour la
-    // ligne de tooltip équivalente au survol.
+    // ligne de tooltip équivalente au survol. S'applique aussi au nid d'oiseaux, qui
+    // réutilise le même composant `Beehive` (voir BeehiveTooltip.IsBirdNest) -- rien de
+    // spécifique à faire ici, `m_maxHoney` désigne juste la capacité max quel que soit
+    // l'item produit.
     internal static class BeehiveFullIndicator
     {
         [HarmonyPatch(typeof(Beehive), "Awake")]

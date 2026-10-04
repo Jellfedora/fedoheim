@@ -211,3 +211,59 @@
   same way via `colorOverLifetime`. Also added `LogInfo` diagnostics to both this and
   `ApplyPurpleTint` (renderer count, which shader property got tinted and to what value) to
   make the next round of in-game testing conclusive instead of another guess.
+- Added an evolution path: craft a **Shaman Seed** (`ShamanSummonItemPrefabPatch`, new
+  `[ShamanSummonItem]` config section) at a Workbench from the base seed plus
+  `ShamanRecipeHoneyAmount` Honey (both configurable, `ItemManager.AddRecipe`), and use it to
+  replace your companion in place with an evolved Greydwarf Shaman (`ShamanCompanionPrefabPatch`,
+  clone of `Greydwarf_Shaman`) — same follow/pickup behavior, but a stronger heal
+  (`ShamanHealAmount`/`ShamanHealCooldownSeconds`, `40`/`15` by default vs `15`/`10` for the base
+  seed). Implemented as a `CompanionTier` enum read off the ZDO's own prefab hash
+  (`CompanionAI.GetTier`) rather than a second AI class or a separate persisted field — every
+  existing system (follow, pickup, invulnerability, renaming, one-companion-per-player,
+  disconnect despawn) already keys off the presence of `CompanionAI`, not off which prefab it's
+  on, so none of it needed to change; only healing actually branches on tier. A renamed
+  companion keeps its name across the evolution for free, since the name-persistence mechanism
+  (`Player.m_customData`) was already keyed by player, not by companion instance. Using the base
+  seed while an evolved companion is already out is a no-op (`CannotDowngradeMessage`) rather
+  than destroying it — no way back down once evolved.
+- The companion is no longer invulnerable. It now has real health (`CompanionMaxHealth`/
+  `ShamanCompanionMaxHealth`, `50`/`150` by default) and wild creatures can actually target and
+  attack it — switched its faction from `Boss` to `Players` (creatures read that as hostile to
+  them, exactly like a real player) instead of the old `Boss` + a `BaseAI.IsEnemy` patch, both
+  of which existed specifically to make sure nothing could ever target it. Removed that
+  `IsEnemy` patch (`CompanionNeverEnemyPatch`) entirely. Still fully protected from players,
+  including its own owner: `CompanionInvulnerabilityPatch` now only blocks `Character.Damage`
+  when `HitData.GetAttacker()` is a `Player`, letting a creature's hit through. It still has no
+  attack logic at all, so it never fights back regardless of what attacks it.
+- Killing the companion now puts both seeds on a `DeathCooldownSeconds` cooldown (default
+  `120`), shown through the same darkened-icon-with-countdown overlay as the normal per-click
+  cooldown (`SummonItemUsePatch.GetRemainingCooldown` returns whichever of the two is larger).
+  Hooked via `Character.m_onDeath` (a public `Action` field, no Harmony patch needed) subscribed
+  once per spawn in `CompanionSpawner`, closing over the owner's stable `PlayerID` rather than
+  the `Player` object itself. Kept in a separate `Dictionary<long, float>` keyed by `PlayerID`,
+  not the `ConditionalWeakTable` used for the per-click cooldown — this one needs to survive a
+  disconnect/reconnect (a real penalty, not just a debounce), and a `long` key has no reference
+  to leak in the first place.
+- The companion can now heal itself, not just the owner — `TryHeal` picks whichever of the two
+  has the lower `GetHealthPercentage()` (not raw missing HP, so the Shaman's much bigger health
+  pool doesn't make it look falsely "more hurt" than the owner). `CompanionHealOrb.Launch`
+  already accepted a generic `Character` target, so the only change needed was widening
+  `LaunchHealOrbAfterThrow`'s parameter from `Player` to `Character`.
+- Added `CompanionAggroChance` (default `0.4`): since the companion can now be targeted at all
+  (see above), it draws noticeably less aggro than the owner without being untargetable.
+  Valheim has no real threat table to tune, so `CompanionAggroPatch` instead probabilistically
+  vetoes the companion as an `IsEnemy` candidate — but only while a creature has no target yet
+  (`!BaseAI.HaveTarget()`); once one has locked onto the companion this patch leaves `IsEnemy`
+  alone, so a monster can't randomly "forget" it mid-fight.
+- Added a behavior mode toggle (`CompanionBehaviorMode`: Defensive/Aggressive), switched with a
+  plain E hover interaction (`CompanionInteract`, Shift+E being already taken by renaming) and
+  persisted the same way as the custom name (own ZDO + `Player.m_customData`, survives storing
+  away, reconnecting, and evolving tiers). Defensive (the default) adds a step-away reaction
+  (`CompanionAI.TryEvade`) when something is targeting the companion specifically. Aggressive
+  makes it actually fight back (`CompanionAI.TryFight`) against whatever targets the owner or
+  itself, via `Humanoid.StartAttack(target, ...)` — the explicit-target overload, not a blind
+  swing, so it can't clip the owner standing nearby. Both modes share `FindThreat`, which only
+  ever considers a creature already targeting the owner or the companion (`BaseAI.
+  GetTargetCreature()`), never "anything hostile nearby" on its own — walking through a Black
+  Forest won't drag it into (or away from) fights that were never actually aimed at anyone in
+  the party.

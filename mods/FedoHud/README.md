@@ -13,7 +13,8 @@ added to the pause menu (Esc), right above "Quit".
   drag it anywhere — it remembers where you leave it.
 - Hovering over a planted crop shows how long until it's ready to harvest.
 - Hovering over a beehive shows how long until it produces one more honey, and a
-  floating **"!"** appears above it once it's full.
+  floating **"!"** appears above it once it's full — a bird's nest gets the same hints
+  (feathers instead of honey).
 - Hovering over a fermenter shows how long until it's done fermenting.
 - Hovering over a smelter, charcoal kiln, windmill, or spinning wheel shows how long
   until everything queued is done.
@@ -26,7 +27,8 @@ added to the pause menu (Esc), right above "Quit".
 - Hovering over a baby animal shows how long until it's an adult (tamed or not).
 - Shows a block with your current level and progress bar for a chosen list of skills
   (none shown by default — pick them yourself), with skill names shown in the game's
-  own language. Click and drag it anywhere, just like the clock.
+  own language, sorted with your highest skill first. Click and drag it anywhere, just
+  like the clock.
 - Shows a single draggable block with three stats, each next to the same icon used for
   it elsewhere in the game: how many times your character has died (skull), your
   current carry weight and maximum capacity (weight icon, turning red once you're over
@@ -44,6 +46,11 @@ added to the pause menu (Esc), right above "Quit".
   the hit — damage you take, or dealt by someone/something else, stays the game's normal
   size. The size (and effect) also scales up for a bigger-than-usual hit, so real crits
   and lucky rolls stand out even more.
+- Draws distance rings on both the corner minimap and the full map (M), centered on the
+  world's true center — a quick visual reference for how far you currently are from it.
+- Shows a small block with the ship's hull condition and real speed while you're
+  steering it — neither is shown numerically by the vanilla HUD. Click and drag it
+  anywhere, just like the clock; it only appears while you're at the helm.
 
 ## Configuration
 
@@ -59,10 +66,16 @@ Settings live in `BepInEx/config/fedo.hud.cfg`.
 - `GrowthRemainingPrefix` / `GrowthReadyText` — the wording used for that hint.
 
 **[Beehive]**
-- `ShowBeehiveTooltip` — turn the "time until next honey" hint on/off.
+- `ShowBeehiveTooltip` — turn the "time until next honey" hint on/off (also covers bird
+  nests, see `[BirdNest]` below).
 - `HoneyRemainingPrefix` / `HoneyFullText` / `HoneyPausedText` — the wording used for
   that hint.
-- `ShowBeehiveFullIcon` — turn the floating "!" above a full beehive on/off.
+- `ShowBeehiveFullIcon` — turn the floating "!" above a full beehive/bird nest on/off.
+
+**[BirdNest]**
+- `FeatherRemainingPrefix` / `FeatherFullText` / `FeatherPausedText` — the wording used
+  for a bird nest's hover hint (controlled by `ShowBeehiveTooltip` above — bird nests use
+  the same hint as beehives, just with their own wording).
 
 **[Fermenter]**
 - `ShowFermenterTooltip` — turn the "time until done fermenting" hint on/off.
@@ -116,6 +129,19 @@ Settings live in `BepInEx/config/fedo.hud.cfg`.
 - `ShowPlayerDamageTextBoost` — turn the bigger damage numbers on/off.
 - `PlayerDamageTextSizeMultiplier` — how much bigger, e.g. 1.6 = 60% bigger.
 
+**[MapDistanceRings]**
+- `ShowMapDistanceRings` — turn the distance rings (minimap + full map) on/off.
+- `MapDistanceRingStep` — distance in meters between each ring, e.g. 1000.
+- `MapDistanceRingCount` — how many rings to draw outward from the world center.
+- `MapDistanceRingLabelSuffix` — text shown right after each ring's distance number,
+  e.g. "m" for "1000m".
+
+**[Ship]**
+- `ShowShipOverlay` — turn the ship hull/speed block on/off (still only shows up while
+  you're actually steering a ship).
+- `ShipHullPrefix` / `ShipSpeedPrefix` — the wording used for those two lines.
+- `ShipPositionX` / `ShipPositionY` — where the block sits on screen (set automatically
+  when you drag it).
 
 **[SettingsPanel]**
 - Every text label shown in the in-game FedoHud panel (pause menu) — section titles, the

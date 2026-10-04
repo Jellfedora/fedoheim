@@ -237,7 +237,13 @@ jamais réinitialisé en base, juste recalculé à la volée.
     (sinon `dyld` refuse de le charger), et patcher `BepInEx.cfg` (`Type = Application`
     → `Type = GameObject`, requis pour BepInEx sur macOS/Unity). Le jeu est lancé via un
     script généré ouvert dans `Terminal.app` (`open -a Terminal ...`), pas via Steam —
-    processus indépendant de l'app Tauri.
+    processus indépendant de l'app Tauri. **Ne jamais écrire le moindre fichier à
+    l'intérieur de `valheim.app`** : ça casse le sceau de signature du bundle, toléré
+    jusqu'à la prochaine mise à jour Steam du jeu, puis `Killed: 9` + "« valheim » est
+    endommagé" au lancement (vécu : `steam_appid.txt` écrit dans `Contents/MacOS/`,
+    déplacé depuis à la racine de l'install — voir `ensure_steam_appid_file`).
+    `codesign --verify --deep --strict --verbose=4 .../valheim.app` liste le fichier
+    fautif ("file added: ...").
 - Tous les fichiers d'une archive (dll comme `.cfg`) sont **resynchronisés à l'identique
   du serveur** dès que le sha256 change — pas de préservation d'une config locale
   modifiée par un joueur, la config livrée par l'admin fait autorité. Les dossiers de

@@ -60,6 +60,40 @@ namespace FedoHud
             return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f));
         }
 
+        // Anneau à épaisseur FIXE en pixels (contrairement à `CreateCircle`, dont
+        // `innerFrac`/`outerFrac` sont des fractions du rayon -- redimensionner un tel
+        // anneau via `sizeDelta` fait grossir son trait proportionnellement à sa taille,
+        // épais au point de devenir un disque presque plein pour un grand anneau, vécu
+        // en jeu sur MapDistanceRings.cs). Le sprite déclare une bordure 9-slice de
+        // `thicknessPx` sur ses 4 côtés : affiché en `Image.Type.Sliced`, Unity garde
+        // cette bordure à peu près constante en pixels à l'écran quelle que soit la
+        // taille finale de l'Image (coins/bords non étirés, seul le centre l'est --
+        // imparfait aux angles à 45° pour un cercle inscrit dans un carré, mais largement
+        // suffisant pour un repère visuel).
+        public static Sprite CreateRing(int size, float thicknessPx, Color color)
+        {
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var center = new Vector2(size / 2f, size / 2f);
+            float outerRadius = size / 2f;
+            float innerRadius = Mathf.Max(0f, outerRadius - thicknessPx);
+            var pixels = new Color[size * size];
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
+                    pixels[y * size + x] = distance <= outerRadius && distance >= innerRadius ? color : Color.clear;
+                }
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply();
+
+            var border = new Vector4(thicknessPx, thicknessPx, thicknessPx, thicknessPx);
+            return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, border);
+        }
+
         // Étoile à `points` branches (2*points sommets, rayon alternant
         // outerRadiusFrac/innerRadiusFrac), remplie par un test point-dans-polygone
         // classique (ray casting) -- utilisée par RecipeTracker.cs pour l'icône

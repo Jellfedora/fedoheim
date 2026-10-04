@@ -1,0 +1,10 @@
+{
+  "name": "FedoFreeDeathCam",
+  "author": "Fedo",
+  "version_number": "0.0.1",
+  "website_url": "",
+  "description": "Alpha. Lets you move the camera freely while dead, instead of it staying locked looking at your character's body.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}

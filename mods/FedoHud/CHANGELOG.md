@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0
+
+- Bird nests now get their own wording ("feather" instead of "honey") on the beehive
+  hover hint and full-storage icon — same underlying game mechanic as a beehive, but
+  with the right words this time.
+- The skills block now sorts itself with your highest skill first, updating live as you
+  level up.
+- Smaller "x" buttons on the skills block and the recipe ingredients panel, to take up a
+  bit less screen space.
+- New: distance rings on both the corner minimap and the full map (M), centered on the
+  world's true center — a quick visual reference for how far you currently are from it.
+- New: a small block showing the ship's hull condition and real speed while you're
+  steering it.
+- Fixed: the cooking station hover hint could stay invisible on some cooking stations
+  depending on exactly where you were looking at it (most noticeable on the iron
+  cooking station) — it now also shows up when hovering the station itself, not just
+  its "add food" handle.
+
 ## 1.0.0
 
 - New mod, built for Valheim 1.0. Draggable in-game clock, following the day/night

@@ -184,9 +184,11 @@ namespace FedoKnorri
         // pas de la réflexion .NET) pour trouver TOUTES ses propriétés de type Couleur et les
         // teinter, quel que soit leur nom réel -- sauf celles qui ressemblent à de l'émission,
         // qu'on ne veut surtout pas transformer en halo lumineux inattendu.
-        private static readonly Color PrefabTintColor = new Color(0.55f, 0.3f, 0.85f);
+        // internal (pas private) : réutilisée telle quelle par ShamanSummonItemPrefabPatch, même
+        // rendu voulu pour les deux paliers de graine.
+        internal static readonly Color PrefabTintColor = new Color(0.55f, 0.3f, 0.85f);
 
-        private static void ApplyPurpleTint(GameObject root)
+        internal static void ApplyPurpleTint(GameObject root)
         {
             try
             {

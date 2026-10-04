@@ -62,3 +62,14 @@
   compilation) -- aucune référence `.csproj` vers l'autre mod nécessaire du tout. Même
   garde `IsLoaded` (ici via `Chainloader.PluginInfos.ContainsKey("<guid>")`) que pour
   Seasons : le mod cible doit rester complètement absent sans faire planter le nôtre.
+- **Écran de succès (FedoAchievements)**, vérifié par décompilation complète d'`assembly_valheim` :
+  `Achievement.m_isSecret` (public, sur un `ScriptableObject` partagé) n'est lu que par l'UI
+  -- `InventoryGui.UpdateAchievementsList` (privée : tuile de la grille + Button détruit si
+  secret non débloqué) et `AchievementsGui.OnOpenAchievementDetails` (ligne unique
+  `??? / ???`) -- jamais par la logique de déblocage. Il est donc forcé à `false` en Prefix
+  puis restauré en Finalizer, uniquement le temps de ces deux appels. Le second masquage
+  est indépendant : `AchievementsGui.CreateStatRow` (privée) remplace nom ET progression de
+  toute condition non remplie par `???`, même pour un succès non secret ; la ligne qu'elle
+  vient d'instancier est le dernier enfant de `m_achievementDetailsListRoot` (privé, lu via
+  `AccessTools.FieldRefAccess`), réécrite en Postfix. `Localization` vit dans
+  `assembly_guiutils.dll`, pas `assembly_utils`.

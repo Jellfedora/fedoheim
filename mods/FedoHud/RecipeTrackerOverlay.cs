@@ -205,7 +205,7 @@ namespace FedoHud
             closeRect.anchorMax = new Vector2(1f, 0.5f);
             closeRect.pivot = new Vector2(1f, 0.5f);
             closeRect.anchoredPosition = Vector2.zero;
-            closeRect.sizeDelta = new Vector2(16f, 16f);
+            closeRect.sizeDelta = new Vector2(11f, 11f);
 
             var closeImage = closeGo.GetComponent<Image>();
             closeImage.sprite = IconSprites.CreateCross(16, 0.22f, new Color(0.8f, 0.3f, 0.3f, 0.9f));

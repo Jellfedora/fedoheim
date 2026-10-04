@@ -1,0 +1,10 @@
+# Configure your servers for Azumatt's FastLink mod in this file.
+# Servers are automatically sorted alphabetically when shown in the list.
+# This file live updates the in-game listing. Feel free to change it while in the main menu.
+
+Fedoheim:
+  address: fedoheim.hopto.org
+  port: 2456
+  password: fedoheim11
+  description: Hardcore No Map
+  discord: https://discord.gg/fedoheim

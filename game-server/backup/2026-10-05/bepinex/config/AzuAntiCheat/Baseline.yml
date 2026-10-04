@@ -1,0 +1,34 @@
+﻿# AzuAntiCheat client baseline.
+#
+# What a clean client looks like, so the server can recognize a modified one. A dedicated
+# server ships different game assemblies than a client, so this cannot be taken from the
+# server's own files. It is captured from the first admin to connect after a game update.
+#
+# Each platform gets its own entry (Steam/WindowsPlayer, Steam/LinuxPlayer, Steam/OSXPlayer). Native
+# Linux, Steam Deck and Mac clients each run a separately compiled build, so their files never match
+# Windows ones. Proton players count as Windows.
+#
+# Steam players' game files are checked against official hashes built into the mod whenever
+# your game version is covered, and this file is not used for that. It is the fallback after
+# a Valheim update until the mod catches up, and it always supplies the patcher list.
+#
+# You can edit this by hand, copy it between servers running the same game version, or
+# delete an entry to have the next admin on that platform capture a fresh one.
+#
+# gameVersion is checked against the running game. After a Valheim update an entry stops
+# applying and is replaced automatically, so there is nothing to redo by hand.
+
+platforms:
+  Steam/WindowsPlayer:
+    gameVersion: l-1.0.16
+    capturedFrom: 76561198059724627 (fedov11admin)
+    capturedUtc: 2026-10-04 10:23:04Z
+    gameAssemblies:
+      assembly_guiutils.dll: 07453CE91AB44ED1F9B943CCABAD4D3D7CA0F5A3BAC40609DF4DD8F95A2380D6
+      assembly_lux.dll: 7B5014B0B08F211F18DFAC6BE0498B7E88AECE0F700A1CE9CEE289E110A67C2B
+      assembly_postprocessing.dll: 792BD12C5B6FF7D312CD4ACD603591BE5C00DDA97822F4024FA75641838103D8
+      assembly_simplemeshcombine.dll: 38BEF0CE3268CB8EC1EEBB9C03D254310F3872A91123CA78EF780B985B20108A
+      assembly_sunshafts.dll: 84B2D224127CADC7DF7DC1976174BD825F7E1F5CB3B5D76CDB32F1E6C7D51815
+      assembly_utils.dll: 95810CE36BC0563BD74A45DF6DF906890653E2EDA952939A0BCB6BA73AF63640
+      assembly_valheim.dll: 96CFC004F7F4A6F30D070BEF39EAFD79C466A137121C4665A2F19FB9C15C6127
+    patchers: {}

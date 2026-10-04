@@ -1,0 +1,5 @@
+# Plugins BepInEx — trop lourds pour git, réinstallables via Gale
+*/bepinex/plugins/
+
+# DLLs dans les configs (whitelist AzuAntiCheat, etc.)
+**/*.dll

@@ -1,0 +1,12 @@
+- name: Everyone
+  commands:
+    permissions: no
+- id: 76561198059724627
+  name: fedov11admin
+  character: 186338974
+- id: 76561198059724627
+  name: fedov12admin
+  character: -962172219
+- id: 76561198059724627
+  name: fedoadmin
+  character: -763490936

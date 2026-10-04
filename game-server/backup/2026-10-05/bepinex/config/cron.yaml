@@ -1,0 +1,36 @@
+# Fedoheim : reset hebdomadaire des donjons le lundi matin.
+# Le reboot de 6h00 est fait par la crontab système (valheim-ctl backup : arrêt, sauvegarde, redémarrage).
+timezone: Europe/Paris
+# Jobs vérifiés toutes les minutes.
+interval: 60
+jobs:
+  - command: broadcast center <color=orange>RESET HEBDO DES DONJONS DANS 10 MINUTES</color>
+    schedule: "40 5 * * 1"
+  - command: broadcast center <color=orange>RESET DES DONJONS DANS 5 MINUTES - SORTEZ DES DONJONS</color>
+    schedule: "45 5 * * 1"
+  - commands:
+      - broadcast center <color=red>RESET DES DONJONS DANS 1 MINUTE</color>
+      - save
+    schedule: "49 5 * * 1"
+  # Régénère les donjons (contenu, coffres, monstres ; nouvelle disposition si l'entrée tourne).
+  # Vanilla : cryptes Forêt Noire, cryptes englouties, grottes de montagne, grottes de trolls,
+  # villes dvergr des Terres de Brume, trous de Morgen des Terres de Cendres.
+  # More World Locations : Underground Ruins (BFD_Exterior) et Forbidden Catacombs (CD_Exterior1).
+  # Les donjons proches d'une base joueur sont protégés par la détection de base d'Upgrade World.
+  - command: locations_reset Crypt2,Crypt3,Crypt4,SunkenCrypt4,MountainCave02,TrollCave02,Mistlands_DvergrTownEntrance1,Mistlands_DvergrTownEntrance2,MorgenHole1,MorgenHole2,MorgenHole3,BFD_Exterior,CD_Exterior1 start
+    schedule: "50 5 * * 1"
+  - commands:
+      - broadcast center <color=orange>Donjons réinitialisés - redémarrage du serveur à 6h00</color>
+      - save
+    schedule: "57 5 * * 1"
+  # Avertissements avant les reboots quotidiens de 6h00 et 17h00 (sauvegarde valheim-ctl backup de la crontab système).
+  - command: broadcast center <color=orange>REDEMARRAGE DU SERVEUR DANS 30 MINUTES</color>
+    schedule: "30 5,16 * * *"
+  - command: broadcast center <color=orange>REDEMARRAGE DU SERVEUR DANS 10 MINUTES</color>
+    schedule: "50 5,16 * * *"
+  - command: broadcast center <color=orange>REDEMARRAGE DU SERVEUR DANS 5 MINUTES - METTEZ-VOUS EN SECURITE</color>
+    schedule: "55 5,16 * * *"
+  - commands:
+      - broadcast center <color=red>REDEMARRAGE DU SERVEUR DANS 1 MINUTE</color>
+      - save
+    schedule: "59 5,16 * * *"

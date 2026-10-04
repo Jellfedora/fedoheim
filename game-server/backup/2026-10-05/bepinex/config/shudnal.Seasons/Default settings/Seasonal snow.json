@@ -1,0 +1,2648 @@
+{
+  "pieces": {
+    "wood_floor_1x1": {
+      "buildup": "Reduced"
+    },
+    "wood_floor": {
+      "buildup": "Reduced",
+      "position": {
+        "y": -0.19
+      }
+    },
+    "wood_stair": {
+      "buildup": "Reduced"
+    },
+    "wood_stepladder": {
+      "buildup": "Reduced"
+    },
+    "stone_floor_2x2": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 0.23
+      }
+    },
+    "stone_stair": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_2x2x2": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 0.73
+      }
+    },
+    "blackmarble_floor": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 0.23
+      }
+    },
+    "blackmarble_floor_triangle": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_stair": {
+      "buildup": "Reduced"
+    },
+    "piece_dvergr_spiralstair": {
+      "buildup": "Reduced"
+    },
+    "piece_dvergr_spiralstair_right": {
+      "buildup": "Reduced"
+    },
+    "ashwood_floor_1x1": {
+      "buildup": "Reduced"
+    },
+    "ashwood_floor_2x2": {
+      "buildup": "Reduced"
+    },
+    "ashwood_deco_floor": {
+      "buildup": "Reduced"
+    },
+    "ashwood_stair": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 0.9
+      }
+    },
+    "Piece_grausten_floor_1x1": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_floor_2x2": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_floor_4x4": {
+      "buildup": "Reduced",
+      "position": {
+        "y": -0.02
+      }
+    },
+    "Piece_grausten_stone_ladder": {
+      "buildup": "Reduced"
+    },
+    "charcoal_kiln": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 1.5
+      },
+      "scale": {
+        "y": 3.5
+      }
+    },
+    "piece_beehive": {
+      "buildup": "Reduced"
+    },
+    "stone_pile": {
+      "buildup": "Reduced"
+    },
+    "flint_pile": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_pile": {
+      "buildup": "Reduced"
+    },
+    "grausten_pile": {
+      "buildup": "Reduced"
+    },
+    "coal_pile": {
+      "buildup": "Reduced"
+    },
+    "piece_chest_barrel": {
+      "buildup": "Reduced"
+    },
+    "skull_pile": {
+      "buildup": "Reduced"
+    },
+    "stone_arch": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 0.46
+      }
+    },
+    "smelter": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 3.8
+      }
+    },
+    "piece_bed02": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 0.24
+      }
+    },
+    "bed": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 0.14
+      }
+    },
+    "piece_chest_grausten": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 0.75
+      }
+    },
+    "stave_gate": {
+      "buildup": "Reduced",
+      "position": {
+        "y": 6.14
+      },
+      "scale": {
+        "x": 1.11,
+        "y": 1.0,
+        "z": 1.3
+      }
+    },
+    "stone_fence": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_2x1",
+      "position": {
+        "y": 0.19
+      },
+      "scale": {
+        "x": 1.9,
+        "y": 1.0,
+        "z": 0.75
+      }
+    },
+    "wood_fence_gate": {
+      "buildup": "Disabled"
+    },
+    "wood_wall_half": {
+      "buildup": "Reduced"
+    },
+    "woodwall": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_a": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_45": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_67_a": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_45_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_67_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "wood_pole": {
+      "buildup": "Reduced"
+    },
+    "wood_pole2": {
+      "buildup": "Reduced"
+    },
+    "wood_beam_1": {
+      "buildup": "Reduced"
+    },
+    "wood_beam": {
+      "buildup": "Reduced"
+    },
+    "wood_beam_26": {
+      "buildup": "Reduced"
+    },
+    "wood_beam_45": {
+      "buildup": "Reduced"
+    },
+    "wood_beam_67": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_top": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_top_45": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_roof_top_67": {
+      "buildup": "Reduced"
+    },
+    "wood_door": {
+      "buildup": "Reduced"
+    },
+    "wood_gate": {
+      "buildup": "Reduced"
+    },
+    "wood_window": {
+      "buildup": "Reduced"
+    },
+    "wood_dragon1": {
+      "buildup": "Reduced"
+    },
+    "stake_wall": {
+      "buildup": "Reduced"
+    },
+    "piece_sharpstakes": {
+      "buildup": "Reduced"
+    },
+    "wood_pole_log": {
+      "buildup": "Reduced"
+    },
+    "wood_pole_log_4": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_log": {
+      "buildup": "Reduced"
+    },
+    "wood_wall_log_4x0.5": {
+      "buildup": "Reduced"
+    },
+    "wood_log_26": {
+      "buildup": "Reduced"
+    },
+    "wood_log_67": {
+      "buildup": "Reduced"
+    },
+    "stone_wall_1x1": {
+      "buildup": "Reduced"
+    },
+    "stone_wall_2x1": {
+      "buildup": "Reduced"
+    },
+    "stone_wall_4x2": {
+      "buildup": "Reduced"
+    },
+    "stone_pillar": {
+      "buildup": "Reduced"
+    },
+    "woodiron_pole": {
+      "buildup": "Reduced"
+    },
+    "woodiron_beam": {
+      "buildup": "Reduced"
+    },
+    "woodiron_beam_26": {
+      "buildup": "Reduced"
+    },
+    "woodiron_beam_45": {
+      "buildup": "Reduced"
+    },
+    "woodiron_beam_67": {
+      "buildup": "Reduced"
+    },
+    "darkwood_decowall": {
+      "buildup": "Reduced"
+    },
+    "darkwood_pole": {
+      "buildup": "Reduced"
+    },
+    "darkwood_pole4": {
+      "buildup": "Reduced"
+    },
+    "darkwood_beam": {
+      "buildup": "Reduced"
+    },
+    "darkwood_beam4x4": {
+      "buildup": "Reduced"
+    },
+    "darkwood_beam_26": {
+      "buildup": "Reduced"
+    },
+    "darkwood_beam_45": {
+      "buildup": "Reduced"
+    },
+    "darkwood_beam_67": {
+      "buildup": "Reduced"
+    },
+    "darkwood_arch": {
+      "buildup": "Reduced"
+    },
+    "darkwood_gate": {
+      "buildup": "Reduced"
+    },
+    "darkwood_raven": {
+      "buildup": "Reduced"
+    },
+    "darkwood_wolf": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_1x1": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_2x1x1": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_base_1": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_basecorner": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_tip": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_out_1": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_outcorner": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_column_1": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_column_2": {
+      "buildup": "Reduced"
+    },
+    "crystal_wall_1x1": {
+      "buildup": "Reduced"
+    },
+    "piece_dvergr_stake_wall": {
+      "buildup": "Reduced"
+    },
+    "piece_dvergr_sharpstakes": {
+      "buildup": "Reduced"
+    },
+    "piece_hexagonal_door": {
+      "buildup": "Reduced"
+    },
+    "ashwood_quarterwall_1x1": {
+      "buildup": "Reduced"
+    },
+    "ashwood_halfwall_1x2": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_2x2": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_arch": {
+      "buildup": "Reduced"
+    },
+    "ashwood_decowall_2x2": {
+      "buildup": "Reduced"
+    },
+    "ashwood_decowall_divider": {
+      "buildup": "Reduced"
+    },
+    "ashwood_decowall_tree": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_roof_26": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_roof_26_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_roof_45_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_roof_67_a": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_roof_67_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "ashwood_arch_big": {
+      "buildup": "Reduced"
+    },
+    "ashwood_pole_1m": {
+      "buildup": "Reduced"
+    },
+    "ashwood_pole_2m": {
+      "buildup": "Reduced"
+    },
+    "ashwood_beam_1m": {
+      "buildup": "Reduced"
+    },
+    "ashwood_beam_2m": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_beam_26": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_beam_45": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_beam_67": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_cross_26": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_cross_45": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_cross_67": {
+      "buildup": "Reduced"
+    },
+    "piece_stakewall_blackwood": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_wall_1x2": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_wall_2x2": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_window_2x2": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_wall_4x2": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_window_4x2": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_wall_arch": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_wall_arch_inverted": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_pillarbase_small": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_pillarbase_medium": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_pillarbeam_small": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_pillarbeam_medium": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_pillarbase_tapered": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_pillarbase_tapered_inverted": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_pillar_arch_small": {
+      "buildup": "Reduced"
+    },
+    "Piece_grausten_pillar_arch": {
+      "buildup": "Reduced"
+    },
+    "piece_grausten_stonestair": {
+      "buildup": "Reduced"
+    },
+    "Piece_flametal_pillar": {
+      "buildup": "Reduced"
+    },
+    "Piece_flametal_beam": {
+      "buildup": "Reduced"
+    },
+    "stave_wall_2x2": {
+      "buildup": "Reduced"
+    },
+    "stave_pole_2m": {
+      "buildup": "Reduced"
+    },
+    "stave_pole_4m": {
+      "buildup": "Reduced"
+    },
+    "stave_beam_2m": {
+      "buildup": "Reduced"
+    },
+    "stave_beam_4m": {
+      "buildup": "Reduced"
+    },
+    "stave_beam_26": {
+      "buildup": "Reduced"
+    },
+    "stave_beam_45": {
+      "buildup": "Reduced"
+    },
+    "stave_beam_67": {
+      "buildup": "Reduced"
+    },
+    "stave_wall_cross_26": {
+      "buildup": "Reduced"
+    },
+    "stave_wall_cross_45": {
+      "buildup": "Reduced"
+    },
+    "stave_wall_cross_67": {
+      "buildup": "Reduced"
+    },
+    "stave_deco_wall_2x2": {
+      "buildup": "Reduced"
+    },
+    "stave_deco_pole_2m": {
+      "buildup": "Reduced"
+    },
+    "stave_deco_beam_2m": {
+      "buildup": "Reduced"
+    },
+    "stave_deco_beam_26": {
+      "buildup": "Reduced"
+    },
+    "stave_deco_beam_45": {
+      "buildup": "Reduced"
+    },
+    "stave_deco_beam_67": {
+      "buildup": "Reduced"
+    },
+    "scale_quarterwall_1x1": {
+      "buildup": "Reduced"
+    },
+    "scale_halfwall_1x2": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_2x2": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_26": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_26_flipped": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_45": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_45_flipped": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_67": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_67_flipped": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_26_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_26_upsidedown_flipped": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_45_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_45_upsidedown_flipped": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_67_upsidedown": {
+      "buildup": "Reduced"
+    },
+    "scale_wall_roof_67_upsidedown_flipped": {
+      "buildup": "Reduced"
+    },
+    "piece_icecube": {
+      "buildup": "Reduced"
+    },
+    "ashwood_bed": {
+      "buildup": "Reduced"
+    },
+    "piece_throne01": {
+      "buildup": "Reduced"
+    },
+    "piece_throne02": {
+      "buildup": "Reduced"
+    },
+    "piece_blackmarble_throne": {
+      "buildup": "Reduced"
+    },
+    "piece_bone_throne": {
+      "buildup": "Reduced"
+    },
+    "piece_moose_throne": {
+      "buildup": "Reduced"
+    },
+    "piece_chair02": {
+      "buildup": "Reduced"
+    },
+    "piece_chair03": {
+      "buildup": "Reduced"
+    },
+    "piece_logbench01": {
+      "buildup": "Reduced"
+    },
+    "piece_bench01": {
+      "buildup": "Reduced"
+    },
+    "piece_blackmarble_bench": {
+      "buildup": "Reduced"
+    },
+    "piece_blackwood_bench01": {
+      "buildup": "Reduced"
+    },
+    "piece_bench_runed": {
+      "buildup": "Reduced"
+    },
+    "piece_table": {
+      "buildup": "Reduced"
+    },
+    "piece_table_oak": {
+      "buildup": "Reduced"
+    },
+    "piece_table_round": {
+      "buildup": "Reduced"
+    },
+    "piece_blackmarble_table": {
+      "buildup": "Reduced"
+    },
+    "piece_table_runed": {
+      "buildup": "Reduced"
+    },
+    "piece_table_runed_small": {
+      "buildup": "Reduced"
+    },
+    "piece_chest_wood": {
+      "buildup": "Reduced"
+    },
+    "piece_chest": {
+      "buildup": "Reduced"
+    },
+    "piece_chest_private": {
+      "buildup": "Reduced"
+    },
+    "piece_chest_blackmetal": {
+      "buildup": "Reduced"
+    },
+    "piece_chest_warderobe": {
+      "buildup": "Reduced"
+    },
+    "piece_dvergr_lantern_pole": {
+      "buildup": "Reduced"
+    },
+    "wood_stack": {
+      "buildup": "Reduced"
+    },
+    "wood_fine_stack": {
+      "buildup": "Reduced"
+    },
+    "wood_core_stack": {
+      "buildup": "Reduced"
+    },
+    "wood_yggdrasil_stack": {
+      "buildup": "Reduced"
+    },
+    "blackwood_stack": {
+      "buildup": "Reduced"
+    },
+    "wood_frost_stack": {
+      "buildup": "Reduced"
+    },
+    "bar_tin_stack": {
+      "buildup": "Reduced"
+    },
+    "bar_copper_stack": {
+      "buildup": "Reduced"
+    },
+    "bar_bronze_stack": {
+      "buildup": "Reduced"
+    },
+    "bar_iron_stack": {
+      "buildup": "Reduced"
+    },
+    "bar_silver_stack": {
+      "buildup": "Reduced"
+    },
+    "bar_blackmetal_stack": {
+      "buildup": "Reduced"
+    },
+    "bar_flametal_stack": {
+      "buildup": "Reduced"
+    },
+    "bar_gold_stack": {
+      "buildup": "Reduced"
+    },
+    "bone_stack": {
+      "buildup": "Reduced"
+    },
+    "piece_barber": {
+      "buildup": "Reduced"
+    },
+    "piece_cartographytable": {
+      "buildup": "Reduced"
+    },
+    "ashwood_arch_bottom": {
+      "buildup": "Reduced"
+    },
+    "ashwood_arch_top": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_beam_26_alt": {
+      "buildup": "Reduced"
+    },
+    "ashwood_wall_beam_45_alt": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_2x2x1": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_base_2": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_out_2": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_tile_floor_1x1": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_tile_floor_2x2": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_tile_wall_1x1": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_tile_wall_2x2": {
+      "buildup": "Reduced"
+    },
+    "blackmarble_tile_wall_2x4": {
+      "buildup": "Reduced"
+    },
+    "stone_floor": {
+      "buildup": "Reduced"
+    },
+    "wood_ledge": {
+      "buildup": "Reduced"
+    },
+    "BCP_Clay2_Roof45": {
+      "copyFrom": "piece_grausten_roof_45"
+    },
+    "BCP_Clay2_Roof45Arch": {
+      "copyFrom": "piece_grausten_roof_45_arch"
+    },
+    "BCP_Clay2_Roof45Arch_Corner": {
+      "copyFrom": "piece_grausten_roof_45_arch_corner"
+    },
+    "BCP_Clay2_Roof45Arch_Corner2": {
+      "copyFrom": "piece_grausten_roof_45_arch_corner2"
+    },
+    "BCP_Clay2_Roof45_Corner": {
+      "copyFrom": "piece_grausten_roof_45_corner"
+    },
+    "BCP_Clay2_Roof45_Corner2": {
+      "copyFrom": "piece_grausten_roof_45_corner2"
+    },
+    "BCP_ClayWall_Cross26": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_cross_26"
+    },
+    "BCP_ClayWall_Cross26Alt": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_top"
+    },
+    "BCP_ClayWall_Cross45": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_cross_45"
+    },
+    "BCP_ClayWall_Cross45Alt": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_top_45",
+      "position": {
+        "x": -0.03,
+        "y": -0.06
+      },
+      "scale": {
+        "y": 1.03
+      }
+    },
+    "BCP_ClayWall_Roof26": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_roof_26"
+    },
+    "BCP_ClayWall_Roof26UpsideDown": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_roof_26_upsidedown"
+    },
+    "BCP_ClayWall_Roof45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45"
+    },
+    "BCP_ClayWall_Roof45UpsideDown": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_roof_45_upsidedown"
+    },
+    "BCW_CoreWood_Roof26": {
+      "copyFrom": "wood_roof"
+    },
+    "BCW_CoreWood_Roof45": {
+      "copyFrom": "wood_roof_45"
+    },
+    "BCW_CoreWood_RoofICorner26": {
+      "copyFrom": "wood_roof_icorner"
+    },
+    "BCW_CoreWood_RoofICorner45": {
+      "copyFrom": "wood_roof_icorner_45"
+    },
+    "BCW_CoreWood_RoofOCorner26": {
+      "copyFrom": "wood_roof_ocorner"
+    },
+    "BCW_CoreWood_RoofOCorner45": {
+      "copyFrom": "wood_roof_ocorner_45"
+    },
+    "BCW_CoreWood_RoofTop26": {
+      "copyFrom": "wood_roof_top"
+    },
+    "BCW_CoreWood_RoofTop45": {
+      "copyFrom": "wood_roof_top_45"
+    },
+    "BCW_CoreWood_WallRoof26": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_a"
+    },
+    "BCW_CoreWood_WallRoof45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45"
+    },
+    "BCW_CoreWood_WallRoofTop26": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_top"
+    },
+    "BCW_CoreWood_WallRoofTop45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_top_45"
+    },
+    "BCW_CoreWood_WallRoof_UpsideDown26": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_upsidedown"
+    },
+    "BCW_CoreWood_WallRoof_UpsideDown45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45_upsidedown"
+    },
+    "BFP_ClayRoof26": {
+      "copyFrom": "darkwood_roof"
+    },
+    "BFP_ClayRoof45": {
+      "copyFrom": "darkwood_roof_45"
+    },
+    "BFP_ClayRoofICorner26": {
+      "copyFrom": "darkwood_roof_icorner"
+    },
+    "BFP_ClayRoofICorner45": {
+      "copyFrom": "darkwood_roof_icorner_45"
+    },
+    "BFP_ClayRoofOCorner26": {
+      "copyFrom": "darkwood_roof_ocorner"
+    },
+    "BFP_ClayRoofOCorner45": {
+      "copyFrom": "darkwood_roof_ocorner_45"
+    },
+    "BFP_ClayRoofTop26": {
+      "copyFrom": "darkwood_roof_top"
+    },
+    "BFP_ClayRoofTop45": {
+      "copyFrom": "darkwood_roof_top_45"
+    },
+    "BFP_FineWoodRoof26": {
+      "copyFrom": "wood_roof"
+    },
+    "BFP_FineWoodRoof45": {
+      "copyFrom": "wood_roof_45"
+    },
+    "BFP_FineWoodRoofCross26": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_top"
+    },
+    "BFP_FineWoodRoofCross45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_top_45"
+    },
+    "BFP_FineWoodRoofICorner26": {
+      "copyFrom": "wood_roof_icorner"
+    },
+    "BFP_FineWoodRoofICorner45": {
+      "copyFrom": "wood_roof_icorner_45"
+    },
+    "BFP_FineWoodRoofOCorner26": {
+      "copyFrom": "wood_roof_ocorner"
+    },
+    "BFP_FineWoodRoofOCorner45": {
+      "copyFrom": "wood_roof_ocorner_45"
+    },
+    "BFP_FineWoodRoofTop26": {
+      "copyFrom": "wood_roof_top"
+    },
+    "BFP_FineWoodRoofTop45": {
+      "copyFrom": "wood_roof_top_45"
+    },
+    "BFP_FineWoodWallRoof26": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_a"
+    },
+    "BFP_FineWoodWallRoof26_UpsideDown": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_upsidedown"
+    },
+    "BFP_FineWoodWallRoof45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45"
+    },
+    "BFP_FineWoodWallRoof45_UpsideDown": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45_upsidedown"
+    },
+    "BFP_StoneRoof26": {
+      "copyFrom": "darkwood_roof"
+    },
+    "BFP_StoneRoof45": {
+      "copyFrom": "darkwood_roof_45"
+    },
+    "BFP_StoneRoofICorner26": {
+      "copyFrom": "darkwood_roof_icorner"
+    },
+    "BFP_StoneRoofICorner45": {
+      "copyFrom": "darkwood_roof_icorner_45"
+    },
+    "BFP_StoneRoofOCorner26": {
+      "copyFrom": "darkwood_roof_ocorner"
+    },
+    "BFP_StoneRoofOCorner45": {
+      "copyFrom": "darkwood_roof_ocorner_45"
+    },
+    "BFP_StoneRoofTop26": {
+      "copyFrom": "darkwood_roof_top"
+    },
+    "BFP_StoneRoofTop45": {
+      "copyFrom": "darkwood_roof_top_45"
+    },
+    "ashwood_roof26_bal": {
+      "copyFrom": "wood_roof"
+    },
+    "ashwood_roof45_bal": {
+      "copyFrom": "wood_roof_45"
+    },
+    "ashwood_roof_icorner_45_bal": {
+      "copyFrom": "wood_roof_icorner_45"
+    },
+    "ashwood_roof_ocorner_45_bal": {
+      "copyFrom": "wood_roof_ocorner_45"
+    },
+    "ashwood_roof_top45_bal": {
+      "copyFrom": "wood_roof_top_45"
+    },
+    "core_wood_roof26_bal": {
+      "copyFrom": "wood_roof"
+    },
+    "darkwood_roof_quarter_26_bal": {
+      "copyFrom": "darkwood_roof"
+    },
+    "darkwood_roof_quarter_45_bal": {
+      "copyFrom": "darkwood_roof_45"
+    },
+    "darkwood_roof_top_half_45_bal": {
+      "copyFrom": "darkwood_roof_top_45"
+    },
+    "darkwood_roof_top_half_bal": {
+      "copyFrom": "darkwood_roof_top"
+    },
+    "fineood_wall_roof_26_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_roof_26"
+    },
+    "finewood_wall_roof_26_upsidedown_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_roof_26_upsidedown"
+    },
+    "finewood_wall_roof_45_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45"
+    },
+    "finewood_wall_roof_45_upsidedown_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_roof_45_upsidedown"
+    },
+    "piece_grausten_roof_45_top_bal": {
+      "copyFrom": "wood_roof_top_45"
+    },
+    "piece_hardwood_roof_45_arch_bal": {
+      "copyFrom": "piece_grausten_roof_45_arch"
+    },
+    "piece_hardwood_roof_45_arch_corner2_bal": {
+      "copyFrom": "piece_grausten_roof_45_arch_corner2"
+    },
+    "piece_hardwood_roof_45_arch_corner_bal": {
+      "copyFrom": "piece_grausten_roof_45_arch_corner"
+    },
+    "piece_hardwood_roof_45_bal": {
+      "copyFrom": "piece_grausten_roof_45"
+    },
+    "piece_hardwood_roof_45_corner2_bal": {
+      "copyFrom": "piece_grausten_roof_45_corner2"
+    },
+    "piece_hardwood_roof_45_corner_bal": {
+      "copyFrom": "piece_grausten_roof_45_corner"
+    },
+    "piece_hardwood_roof_45_top_bal": {
+      "copyFrom": "wood_roof_top_45"
+    },
+    "wood_roof_top_half_45_bal": {
+      "copyFrom": "wood_roof_top_45"
+    },
+    "wood_roof_top_half_bal": {
+      "copyFrom": "wood_roof_top"
+    },
+    "wood_roof_top_quarter_45_bal": {
+      "copyFrom": "wood_roof_45"
+    },
+    "wood_roof_top_quarter_bal": {
+      "copyFrom": "wood_roof"
+    },
+    "copper_roof": {
+      "copyFrom": "darkwood_roof"
+    },
+    "copper_roof_45": {
+      "copyFrom": "darkwood_roof_45"
+    },
+    "copper_roof_icorner": {
+      "copyFrom": "darkwood_roof_icorner"
+    },
+    "copper_roof_icorner_45": {
+      "copyFrom": "darkwood_roof_icorner_45"
+    },
+    "copper_roof_ocorner": {
+      "copyFrom": "darkwood_roof_ocorner"
+    },
+    "copper_roof_ocorner_45": {
+      "copyFrom": "darkwood_roof_ocorner_45"
+    },
+    "copper_roof_top": {
+      "copyFrom": "darkwood_roof_top"
+    },
+    "copper_roof_top_45": {
+      "copyFrom": "darkwood_roof_top_45"
+    },
+    "rae_big_wood_roof": {
+      "copyFrom": "wood_roof"
+    },
+    "rae_big_wood_roof_46": {
+      "copyFrom": "wood_roof_45"
+    },
+    "rae_big_wood_roof_icorner": {
+      "copyFrom": "wood_roof_icorner"
+    },
+    "rae_big_wood_roof_icorner_46": {
+      "copyFrom": "wood_roof_icorner_45"
+    },
+    "rae_big_wood_roof_ocorner": {
+      "copyFrom": "wood_roof_ocorner"
+    },
+    "rae_big_wood_roof_ocorner_46": {
+      "copyFrom": "wood_roof_ocorner_45"
+    },
+    "rae_big_wood_roof_top": {
+      "copyFrom": "wood_roof_top"
+    },
+    "rae_big_wood_roof_top_46": {
+      "copyFrom": "wood_roof_top_45"
+    },
+    "rae_stone_wall_roof": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_a",
+      "position": {
+        "x": -0.15,
+        "z": 0.05
+      },
+      "scale": {
+        "z": 2.5
+      }
+    },
+    "rae_stone_wall_roof45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45",
+      "scale": {
+        "z": 2.3
+      }
+    },
+    "rae_stone_wall_roof46_alt": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45_upsidedown",
+      "position": {
+        "y": 1.75,
+        "z": 0.08
+      },
+      "scale": {
+        "z": 2.2
+      }
+    },
+    "rae_stone_wall_roof_alt": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_upsidedown",
+      "position": {
+        "y": 0.8,
+        "z": 0.1
+      },
+      "scale": {
+        "z": 2.2
+      }
+    },
+    "rae_stone_wall_roof_x": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_top_45",
+      "scale": {
+        "x": 0.95,
+        "z": 1.5
+      }
+    },
+    "rae_stone_wall_roof_xs": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_top",
+      "scale": {
+        "x": 0.95,
+        "z": 1.5
+      }
+    },
+    "BCP_ClayArch_Bottom": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_arch_bottom"
+    },
+    "BCP_ClayArch_Top": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_arch_top"
+    },
+    "BCP_ClayBeam1m": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_beam_1m",
+      "position": {
+        "z": -0.001
+      }
+    },
+    "BCP_ClayBeam2m": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_beam_2m",
+      "position": {
+        "z": -0.001
+      }
+    },
+    "BCP_ClayDecoWall_2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_decowall_2x2"
+    },
+    "BCP_ClayHalfWall_1x2": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_halfwall_1x2"
+    },
+    "BCP_ClayPillarArch": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillar_arch"
+    },
+    "BCP_ClayPillarArch_Small": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillar_arch_small"
+    },
+    "BCP_ClayPillarBase_Medium": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbase_medium"
+    },
+    "BCP_ClayPillarBase_Small": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbase_small"
+    },
+    "BCP_ClayPillarBase_Tapered": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbase_tapered"
+    },
+    "BCP_ClayPillarBase_TaperedInverted": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbase_tapered_inverted"
+    },
+    "BCP_ClayPillarBeam_Medium": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbeam_medium"
+    },
+    "BCP_ClayPillarBeam_Small": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbeam_small"
+    },
+    "BCP_ClayPole1m": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_pole_1m"
+    },
+    "BCP_ClayPole_2m": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_pole_2m"
+    },
+    "BCP_ClayQuarterWall_1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_quarterwall_1x1"
+    },
+    "BCP_ClayWall_2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_2x2"
+    },
+    "BCP_ClayWall_Beam26Alt": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_beam_26_alt"
+    },
+    "BCP_ClayWall_Beam45Alt": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_beam_45_alt"
+    },
+    "BFP_ClayArch2": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_arch",
+      "position": {
+        "y": 0.46
+      }
+    },
+    "BFP_ClayBase1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_base_1"
+    },
+    "BFP_ClayBase2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_base_2"
+    },
+    "BFP_ClayBaseCorner": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_basecorner"
+    },
+    "BFP_ClayBlock1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_1x1"
+    },
+    "BFP_ClayBlock2x1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x1x1"
+    },
+    "BFP_ClayBlock2x2x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x1"
+    },
+    "BFP_ClayBlock2x2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x2",
+      "position": {
+        "y": 0.73
+      }
+    },
+    "BFP_ClayBlockOut1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_out_1"
+    },
+    "BFP_ClayBlockOut2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_out_2"
+    },
+    "BFP_ClayBlock_OutCorner": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_outcorner"
+    },
+    "BFP_ClayColumn1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_column_1"
+    },
+    "BFP_ClayColumn2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_column_2"
+    },
+    "BFP_ClayFloor": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_floor",
+      "position": {
+        "y": 0.23
+      }
+    },
+    "BFP_ClayFloorTriangle": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_floor_triangle"
+    },
+    "BFP_ClayPillar": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_pillar"
+    },
+    "BFP_ClayStair": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_stair"
+    },
+    "BFP_ClayTileFloor1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_floor_1x1"
+    },
+    "BFP_ClayTileFloor2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_floor_2x2"
+    },
+    "BFP_ClayTileWall1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_wall_1x1",
+      "position": {
+        "x": -0.01914843,
+        "y": 0.224839017
+      }
+    },
+    "BFP_ClayTileWall2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_wall_2x2",
+      "position": {
+        "x": -0.00107443,
+        "y": 0.7735491,
+        "z": 0.08772652
+      }
+    },
+    "BFP_ClayTileWall2x4": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_wall_2x4",
+      "position": {
+        "x": 0.01196333,
+        "y": 1.76693439,
+        "z": 0.106212579
+      }
+    },
+    "BFP_ClayTip": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tip"
+    },
+    "BFP_FineWoodBeam1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "BFP_FineWoodBeam26": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_26"
+    },
+    "BFP_FineWoodBeam2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "BFP_FineWoodBeam45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_45"
+    },
+    "BFP_FineWoodDecoWall": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_decowall"
+    },
+    "BFP_FineWoodDoor": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_door"
+    },
+    "BFP_FineWoodDragon": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_dragon1"
+    },
+    "BFP_FineWoodFloor1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor_1x1"
+    },
+    "BFP_FineWoodFloor2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.19
+      }
+    },
+    "BFP_FineWoodGate": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "BFP_FineWoodHalfWall": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_half"
+    },
+    "BFP_FineWoodLedge": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_ledge"
+    },
+    "BFP_FineWoodPole1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "BFP_FineWoodPole2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "BFP_FineWoodStair": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_stair"
+    },
+    "BFP_FineWoodStepLadder": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_stepladder"
+    },
+    "BFP_FineWoodWall": {
+      "buildup": "Reduced",
+      "copyFrom": "woodwall"
+    },
+    "BFP_FineWoodWindowShutter": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_window"
+    },
+    "BFP_HeavyGate": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_gate"
+    },
+    "Piece_hardwood_pillar_arch_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillar_arch"
+    },
+    "Piece_hardwood_pillar_arch_small_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillar_arch_small"
+    },
+    "Piece_hardwood_pillarbase_medium_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbase_medium"
+    },
+    "Piece_hardwood_pillarbase_small_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbase_small"
+    },
+    "Piece_hardwood_pillarbase_tapered_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbase_tapered"
+    },
+    "Piece_hardwood_pillarbase_tapered_inverted_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbase_tapered_inverted"
+    },
+    "Piece_hardwood_pillarbeam_medium_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbeam_medium"
+    },
+    "Piece_hardwood_pillarbeam_small_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_pillarbeam_small"
+    },
+    "blackmarble_2x2x1_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x1"
+    },
+    "blackmarble_floor4m_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_floor"
+    },
+    "finewood_arch_bottom_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_arch_bottom"
+    },
+    "finewood_arch_top_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_arch_top"
+    },
+    "gabro_wall2x1_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_2x1"
+    },
+    "grausten_round_column_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_column_2"
+    },
+    "ig_tall_stairs": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_stair"
+    },
+    "iron_beam_long": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "iron_beam_short": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "iron_dragon": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_dragon1"
+    },
+    "iron_pole_long": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "iron_pole_short": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "piece_dvergr_stake_wall_big": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_dvergr_stake_wall"
+    },
+    "rae_BigLog27": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_log_26"
+    },
+    "rae_BigLogHorizontal_4m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_log"
+    },
+    "rae_BigLogHorizontal_8m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_log_4x0.5"
+    },
+    "rae_BigLogVertical_4m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole_log_4"
+    },
+    "rae_BigLogVertical_8m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole_log_4"
+    },
+    "rae_Bigger_Stone_Floor_4x4": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_floor_2x2",
+      "position": {
+        "y": 0.23
+      }
+    },
+    "rae_StoneArchBig": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_arch",
+      "position": {
+        "y": 0.46
+      }
+    },
+    "rae_StoneArchBig_short": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_arch",
+      "position": {
+        "y": 0.46
+      }
+    },
+    "rae_StonePillar_4m": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_pillar"
+    },
+    "rae_StonePillar_8m": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_pillar"
+    },
+    "rae_StoneWallBig": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_2x1"
+    },
+    "rae_WoodBeamBig27": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_26"
+    },
+    "rae_WoodBeamBig46": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_45"
+    },
+    "rae_WoodBeamBig_2m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "rae_WoodBeamBig_4m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "rae_WoodPoleBig_2m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "rae_WoodPoleBig_4m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "rae_crystal_beam_long": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "rae_crystal_beam_short": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "rae_crystal_floorslab": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_floor"
+    },
+    "rae_crystal_pole_long": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "rae_crystal_pole_short": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "rae_darkwood_gate_crystal": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_gate"
+    },
+    "rae_darkwood_gate_iron": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_gate"
+    },
+    "rae_irondeco_fence_2": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_decowall"
+    },
+    "refined_stakewall_1": {
+      "buildup": "Reduced",
+      "copyFrom": "stake_wall"
+    },
+    "stone_beam_long": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "stone_beam_short": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "stone_floor4m_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_floor"
+    },
+    "stone_floor_1_new": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_floor"
+    },
+    "stone_floor_triangle_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_floor_triangle"
+    },
+    "stone_pole_long": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "stone_pole_short": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "stonemarble_1x1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_1x1"
+    },
+    "stonemarble_2x1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x1x1"
+    },
+    "stonemarble_2x1x2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x1"
+    },
+    "stonemarble_2x2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x2",
+      "position": {
+        "y": 0.73
+      }
+    },
+    "stonemarble_base_1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_base_1"
+    },
+    "stonemarble_base_2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_base_2"
+    },
+    "stonemarble_basecorner": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_basecorner"
+    },
+    "stonemarble_column_1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_column_1"
+    },
+    "stonemarble_column_2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_column_2"
+    },
+    "stonemarble_floor_triangle": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_floor_triangle"
+    },
+    "stonemarble_out_1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_out_1"
+    },
+    "stonemarble_out_2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_out_2"
+    },
+    "stonemarble_outcorner": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_outcorner"
+    },
+    "stonemarble_stair_corner": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_dvergr_spiralstair"
+    },
+    "stonemarble_stair_corner_left": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_dvergr_spiralstair_right"
+    },
+    "stonemarble_tile_wall_1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_wall_1x1"
+    },
+    "stonemarble_tile_wall_2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_wall_2x2"
+    },
+    "stonemarble_tile_wall_2x4": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_wall_2x4"
+    },
+    "stonemarble_tip": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tip"
+    },
+    "stonewall_hardrock_1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_1x1"
+    },
+    "stonewall_hardrock_2x1": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_2x1"
+    },
+    "stonewall_hardrock_4x2": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_4x2",
+      "scale": {
+        "z": 2.0
+      }
+    },
+    "stonewall_hardrock_arch": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_arch",
+      "position": {
+        "y": 0.46
+      },
+      "scale": {
+        "x": 0.92
+      }
+    },
+    "stonewall_hardrock_pillar": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_pillar"
+    },
+    "stonewall_hardrock_stairs": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_stair"
+    },
+    "thin_iron_beam_1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "thin_iron_beam_2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "thin_iron_pole_1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "thin_iron_pole_2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "thin_rae_crystal_beam_1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "thin_rae_crystal_beam_2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "thin_rae_crystal_pole_1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "thin_rae_crystal_pole_2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "thin_wood_beam_1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "thin_wood_beam_2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "thin_wood_pole_1": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "thin_wood_pole_2": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "wood_dragon_dark_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_dragon1"
+    },
+    "wood_ramp_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_roof"
+    },
+    "wood_spiralstair_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_dvergr_spiralstair"
+    },
+    "wood_spiralstair_right_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_dvergr_spiralstair_right"
+    },
+    "wood_stair_1m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_stair"
+    },
+    "BCP_ClayArch_Big": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_arch_big"
+    },
+    "BCP_ClayDecoWall_Divider": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_decowall_divider"
+    },
+    "BCP_ClayDecoWall_Tree": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_decowall_tree"
+    },
+    "BCP_ClayDeco_Floor": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_deco_floor"
+    },
+    "BCP_ClayFloor_1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_floor_1x1"
+    },
+    "BCP_ClayFloor_2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_floor_2x2"
+    },
+    "BCP_ClayStair2": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_stair",
+      "position": {
+        "y": 0.9
+      }
+    },
+    "BCP_ClayWall1x2": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_wall_1x2"
+    },
+    "BCP_ClayWall2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_wall_2x2"
+    },
+    "BCP_ClayWall4x2": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_wall_4x2"
+    },
+    "BCP_ClayWall_Arch": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_arch"
+    },
+    "BCP_ClayWall_Arch2": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_wall_arch"
+    },
+    "BCP_ClayWall_ArchInverted": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_wall_arch_inverted"
+    },
+    "BCP_ClayWall_Beam45": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_beam_45"
+    },
+    "BCP_ClayWindow2x2": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_window_2x2"
+    },
+    "BCP_ClayWindow4x2": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_grausten_window_4x2"
+    },
+    "BFP_FineWoodArch": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_arch"
+    },
+    "BFP_FineWoodWolf": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_wolf"
+    },
+    "ClayBeam_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "ClayPole_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "Hayze_gate_01": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "Hayze_gate_03": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "Hayze_gate_04": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "Hayze_gate_06": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "ashwood_wall_roof_45": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_roof_45"
+    },
+    "clay_floor_2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_floor_2x2",
+      "position": {
+        "y": 0.23
+      }
+    },
+    "dvergrprops_wood_floor_custom": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "dvergrprops_wood_floor_custom_big": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "finewood_floor1x1_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor_1x1"
+    },
+    "finewood_floor2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "finewood_stair_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_stair",
+      "position": {
+        "y": 0.9
+      }
+    },
+    "finewood_wall_arch_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_arch"
+    },
+    "gabro_barkwood_beam_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_1"
+    },
+    "iron_beam_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_flametal_beam"
+    },
+    "iron_pole_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "Piece_flametal_pillar"
+    },
+    "piece_hardwood_floor2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "piece_woodgate_crystal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "rae_darkwood_iron_wolf": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_wolf"
+    },
+    "stonemoss_tile_floor_2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_tile_floor_2x2"
+    },
+    "wood_gate_cage_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "BCP_ClayWall_Beam26": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_wall_beam_26"
+    },
+    "BFP_ClayArch": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_out_1"
+    },
+    "BFP_ClayBlock2x2_Enforced": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x2",
+      "position": {
+        "y": 0.73
+      }
+    },
+    "BFP_FineWoodQuarterWall": {
+      "buildup": "Reduced",
+      "copyFrom": "crystal_wall_1x1"
+    },
+    "ClayCube_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_1x1"
+    },
+    "IG_Big_Hardwood_Floor": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "IG_Big_Chevron_Floor": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "IG_Chevron_Floor": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "IG_Hardwood_Floor": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "blackmarble_1x1_enforced_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_1x1"
+    },
+    "blackmarble_2x2_enforced_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x2",
+      "position": {
+        "y": 0.73
+      }
+    },
+    "blackmarble_arch": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_out_1"
+    },
+    "blackmarble_beam_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "blackmarble_pole_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole_log"
+    },
+    "coppermarble_1x1_enforced_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_1x1"
+    },
+    "crystal_tile_floor_2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "darkwood_beam_26_deco_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_beam_26"
+    },
+    "darkwood_beam_45_deco_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_beam_45"
+    },
+    "darkwood_beam_deco_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_beam"
+    },
+    "darkwood_pole_deco_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_pole"
+    },
+    "darkwoodwall_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "woodwall"
+    },
+    "decr_wall_half_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_half"
+    },
+    "dvergrprops_wood_stair_custom": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_stair"
+    },
+    "emberwood_pillar2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "emberwood_pillar4_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_pole4",
+      "position": {
+        "x": 0.0,
+        "y": 2.7015,
+        "z": 0.0
+      }
+    },
+    "finewood_beam2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_beam_2m"
+    },
+    "finewood_beam_26_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_26"
+    },
+    "finewood_beam_45_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam_45"
+    },
+    "finewood_beam_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_beam_1m"
+    },
+    "finewood_pole2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "finewood_pole_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "gabro_barkwood_beam2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_beam"
+    },
+    "gabro_barkwood_pole2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "gabro_barkwood_pole_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "gabro_counter1x1_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_1x1"
+    },
+    "gabro_counter_corner_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_1x1"
+    },
+    "gabro_floor1x1_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_1x1"
+    },
+    "gabro_floor2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_floor_2x2",
+      "position": {
+        "y": 0.23
+      }
+    },
+    "gabro_stair_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_stair"
+    },
+    "obsidian_tile_floor_2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": -0.15
+      }
+    },
+    "piece_dvergr_wood_custom": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_hexagonal_door"
+    },
+    "piece_woodgate_darkwood": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "piece_woodgate_iron": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_gate"
+    },
+    "rae_brickstone_wall_2x1": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x1x1",
+      "position": {
+        "x": 1.00061,
+        "y": -0.284,
+        "z": 0.01012
+      }
+    },
+    "rae_woodwall_3": {
+      "buildup": "Reduced",
+      "copyFrom": "woodwall"
+    },
+    "rae_woodwall_4": {
+      "buildup": "Reduced",
+      "copyFrom": "woodwall"
+    },
+    "stone_1x1_enforced_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_1x1"
+    },
+    "stone_Wall_2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x1"
+    },
+    "stone_pole2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole2"
+    },
+    "stone_pole_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "stone_railing_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_half",
+      "position": {
+        "x": -0.521,
+        "y": 0.7,
+        "z": 0.011
+      }
+    },
+    "stonemarble_2x2x2_enforced": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_2x2x2",
+      "position": {
+        "y": 0.73
+      }
+    },
+    "stonemarble_arch": {
+      "buildup": "Reduced",
+      "copyFrom": "blackmarble_out_1"
+    },
+    "tiledwood_floor_2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "ashwood_deco_floor"
+    },
+    "wood_beam4_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_beam4x4"
+    },
+    "wood_iron_log_beam4_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_log_4x0.5"
+    },
+    "wood_iron_log_pole4_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole_log_4"
+    },
+    "wood_pole4_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "darkwood_pole4",
+      "position": {
+        "x": 0.0,
+        "y": 2.7015,
+        "z": 0.0
+      }
+    },
+    "wood_pole_log1m_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_pole"
+    },
+    "wood_railing_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_half",
+      "position": {
+        "x": -0.521,
+        "y": 0.7,
+        "z": 0.011
+      }
+    },
+    "wood_wall_quarter": {
+      "buildup": "Reduced",
+      "copyFrom": "crystal_wall_1x1"
+    },
+    "wood_wall_quarter_upper": {
+      "buildup": "Reduced",
+      "copyFrom": "crystal_wall_1x1"
+    },
+    "wood_windowiron_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_window"
+    },
+    "woodwall_deco_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "woodwall"
+    },
+    "rae_brickstone_wall_4x2": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_4x2"
+    },
+    "rae_brickstone_wall_1x1": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_1x1",
+      "position": {
+        "x": 0.66,
+        "z": 0.08
+      }
+    },
+    "rae_brickstone_wall_singleslab": {
+      "buildup": "Reduced",
+      "copyFrom": "stone_wall_1x1",
+      "position": {
+        "x": -0.03,
+        "y": 0.08,
+        "z": 0.08
+      }
+    },
+    "wood_wall_half_upper": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_half",
+      "position": {
+        "y": 0.8
+      }
+    },
+    "finewood_wall_2x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "woodwall"
+    },
+    "finewood_wall_2x1_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "crystal_wall_1x1"
+    },
+    "finewood_wall_1x2_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_wall_half"
+    },
+    "finewood_wall_1x1_bal": {
+      "buildup": "Reduced",
+      "copyFrom": "crystal_wall_1x1",
+      "position": {
+        "y": 0.2
+      }
+    },
+    "roof_wood_45_right": {
+      "copyFrom": "piece_grausten_roof_45_corner2",
+      "position": {
+        "x": -0.2,
+        "y": 1.0,
+        "z": 0.0
+      }
+    },
+    "roof_darkwood_45_right": {
+      "copyFrom": "piece_grausten_roof_45_corner2",
+      "position": {
+        "x": -0.2,
+        "y": 1.0,
+        "z": 0.0
+      }
+    },
+    "roof_wood_45_left": {
+      "copyFrom": "piece_grausten_roof_45_corner",
+      "position": {
+        "x": -0.2,
+        "y": 1.0,
+        "z": 0.0
+      }
+    },
+    "roof_darkwood_45_left": {
+      "copyFrom": "piece_grausten_roof_45_corner",
+      "position": {
+        "x": 0.3,
+        "y": 1.0,
+        "z": 0.0
+      }
+    },
+    "roof_wood_2m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": 0.3
+      }
+    },
+    "roof_darkwood_2m": {
+      "buildup": "Reduced",
+      "copyFrom": "wood_floor",
+      "position": {
+        "y": 0.3
+      }
+    },
+    "rae_iron_storage_big": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_chest_blackmetal",
+      "position": {
+        "y": 0.79,
+        "z": -0.3
+      },
+      "scale": {
+        "x": 0.89
+      }
+    },
+    "rae_bronze_storage_big": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_chest_blackmetal",
+      "position": {
+        "y": 0.79,
+        "z": -0.3
+      },
+      "scale": {
+        "x": 0.89
+      }
+    },
+    "rae_iron_storage_small": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_chest_blackmetal",
+      "position": {
+        "y": 0.29,
+        "z": -0.3
+      },
+      "scale": {
+        "x": 0.89
+      }
+    },
+    "rae_bronze_storage_small": {
+      "buildup": "Reduced",
+      "copyFrom": "piece_chest_blackmetal",
+      "position": {
+        "y": 0.29,
+        "z": -0.3
+      },
+      "scale": {
+        "x": 0.89
+      }
+    }
+  },
+  "creatureMaterials": {
+    "Abomination_mat": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "goblin_armor": {
+      "min": 0.65,
+      "max": 0.79
+    },
+    "BruteArmor_mat": {
+      "min": 0.65,
+      "max": 0.79
+    },
+    "GoblinStuff_mat": {
+      "min": 0.65,
+      "max": 0.8
+    },
+    "BruteHipCloth_mat": {
+      "min": 0.65,
+      "max": 0.8
+    },
+    "dvergerArbalest_mat": {
+      "min": 0.77,
+      "max": 0.79
+    },
+    "RangerAshlands_mat": {
+      "min": 0.77,
+      "max": 0.79
+    },
+    "dvergermage_mat": {
+      "min": 0.77,
+      "max": 0.79
+    },
+    "DvergerMageICe_mat": {
+      "min": 0.77,
+      "max": 0.79
+    },
+    "DvergerMageSupport_mat": {
+      "min": 0.77,
+      "max": 0.79
+    },
+    "goblin": {
+      "min": 0.7,
+      "max": 0.73
+    },
+    "GoblinBrute_hildir_mat": {
+      "min": 0.7,
+      "max": 0.79
+    },
+    "GoblinBrute_mat": {
+      "min": 0.7,
+      "max": 0.75
+    },
+    "GoblinShaman_mat": {
+      "min": 0.45,
+      "max": 0.65,
+      "renderers": [
+        "Shaman"
+      ]
+    },
+    "GoblinShaman_Hildir_mat": {
+      "min": 0.66,
+      "max": 0.72,
+      "renderers": [
+        "Shaman"
+      ]
+    },
+    "DvergerBody": {
+      "min": 0.75,
+      "max": 0.765
+    },
+    "DvergerBodyashlands_mat": {
+      "min": 0.74,
+      "max": 0.765
+    },
+    "Skeleton": {
+      "min": 0.68,
+      "max": 0.78
+    },
+    "Skeleton_dark": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "Skeleton_Swamps": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "SkeletonBig": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "Skeleton_Mountains": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "Skeleton_Meadows": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "Draugr_mat": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "Draugr_Archer_mat": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "Draugr_elite_mat": {
+      "min": 0.7,
+      "max": 0.8
+    },
+    "troll": {
+      "min": 0.65,
+      "max": 0.72
+    },
+    "lox": {
+      "min": 0.7,
+      "max": 0.75,
+      "renderers": [
+        "Furr1"
+      ]
+    },
+    "Bjorn_mat": {
+      "min": 0.75,
+      "max": 0.77
+    },
+    "Boar Skin Valheim": {
+      "min": 0.75,
+      "max": 0.77
+    },
+    "Deer 2": {
+      "min": 0.755,
+      "max": 0.765
+    },
+    "greydwarf": {
+      "min": 0.7,
+      "max": 0.74
+    }
+  },
+  "playerCapeMaterials": {
+    "CapeLinen": {
+      "min": 0.76,
+      "max": 0.8
+    },
+    "Ashcape_Mat": {
+      "min": 0.76,
+      "max": 0.79
+    },
+    "asksvincape_mat": {
+      "min": 0.7,
+      "max": 0.79
+    },
+    "NordCape_mat": {
+      "min": 0.4,
+      "max": 0.74
+    },
+    "MageCape_mat": {
+      "min": 0.75,
+      "max": 0.78
+    },
+    "feathercape_mat": {
+      "min": 0.76,
+      "max": 0.79
+    },
+    "LoxCape_Mat": {
+      "min": 0.75,
+      "max": 0.79
+    },
+    "CapeTrollHide": {
+      "min": 0.75,
+      "max": 0.79
+    },
+    "CapeDeerHide": {
+      "min": 0.76,
+      "max": 0.81
+    },
+    "WolfCape": {
+      "min": 0.5,
+      "max": 0.75,
+      "renderers": [
+        "WolfCape_cloth"
+      ]
+    },
+    "WolfCapeChain": {
+      "min": 0.5,
+      "max": 0.7,
+      "renderers": [
+        "WolfCape"
+      ]
+    }
+  }
+}

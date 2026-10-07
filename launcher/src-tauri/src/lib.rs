@@ -774,6 +774,24 @@ async fn send_server_command(
     modpack::send_server_command(&state.http, &token, &slug, &command).await
 }
 
+#[tauri::command]
+async fn send_power_command(
+    state: State<'_, AppState>,
+    slug: String,
+    action: String,
+) -> Result<(), String> {
+    let token = current_token(&state)?;
+    modpack::send_power_command(&state.http, &token, &slug, &action).await
+}
+
+#[tauri::command]
+async fn fetch_power_status(
+    state: State<'_, AppState>,
+    slug: String,
+) -> Result<modpack::PowerStatus, String> {
+    modpack::fetch_power_status(&state.http, &slug).await
+}
+
 // Nettoyage des fichiers importés (zip/icône) qui ne seront finalement pas utilisés —
 // voir le bouton "Annuler" de l'éditeur de mods.
 #[tauri::command]
@@ -1004,6 +1022,8 @@ pub fn run() {
             fetch_report_token,
             regenerate_report_token,
             send_server_command,
+            send_power_command,
+            fetch_power_status,
             load_active_profile,
             save_active_profile,
             fetch_rules,

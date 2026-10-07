@@ -525,6 +525,24 @@ n'est pas en ligne pour interroger l'API.
   ExtractJsonString`/`ExtractJsonInt`), pas un vrai parseur — suffisant pour le format
   plat et entièrement maîtrisé renvoyé par l'API.
 
+### Démarrer / arrêter le serveur (agent d'alimentation)
+
+Section « Machine » de l'onglet Admin > Serveur : Démarrer/Redémarrer/Arrêter le process
+Valheim lui-même — hors de portée de FedoServerTools, éteint avec le jeu. Un petit agent
+shell (`game-server/power-agent/`, service systemd sur la machine du serveur) sonde
+`POST /modpacks/power-agent` toutes les 10s avec le même `ServerToken` que
+FedoServerTools (relu directement dans `fedo.servertools.cfg`, avec `ApiBaseUrl`), en
+rapportant `systemctl is-active`. L'API répond en texte brut (`start`/`stop`/`restart`/
+`none`, pas de parseur JSON côté shell), action consommée une seule fois — file
+`pendingPowerBySlug` distincte de `pendingCommandBySlug` (consommateurs différents).
+`POST /modpacks/:slug/power-command` (admin) pose l'action, `GET /modpacks/:slug/
+power-status` (public, pour ne pas refaire un appel Discord `requireAdmin` à chaque
+sondage de 10s) expose `agentConnected` (sondage < 30s)/`serviceState`/`pendingAction`.
+Droits root limités par sudoers aux trois commandes exactes `systemctl --no-block
+start|stop|restart valheim.service` ; arrêt par SIGINT (drop-in
+`valheim-graceful-stop.conf`, équivalent du Ctrl-C du serveur dédié qui sauvegarde le
+monde) plutôt que le SIGTERM par défaut de systemd.
+
 ## Connexion automatique (FedoClientTools + FedoServerTools)
 
 `FedoClientTools` (`AutoConnect.cs`/`FejdStartupPatches.cs`/`SessionFile.cs` — le seul

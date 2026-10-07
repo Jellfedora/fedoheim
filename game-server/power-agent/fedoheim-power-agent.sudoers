@@ -1,0 +1,3 @@
+# Autorise uniquement l'agent d'alimentation (utilisateur valheim) à piloter le service
+# du jeu, sans mot de passe -- ces trois commandes exactes, rien d'autre.
+valheim ALL=(root) NOPASSWD: /usr/bin/systemctl --no-block start valheim.service, /usr/bin/systemctl --no-block stop valheim.service, /usr/bin/systemctl --no-block restart valheim.service

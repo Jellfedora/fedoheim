@@ -596,6 +596,67 @@ pub async fn send_server_command(
     Ok(())
 }
 
+// Démarrer/arrêter/redémarrer le process Valheim lui-même -- consommée par l'agent
+// d'alimentation sur la machine du serveur (voir game-server/power-agent/), pas par
+// FedoServerTools (éteint avec le jeu, il ne pourrait jamais traiter un "start").
+pub async fn send_power_command(
+    http: &reqwest::Client,
+    token: &str,
+    slug: &str,
+    action: &str,
+) -> Result<(), String> {
+    let res = http
+        .post(format!(
+            "{}/modpacks/{slug}/power-command",
+            config::api_base_url()
+        ))
+        .bearer_auth(token)
+        .json(&serde_json::json!({ "action": action }))
+        .send()
+        .await
+        .map_err(|e| config::describe_request_error(&e))?;
+
+    if !res.status().is_success() {
+        return Err(format!(
+            "Failed to send power command ({}): {}",
+            res.status(),
+            res.text().await.unwrap_or_default()
+        ));
+    }
+
+    Ok(())
+}
+
+// `service_state` est la sortie brute de `systemctl is-active` côté agent ("active",
+// "inactive", "failed"...) -- `None` si l'agent n'a pas sondé l'API depuis 30s.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PowerStatus {
+    #[serde(rename = "agentConnected")]
+    pub agent_connected: bool,
+    #[serde(rename = "serviceState")]
+    pub service_state: Option<String>,
+    #[serde(rename = "pendingAction")]
+    pub pending_action: Option<String>,
+}
+
+// Lecture publique (voir onlinePlayers.ts::GET /modpacks/:slug/power-status).
+pub async fn fetch_power_status(http: &reqwest::Client, slug: &str) -> Result<PowerStatus, String> {
+    let res = http
+        .get(format!(
+            "{}/modpacks/{slug}/power-status",
+            config::api_base_url()
+        ))
+        .send()
+        .await
+        .map_err(|e| config::describe_request_error(&e))?;
+
+    if !res.status().is_success() {
+        return Err(format!("Failed to fetch power status ({})", res.status()));
+    }
+
+    res.json().await.map_err(|e| e.to_string())
+}
+
 pub async fn set_modpack_color(
     http: &reqwest::Client,
     token: &str,

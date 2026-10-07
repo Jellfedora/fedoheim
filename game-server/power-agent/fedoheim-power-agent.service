@@ -1,0 +1,14 @@
+[Unit]
+Description=Fedoheim power agent (start/stop Valheim depuis le launcher)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=valheim
+ExecStart=/usr/local/bin/fedoheim-power-agent.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

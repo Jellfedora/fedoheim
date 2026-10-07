@@ -8,6 +8,14 @@ Documentation des configurations du serveur de jeu Valheim. À alimenter au fur 
 - `backup/world/` — backup du monde Valheim (`worlds_local/Fedoheimv12`)
 - `backup/bepinex/config/` — backup des configs BepInEx (Marketplace, mods...)
 - `backup/bepinex/plugins/` — backup des plugins installés
+- `power-agent/` — agent systemd qui démarre/arrête/redémarre le serveur depuis le
+  launcher (voir son README pour l'installation)
+
+## Serveur dédié de prod (Ubuntu)
+
+- Hôte `valheim` dans `~/.ssh/config` (`86.206.254.199`, utilisateur `valheim`).
+- Jeu dans `/home/valheim/valheim-server/`, lancé par `valheim.service` (systemd,
+  `start_server_bepinex.sh`, `Restart=on-failure`).
 
 Les backups sont à maintenir à jour manuellement avant chaque grosse modification du serveur.
 

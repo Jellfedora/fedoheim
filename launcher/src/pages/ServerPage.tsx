@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import "./ServerPage.css";
 
 interface ServerPageProps {
@@ -43,11 +44,39 @@ const SEASON_OPTIONS: Array<{ season: string; label: string }> = [
   { season: "auto", label: "Automatique" },
 ];
 
+// Voir GET /modpacks/:slug/power-status -- état du service systemd rapporté par l'agent
+// d'alimentation (game-server/power-agent/), indépendant de FedoServerTools : reste
+// disponible quand le jeu est éteint, c'est tout son intérêt.
+type PowerAction = "start" | "stop" | "restart";
+
+interface PowerStatus {
+  agentConnected: boolean;
+  serviceState: string | null;
+  pendingAction: PowerAction | null;
+}
+
+const SERVICE_STATE_LABELS: Record<string, string> = {
+  active: "Process lancé",
+  activating: "Process en cours de lancement",
+  deactivating: "Process en cours d'arrêt",
+  inactive: "Process arrêté",
+  failed: "Process planté",
+};
+
+const PENDING_ACTION_LABELS: Record<PowerAction, string> = {
+  start: "Démarrage demandé",
+  stop: "Arrêt demandé",
+  restart: "Redémarrage demandé",
+};
+
+const POWER_CONFIRMATIONS: Partial<Record<PowerAction, string>> = {
+  stop: "Arrêter le serveur Valheim ? Les joueurs connectés seront déconnectés (le monde est sauvegardé avant l'arrêt).",
+  restart:
+    "Redémarrer le serveur Valheim ? Les joueurs connectés seront déconnectés (le monde est sauvegardé avant l'arrêt).",
+};
+
 type CommandState =
-  | { kind: "idle" }
-  | { kind: "sending" }
-  | { kind: "sent" }
-  | { kind: "error"; message: string };
+  { kind: "idle" } | { kind: "sending" } | { kind: "sent" } | { kind: "error"; message: string };
 
 // Contrôle en direct du serveur Valheim de ce profil via FedoServerTools (voir
 // CLAUDE.md, section "Joueurs en ligne (FedoServerTools)") -- une commande posée ici
@@ -63,6 +92,7 @@ export function ServerPage({ activeSlug }: ServerPageProps) {
   const [status, setStatus] = useState<OnlineStatus | null>(null);
   const [commandState, setCommandState] = useState<CommandState>({ kind: "idle" });
   const [message, setMessage] = useState("");
+  const [power, setPower] = useState<PowerStatus | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,9 +103,15 @@ export function ServerPage({ activeSlug }: ServerPageProps) {
           if (!cancelled) setStatus(res);
         })
         .catch(() => {});
+      invoke<PowerStatus>("fetch_power_status", { slug: activeSlug })
+        .then((res) => {
+          if (!cancelled) setPower(res);
+        })
+        .catch(() => {});
     }
 
     setStatus(null);
+    setPower(null);
     poll();
     const id = setInterval(poll, POLL_MS);
     return () => {
@@ -94,6 +130,19 @@ export function ServerPage({ activeSlug }: ServerPageProps) {
     }
   }
 
+  async function sendPowerAction(action: PowerAction) {
+    const question = POWER_CONFIRMATIONS[action];
+    if (question && !(await confirm(question))) return;
+    setCommandState({ kind: "sending" });
+    try {
+      await invoke("send_power_command", { slug: activeSlug, action });
+      setCommandState({ kind: "sent" });
+      setPower((prev) => (prev ? { ...prev, pendingAction: action } : prev));
+    } catch (err) {
+      setCommandState({ kind: "error", message: String(err) });
+    }
+  }
+
   async function sendMessage() {
     const trimmed = message.trim();
     if (!trimmed) return;
@@ -102,6 +151,8 @@ export function ServerPage({ activeSlug }: ServerPageProps) {
   }
 
   const busy = commandState.kind === "sending";
+  const serviceRunning = power?.serviceState === "active" || power?.serviceState === "activating";
+  const powerDisabled = busy || !power?.agentConnected || power.pendingAction !== null;
 
   return (
     <div className="server-page">
@@ -127,10 +178,48 @@ export function ServerPage({ activeSlug }: ServerPageProps) {
         )}
       </div>
 
+      <section className="server-page__section">
+        <h2>Machine</h2>
+        <p className="server-page__hint server-page__hint--tight">
+          {!power
+            ? "…"
+            : !power.agentConnected
+              ? "Agent d'alimentation injoignable — impossible de démarrer/arrêter le serveur depuis le launcher."
+              : power.pendingAction
+                ? `${PENDING_ACTION_LABELS[power.pendingAction]} — prise en compte dans ~10s.`
+                : (SERVICE_STATE_LABELS[power.serviceState ?? ""] ?? power.serviceState)}
+        </p>
+        <div className="server-page__actions">
+          <button
+            type="button"
+            className="btn btn--accent"
+            disabled={powerDisabled || serviceRunning}
+            onClick={() => sendPowerAction("start")}
+          >
+            Démarrer
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={powerDisabled || !serviceRunning}
+            onClick={() => sendPowerAction("restart")}
+          >
+            Redémarrer
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={powerDisabled || !serviceRunning}
+            onClick={() => sendPowerAction("stop")}
+          >
+            Arrêter
+          </button>
+        </div>
+      </section>
+
       <p className="server-page__hint">
-        Chaque action ci-dessous est appliquée au prochain rapport du serveur
-        (~30s), pas immédiatement — le serveur doit être en ligne pour qu'elle
-        prenne effet.
+        Chaque action de jeu ci-dessous est appliquée au prochain rapport du serveur (~30s), pas
+        immédiatement — le serveur doit être en ligne pour qu'elle prenne effet.
       </p>
 
       <section className="server-page__section">
@@ -170,8 +259,8 @@ export function ServerPage({ activeSlug }: ServerPageProps) {
       <section className="server-page__section">
         <h2>Message</h2>
         <p className="server-page__hint server-page__hint--tight">
-          Affiché en jaune au centre de l'écran de chaque joueur connecté, posté dans son
-          tchat en jeu, et dans le salon Discord des logs.
+          Affiché en jaune au centre de l'écran de chaque joueur connecté, posté dans son tchat en
+          jeu, et dans le salon Discord des logs.
         </p>
         <form
           className="server-page__message-form"

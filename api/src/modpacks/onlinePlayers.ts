@@ -96,7 +96,10 @@ const characterCheckSchema = z.object({
 // remplace la précédente plutôt que d'empiler une file.
 type PendingServerCommand =
   | { command: "set-time"; hour: 6 | 12 | 18 | 24 }
-  | { command: "set-season"; season: "Spring" | "Summer" | "Fall" | "Winter" | "auto" }
+  | {
+      command: "set-season";
+      season: "Spring" | "Summer" | "Fall" | "Winter" | "auto";
+    }
   // Message ponctuel affiché au centre de l'écran de chaque joueur connecté (en jaune,
   // voir mods/FedoServerTools/BroadcastMessage.cs) et posté dans le salon Discord des
   // logs (même webhook/mécanique que les autres événements de session, voir
@@ -122,6 +125,38 @@ const serverCommandBodySchema = z.discriminatedUnion("command", [
     message: z.string().trim().min(1).max(200),
   }),
 ]);
+
+// Démarrer/arrêter/redémarrer le process Valheim lui-même -- hors de portée de
+// FedoServerTools (éteint avec le jeu, il ne peut pas se relancer). Consommée par un
+// petit agent séparé qui tourne en service systemd sur la machine du serveur (voir
+// game-server/power-agent/) et sonde l'API toutes les ~10s, même principe "sonde,
+// jamais poussé" que PendingServerCommand ci-dessus. File distincte de
+// pendingCommandBySlug : ce n'est pas le même consommateur, une commande de jeu en
+// attente ne doit jamais être avalée par l'agent (ni l'inverse).
+type PowerAction = "start" | "stop" | "restart";
+
+const pendingPowerBySlug = new Map<string, PowerAction>();
+
+// Dernier état du service systemd rapporté par l'agent à chaque sondage
+// (`systemctl is-active`, tel quel : "active", "inactive", "activating", "failed"...).
+// En mémoire seulement, comme reportsBySlug : reconstruit au sondage suivant.
+interface PowerAgentReport {
+  serviceState: string;
+  reportedAt: number;
+}
+
+const powerAgentBySlug = new Map<string, PowerAgentReport>();
+
+// 3x l'intervalle de sondage de l'agent (10s), même marge que STALE_AFTER_MS.
+const POWER_AGENT_STALE_AFTER_MS = 30_000;
+
+const powerCommandBodySchema = z.object({
+  action: z.enum(["start", "stop", "restart"]),
+});
+
+const powerAgentBodySchema = z.object({
+  serviceState: z.string().trim().min(1).max(32),
+});
 
 function timingSafeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -289,6 +324,85 @@ export default async function onlinePlayersRoutes(app: FastifyInstance) {
       return reply.send({ ok: true });
     },
   );
+
+  // Sondé par l'agent d'alimentation (game-server/power-agent/) -- même jeton que
+  // FedoServerTools (modpacks.reportToken) : l'agent tourne sur la même machine et lit
+  // directement le ServerToken du .cfg du mod, une seule valeur à régénérer. Comme pour
+  // les commandes de jeu, l'action en attente est consommée ici, jamais rejouée.
+  app.post("/modpacks/power-agent", async (req, reply) => {
+    const token = req.headers["x-server-token"];
+    if (typeof token !== "string") {
+      return reply.code(401).send({ error: "Invalid or missing server token" });
+    }
+
+    const modpack = findModpackByToken(token);
+    if (!modpack) {
+      return reply.code(401).send({ error: "Invalid or missing server token" });
+    }
+
+    const parsed = powerAgentBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.flatten() });
+    }
+
+    powerAgentBySlug.set(modpack.slug, {
+      serviceState: parsed.data.serviceState,
+      reportedAt: Date.now(),
+    });
+
+    const action = pendingPowerBySlug.get(modpack.slug) ?? null;
+    if (action) {
+      pendingPowerBySlug.delete(modpack.slug);
+      req.log.info({ slug: modpack.slug, action }, "power action delivered to power agent");
+    }
+
+    // Texte brut, pas de JSON : l'agent est un script shell (curl), pas de parseur JSON
+    // à installer sur le serveur -- même logique que character-check côté mod.
+    return reply.type("text/plain").send(action ?? "none");
+  });
+
+  app.post(
+    "/modpacks/:slug/power-command",
+    { preHandler: [app.requireAuth, app.requireAdmin] },
+    async (req, reply) => {
+      const { slug } = req.params as { slug: string };
+      const modpack = db.select().from(modpacks).where(eq(modpacks.slug, slug)).get();
+      if (!modpack) {
+        return reply.code(404).send({ error: "Modpack not found" });
+      }
+
+      const parsed = powerCommandBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: parsed.error.flatten() });
+      }
+
+      pendingPowerBySlug.set(slug, parsed.data.action);
+      req.log.info({ slug, action: parsed.data.action }, "power action queued from launcher");
+      return reply.send({ ok: true });
+    },
+  );
+
+  // Public, comme online-players : rien de sensible (état du service systemd, agent
+  // présent ou non), et sondé toutes les 10s par la page Admin > Serveur -- requireAdmin
+  // y referait un appel Discord à chaque fois pour rien. Seule l'écriture
+  // (power-command ci-dessus) est réservée aux admins.
+  app.get("/modpacks/:slug/power-status", async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+    const modpack = db.select().from(modpacks).where(eq(modpacks.slug, slug)).get();
+    if (!modpack) {
+      return reply.code(404).send({ error: "Modpack not found" });
+    }
+
+    const agent = powerAgentBySlug.get(slug);
+    const agentConnected =
+      agent !== undefined && Date.now() - agent.reportedAt < POWER_AGENT_STALE_AFTER_MS;
+
+    return reply.send({
+      agentConnected,
+      serviceState: agentConnected ? agent.serviceState : null,
+      pendingAction: pendingPowerBySlug.get(slug) ?? null,
+    });
+  });
 
   // Appelé par FedoServerTools à chaque connexion d'un joueur distant (jamais pour
   // l'hôte lui-même, voir mods/FedoServerTools/PeerSteamId.cs), avant de le laisser

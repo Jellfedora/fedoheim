@@ -37,6 +37,11 @@ await app.register(cors, {
 await app.register(rateLimit, {
   max: 100,
   timeWindow: "1 minute",
+  // Les fichiers statiques (/uploads/ : zips de mods, configs, icônes) sont exclus : une
+  // seule sync du modpack télécharge déjà plus de 100 fichiers d'un coup (un par mod et
+  // par config), et la page Mods charge une icône par mod — sans ça, "Jouer" échouait
+  // en 429 en plein téléchargement. Noms de fichiers en UUID, rien à brute-forcer ici.
+  allowList: (req) => req.url.startsWith("/uploads/"),
 });
 
 await app.register(multipart, {

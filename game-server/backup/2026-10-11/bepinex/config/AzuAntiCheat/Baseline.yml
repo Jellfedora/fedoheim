@@ -1,0 +1,34 @@
+﻿# AzuAntiCheat client baseline.
+#
+# What a clean client looks like, so the server can recognize a modified one. A dedicated
+# server ships different game assemblies than a client, so this cannot be taken from the
+# server's own files. It is captured from the first admin to connect after a game update.
+#
+# Each platform gets its own entry (Steam/WindowsPlayer, Steam/LinuxPlayer, Steam/OSXPlayer). Native
+# Linux, Steam Deck and Mac clients each run a separately compiled build, so their files never match
+# Windows ones. Proton players count as Windows.
+#
+# Steam players' game files are checked against official hashes built into the mod whenever
+# your game version is covered, and this file is not used for that. It is the fallback after
+# a Valheim update until the mod catches up, and it always supplies the patcher list.
+#
+# You can edit this by hand, copy it between servers running the same game version, or
+# delete an entry to have the next admin on that platform capture a fresh one.
+#
+# gameVersion is checked against the running game. After a Valheim update an entry stops
+# applying and is replaced automatically, so there is nothing to redo by hand.
+
+platforms:
+  Steam/WindowsPlayer:
+    gameVersion: l-1.0.17
+    capturedFrom: 76561198059724627 (fedoadmin)
+    capturedUtc: 2026-10-07 13:44:32Z
+    gameAssemblies:
+      assembly_guiutils.dll: 52846FCAE0C535D733711C13FDB8F214D303603B5DBF23D05B1ED6A8E475C9DD
+      assembly_lux.dll: 070D537AD1ADDB6F088F273D9E64578CB0A58325B8BF7CBC98D9BAA967CC619D
+      assembly_postprocessing.dll: 67F6A99278A629261D07145826831364905CC4A8DAED610617C4B9BCE0A4FB48
+      assembly_simplemeshcombine.dll: 1DC8A7A074DC58DEB306EF7C65335FD6CB0C3233418E543B575EE620860ABE40
+      assembly_sunshafts.dll: 22ED6D407FC8BACD043115A85F5D71485CA18A63FE5CD32B3CB1ED8C973E625E
+      assembly_utils.dll: 6BE2AFEB97B5B26FD3176E1B8584C07E57AD48DDCD6E8E5E79E32BEE943827C1
+      assembly_valheim.dll: 25A0A107DCE4D834C44C2B72D0EAFD5CB7793933BDA81816ACCFA1EA9543DACE
+    patchers: {}

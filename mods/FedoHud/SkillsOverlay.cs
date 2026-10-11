@@ -328,7 +328,8 @@ namespace FedoHud
 
         public static void SetVisible(bool visible)
         {
-            _root?.SetActive(visible);
+            if (_root != null)
+                _root.SetActive(visible);
         }
 
         // Appelé par le bouton "Reset positions" du panneau -- voir

@@ -31,7 +31,7 @@ namespace FedoHud
     {
         public const string PluginGuid = "fedo.hud";
         public const string PluginName = "FedoHud";
-        public const string PluginVersion = "1.1.0";
+        public const string PluginVersion = "1.1.2";
 
         public static FedoHudPlugin Instance { get; private set; }
 

@@ -19,7 +19,31 @@
 - Ces mods ciblent des serveurs multijoueur : tout son ajouté par du code (`AudioSource` créée dynamiquement, pas juste un `EffectList` du jeu) doit rester positionnel en 3D (`spatialBlend = 1`) avec un `maxDistance`/rolloff maîtrisé -- jamais un son "plat" (`spatialBlend = 0`), qui serait entendu à plein volume par tout joueur ayant la zone chargée, peu importe sa distance réelle.
 - **Tout réglage qui affecte le monde/gameplay partagé (portée, taux de spawn, loot, textes vus par tout le monde...) doit passer par ServerSync**, pas un `Config.Bind` brut : voir `mods/_shared/ConfigSync.cs` (fichier partagé, `<Compile Include="../_shared/ConfigSync.cs" />` dans le `.csproj`) et `FedoDeath`/`FedoGoldRabbit`/`FedoGuardian`/`FedoKnorri`/`FedoSkillSafety` pour le patron déjà en place (`ConfigSync` + méthode `SyncedConfig<T>` qui wrap `Config.Bind` + `AddConfigEntry`, `IsLocked = true` avant `_harmony.PatchAll()`). Sinon un joueur qui édite son `.cfg` local joue avec des valeurs différentes du reste du serveur, ou peut désactiver un comportement voulu par l'admin. **Exception : jamais un secret** (webhook Discord, jeton) — `AddConfigEntry` diffuse la valeur à tous les clients connectés dès qu'elle change, l'inverse de ce qu'on veut pour un secret ; `FedoDeathGif` (webhook Discord) et `FedoServerTools.ServerToken` (jeton API Fedoheim) restent volontairement hors ServerSync pour cette raison -- `FedoServerTools`/`FedoClientTools` n'utilisent d'ailleurs plus du tout ServerSync depuis le retrait de `ForcePublicPosition` (géré par un mod tiers maintenant). Références `.csproj` nécessaires en plus des habituelles : `assembly_utils`, `UnityEngine.UI`, `Unity.TextMeshPro` — jamais le package NuGet `JetBrains.Annotations` (conflit de type avec `UnityEngine.CoreModule`, qui fournit déjà les mêmes attributs).
 
+## Build sous Windows
+
+Les `.csproj` pointent vers les chemins macOS. Sur le PC Windows, surcharger les propriétés en
+ligne de commande (sans modifier le `.csproj`), sortie dans un dossier temporaire :
+
+```powershell
+dotnet build -c Release "-p:ValheimManagedDir=C:\Program Files (x86)\Steam\steamapps\common\Valheim\valheim_Data\Managed" "-p:ValheimBepInExCore=C:\Users\julie\AppData\Roaming\com.kesomannen.gale\valheim\profiles\fedoheim admin\BepInEx\core" "-p:ValheimPluginsDir=<dossier de sortie>"
+```
+
+Puis zip `dist/<Mod>-<version>.zip` (dll + icon.png + CHANGELOG.md + README.md + manifest.json à
+plat). Copier la DLL dans le profil Gale échoue tant que Valheim est ouvert (fichier verrouillé).
+**Toujours incrémenter la version** (manifest + `PluginVersion` + CHANGELOG) dès qu'un build a
+été installé quelque part, même chez soi : deux builds différents sous le même numéro sont
+indiscernables.
+
 ## Notes techniques de modding (assembly_valheim / ZNetScene)
+
+- **Jamais `?.` (ni `??`) sur un objet Unity** (`GameObject`, `Component`...) : un objet
+  détruit n'est pas `null` pour C#, seulement « faux null » via l'opérateur `==` surchargé de
+  Unity, que `?.` contourne. Vécu (FedoHud 1.1.1) : `_root?.SetActive(...)` après retour au menu
+  principal → `NullReferenceException` à chaque frame. Toujours `if (x != null) x.SetActive(...)`.
+- **Dessiner un cercle/anneau UI de taille variable** : pas un sprite en `Image.Type.Sliced` (le
+  9-slice ne fige que la bordure, l'arc passe par le centre étiré → bande floue énorme, vécu sur
+  FedoHud `MapDistanceRings`). Utiliser un `MaskableGraphic` qui génère son maillage dans
+  `OnPopulateMesh` (trait d'épaisseur constante, toujours clippé par un `RectMask2D`).
 
 - `ZNetView.GetPrefabName()` est **privée** (inaccessible depuis un mod). Pour identifier le prefab d'une ZDO, comparer `zdo.GetPrefab()` (hash int, public) à `StringExtensionMethods.GetStableHashCode("NomDuPrefab")` (méthode publique de `assembly_utils.dll`, à référencer dans le `.csproj`).
 - Ajouter un prefab custom (clone d'un prefab vanilla, ex. pour un mob) : `ZNetScene.m_prefabs` (`List<GameObject>`, public) peut être complété directement -- ça suffit pour qu'un mod qui énumère cette liste (ex. Easy Spawner) le liste. En revanche `ZNetScene.m_namedPrefabs` (le dictionnaire privé utilisé en interne par `GetPrefab`/`HasPrefab`) ne doit pas être modifié par réflexion : le clone se fait détruire par le jeu peu après sa création (probablement une transition de scène tôt dans le boot), rendant une écriture ponctuelle inutile. Patcher plutôt `ZNetScene.GetPrefab` (les deux surcharges, int et string) et `ZNetScene.HasPrefab` avec un Postfix **auto-réparant** : si le résultat original est vide, recréer le clone à la volée à partir du prefab source si besoin, puis mémoriser la référence. `HasPrefab` doit être patchée en plus de `GetPrefab` : `ZNetScene.CreateObject` (matérialisation d'une ZDO, ex. via `SpawnSystem.Spawn`) vérifie `HasPrefab` avant d'appeler `GetPrefab`.

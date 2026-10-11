@@ -26,3 +26,6 @@ target/
 # Secrets
 .env
 .env.local
+
+# Clés de licence de mods payants (Hexium KeyManager) : jamais commitées
+game-server/backup/**/KeyManager/

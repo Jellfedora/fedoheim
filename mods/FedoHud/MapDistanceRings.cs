@@ -40,7 +40,6 @@ namespace FedoHud
 
         private static RingSet _small;
         private static RingSet _large;
-        private static Sprite _ringSprite;
 
         [HarmonyPatch(typeof(Minimap), "Awake")]
         private static class MinimapAwakePatch
@@ -111,22 +110,16 @@ namespace FedoHud
 
         private static (RectTransform, TMP_Text) BuildRing(Transform parent, TMP_FontAsset font)
         {
-            var ringGo = new GameObject("Ring", typeof(RectTransform), typeof(Image));
+            var ringGo = new GameObject("Ring", typeof(RectTransform));
             ringGo.transform.SetParent(parent, worldPositionStays: false);
             var ringRect = ringGo.GetComponent<RectTransform>();
             ringRect.anchorMin = Vector2.zero;
             ringRect.anchorMax = Vector2.zero;
             ringRect.pivot = new Vector2(0.5f, 0.5f);
 
-            var image = ringGo.GetComponent<Image>();
-            image.sprite = GetRingSprite();
-            // `Sliced` (pas `Simple`) : garde l'épaisseur du trait ~constante en pixels
-            // quelle que soit la taille de l'anneau (voir IconSprites.CreateRing) --
-            // `Simple` étirerait le sprite entier uniformément, épaississant le trait au
-            // fur et à mesure que l'anneau grandit.
-            image.type = Image.Type.Sliced;
-            image.color = Color.white;
-            image.raycastTarget = false;
+            var ring = ringGo.AddComponent<RingGraphic>();
+            ring.color = new Color(1f, 1f, 1f, 0.6f);
+            ring.raycastTarget = false;
 
             var labelGo = new GameObject("Label", typeof(RectTransform));
             labelGo.transform.SetParent(parent, worldPositionStays: false);
@@ -153,18 +146,51 @@ namespace FedoHud
             return (ringRect, label);
         }
 
-        // Trait fin à épaisseur fixe (2px, voir IconSprites.CreateRing) -- généré une
-        // seule fois et redimensionné via `sizeDelta` à chaque frame pour chaque anneau
-        // (petit et grand mode confondus, affiché en `Image.Type.Sliced`), jamais
-        // régénéré.
-        private static Sprite GetRingSprite()
+        // Anneau dessiné en maillage (pas un sprite étiré) : un trait d'épaisseur FIXE en
+        // unités de canvas, quel que soit le diamètre -- de quelques pixels sur la
+        // mini-carte à des dizaines de milliers en grande carte zoomée. Vécu en jeu : un
+        // sprite 32px en `Image.Type.Sliced` ne fige que sa bordure 9-slice, alors que
+        // l'arc du cercle passe presque entièrement par la zone centrale étirée -- il
+        // devenait une bande floue énorme et octogonale sur la grande carte.
+        // `MaskableGraphic` : reste découpé par le `RectMask2D` du conteneur comme une
+        // `Image` classique.
+        private class RingGraphic : MaskableGraphic
         {
-            if (_ringSprite == null)
-            {
-                _ringSprite = IconSprites.CreateRing(32, 2f, new Color(1f, 1f, 1f, 0.6f));
-            }
+            private const float ThicknessPx = 2f;
 
-            return _ringSprite;
+            protected override void OnPopulateMesh(VertexHelper vh)
+            {
+                vh.Clear();
+
+                Rect r = GetPixelAdjustedRect();
+                float outer = Mathf.Min(r.width, r.height) / 2f;
+                if (outer <= 0f)
+                {
+                    return;
+                }
+
+                float inner = Mathf.Max(0f, outer - ThicknessPx);
+                Vector2 center = r.center;
+                // Assez de segments pour que la corde ne s'écarte jamais de plus d'environ
+                // un pixel du vrai cercle, même pour un anneau immense (zoom max).
+                int segments = Mathf.Clamp(Mathf.CeilToInt(Mathf.PI * Mathf.Sqrt(outer * 2f)), 48, 1024);
+
+                Color32 c = color;
+                for (int i = 0; i <= segments; i++)
+                {
+                    float angle = i * 2f * Mathf.PI / segments;
+                    var dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                    vh.AddVert(center + dir * outer, c, Vector2.zero);
+                    vh.AddVert(center + dir * inner, c, Vector2.zero);
+
+                    if (i > 0)
+                    {
+                        int k = i * 2;
+                        vh.AddTriangle(k - 2, k, k - 1);
+                        vh.AddTriangle(k - 1, k, k + 1);
+                    }
+                }
+            }
         }
 
         public static void SetVisible(bool visible)

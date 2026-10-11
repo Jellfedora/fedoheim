@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.2
+
+- Map distance rings are now thin, smooth circles at any zoom level, instead of thick
+  blurry bands on the large map.
+
+## 1.1.1
+
+- Fixed an error being logged every frame after leaving a world (back to the main menu),
+  which could flood the BepInEx console.
+
 ## 1.1.0
 
 - Bird nests now get their own wording ("feather" instead of "honey") on the beehive

@@ -1,0 +1,205 @@
+#Hello, this is the portal yml file. It keeps track of all portals in the world
+Portals:
+  '':
+    Color: Tan
+    SpecialMode: Normal
+    Free_Passage: false
+    TeleportAnything: false
+    Admin_only_Access: false
+    MaxWeight: 0
+    AdditionalProhibitItems: []
+    AdditionalAllowItems: []
+    AllowedUsers: []
+    GuildOnly: ''
+    PortalZDOs:
+      448_72484:
+        OverridePortal: false
+        Color: Tan
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+      155_89244:
+        OverridePortal: false
+        Color: Yellow
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+      192_33751:
+        OverridePortal: false
+        Color: Yellow
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+      183_48265:
+        OverridePortal: false
+        Color: Yellow
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+    EndPart: true
+
+  village:
+    Color: Yellow
+    SpecialMode: Normal
+    Free_Passage: false
+    TeleportAnything: false
+    Admin_only_Access: false
+    MaxWeight: 0
+    AdditionalProhibitItems: []
+    AdditionalAllowItems: []
+    AllowedUsers: []
+    GuildOnly: ''
+    PortalZDOs:
+      448_72484:
+        OverridePortal: false
+        Color: ''
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+      155_89244:
+        OverridePortal: false
+        Color: ''
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+      192_33751:
+        OverridePortal: false
+        Color: ''
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+      183_48265:
+        OverridePortal: false
+        Color: ''
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+    EndPart: true
+
+  test:
+    Color: Yellow
+    SpecialMode: Normal
+    Free_Passage: false
+    TeleportAnything: false
+    Admin_only_Access: false
+    MaxWeight: 0
+    AdditionalProhibitItems: []
+    AdditionalAllowItems: []
+    AllowedUsers: []
+    GuildOnly: ''
+    PortalZDOs:
+      155_89244:
+        OverridePortal: false
+        Color: ''
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+      183_48265:
+        OverridePortal: false
+        Color: ''
+        CrystalActive: false
+        FastTeleport: false
+        RandomTeleport: false
+        SpecialMode: Normal
+        BiomeColor: Tan
+        Biome: Meadows
+        Active: true
+        Password: ''
+        UseItemInstead: false
+        RequiredItem: ''
+        Coords: ''
+        ShowName: false
+        Creator: fedoadmin
+    EndPart: true
+
+

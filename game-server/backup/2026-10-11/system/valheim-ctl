@@ -1,0 +1,39 @@
+#!/bin/bash
+# valheim-ctl — gestion du serveur Valheim Fedoheim.
+#   valheim-ctl backup   arrêt propre (SIGINT = sauvegarde du monde), archive monde + configs, redémarrage
+#   valheim-ctl status   état du service + dernières sauvegardes
+# Appelé à 6h00 et 17h00 (heure de Paris) par valheim-reboot.timer ; les annonces en jeu
+# sont faites par Cron Job (BepInEx/config/cron.yaml).
+set -euo pipefail
+
+VH_HOME=/home/valheim
+SERVER_DIR=$VH_HOME/valheim-server
+WORLDS_DIR=$VH_HOME/.config/unity3d/IronGate/Valheim/worlds_local
+DEST=$VH_HOME/backups/world
+KEEP=28   # 2 par jour -> 14 jours
+
+backup() {
+    # Le serveur doit toujours repartir, même si l'archivage échoue.
+    trap 'systemctl start valheim' EXIT
+    systemctl stop valheim
+    mkdir -p "$DEST"
+    local ts archive
+    ts=$(date +%Y%m%d-%H%M)
+    archive="$DEST/fedoheim-$ts.tgz"
+    tar czf "$archive" \
+        --exclude='*_backup_auto-*' --exclude='*.dll' --exclude='RMP_Images' \
+        -C "$WORLDS_DIR" . \
+        -C "$SERVER_DIR/BepInEx" config
+    chown -R valheim:valheim "$DEST"
+    ls -1t "$DEST"/fedoheim-*.tgz | tail -n +$((KEEP + 1)) | xargs -r rm --
+    echo "Sauvegarde : $archive ($(du -h "$archive" | cut -f1))"
+}
+
+case "${1:-}" in
+    backup) backup ;;
+    status)
+        systemctl --no-pager status valheim | head -5
+        ls -1th "$DEST"/fedoheim-*.tgz 2>/dev/null | head -5
+        ;;
+    *) echo "usage: valheim-ctl {backup|status}" >&2; exit 1 ;;
+esac

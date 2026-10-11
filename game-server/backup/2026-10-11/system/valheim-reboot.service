@@ -1,0 +1,6 @@
+[Unit]
+Description=Fedoheim : sauvegarde + redemarrage du serveur Valheim
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/valheim-ctl backup

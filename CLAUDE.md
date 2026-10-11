@@ -41,6 +41,12 @@ renommer ces occurrences-là, elles sont correctes telles quelles.
   effectivement configuré dans un profil de modpack en
   base.
 
+- **`game-server/`** — exploitation du vrai serveur dédié Valheim (Ubuntu `192.168.1.26`) :
+  liste des mods, configs BepInEx sauvegardées (secrets masqués), quêtes/PNJ Marketplace,
+  redémarrages/sauvegardes automatiques, AzuAntiCheat. **Lire `game-server/CLAUDE.md` avant
+  toute intervention sur le serveur ou ses mods** (pièges vécus : Sailing qui empêche le serveur
+  de démarrer, rechargement à chaud Marketplace, listes AzuAntiCheat, Cron Job).
+
 ## Stack technique (décisions actées)
 
 | Composant | Choix | Pourquoi |

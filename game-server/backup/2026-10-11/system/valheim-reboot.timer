@@ -1,0 +1,8 @@
+[Unit]
+Description=Fedoheim : redemarrage quotidien 6h00 et 17h00 (heure de Paris)
+
+[Timer]
+OnCalendar=*-*-* 06,17:00:00 Europe/Paris
+
+[Install]
+WantedBy=timers.target

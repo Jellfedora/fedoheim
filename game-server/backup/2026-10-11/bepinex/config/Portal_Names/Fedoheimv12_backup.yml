@@ -1,0 +1,17 @@
+#Hello, this is the portal yml file. It keeps track of all portals in the world
+Portals:
+  '':
+    Color: Yellow
+    SpecialMode: Normal
+    Free_Passage: false
+    TeleportAnything: false
+    Admin_only_Access: false
+    MaxWeight: 0
+    AdditionalProhibitItems: []
+    AdditionalAllowItems: []
+    AllowedUsers: []
+    GuildOnly: ''
+    PortalZDOs: {}
+    EndPart: true
+
+

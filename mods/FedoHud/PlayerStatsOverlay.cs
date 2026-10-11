@@ -298,9 +298,12 @@ namespace FedoHud
                 return;
             }
 
-            _deathColumn?.SetActive(showDeath);
-            _weightColumn?.SetActive(showWeight);
-            _armorColumn?.SetActive(showArmor);
+            if (_deathColumn != null)
+                _deathColumn.SetActive(showDeath);
+            if (_weightColumn != null)
+                _weightColumn.SetActive(showWeight);
+            if (_armorColumn != null)
+                _armorColumn.SetActive(showArmor);
 
             if (showDeath && _deathText != null)
             {

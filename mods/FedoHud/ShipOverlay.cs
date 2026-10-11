@@ -169,7 +169,8 @@ namespace FedoHud
         // seulement par le réglage comme les autres blocs -- voir RefreshShipOverlay.
         public static void SetVisible(bool visible)
         {
-            _root?.SetActive(visible);
+            if (_root != null)
+                _root.SetActive(visible);
         }
 
         public static void ResetPosition()

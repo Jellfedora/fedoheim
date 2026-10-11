@@ -27,7 +27,10 @@ renommer ces occurrences-là, elles sont correctes telles quelles.
 - **Mods maison** (`mods/`) — mods Valheim (BepInEx) développés en interne, distribués via
   l'API et installés automatiquement par le launcher. Huit mods écrits et buildés
   (`HelloFedo`, `FedoDeath`, `FedoDeathGif`, `FedoGoldRabbit`, `FedoGuardian`, `FedoKnorri`,
-  `FedoServerTools`, `FedoClientTools` — voir `mods/CLAUDE.md`). `FedoDeath` (gardien de
+  `FedoServerTools`, `FedoClientTools` — voir `mods/CLAUDE.md` ; depuis, aussi `FedoHud`,
+  `FedoSignColor`, `FedoSkillSafety`, `FedoAchievements`... et **`FedoheimClient`**, le mod privé
+  client + serveur où mettre tout ce qui est propre à Fedoheim plutôt que dans un mod public).
+  `FedoDeath` (gardien de
   tombe) et `FedoDeathGif` (capture gif + webhook Discord à la mort) ont brièvement
   fusionné en un seul mod avant d'être reséparés, `FedoServerTools`/`FedoClientTools`
   suivent le même principe (reporting API/commandes admin/anti-usurpation côté serveur

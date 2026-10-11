@@ -1,0 +1,142 @@
+# Traduction française Fedoheim (warpalicious More World Locations AIO)
+# Trader / Trainer names
+# Bjorn et Eirik renommés : ces noms sont déjà pris par des PNJ de quête Fedoheim.
+mwl_plainstavern1_trader: Torvin
+mwl_plainscamp1_trader: Ragnir
+mwl_blackforestblacksmith1_trader: Volund
+mwl_blackforestblacksmith2_trader: Sindri
+mwl_mountainsblacksmith1_trader: Thorgrim
+mwl_mistlandsblacksmith1_trader: Dvalin
+mwl_oceantavern1_trader: Bjarki
+mwl_meadowstrainer1_trainer: Einar
+mwl_swamptrainer1_trainer: Grimhild
+mwl_plainstrainer1_trainer: Asmund
+mwl_misttrainer1_trainer: Sigrun
+
+# Blacksmith Stone
+se_blacksmithStone: Pierre de forgeron
+se_skillBook: Livre de compétence
+item_mwl_blacksmithstone_tier1: Pierre de forgeron (1)
+item_mwl_blacksmithstone_tier2: Pierre de forgeron (2)
+item_mwl_blacksmithstone_tier3: Pierre de forgeron (3)
+item_mwl_blacksmithstone_description: "Améliore une arme ou une armure au-delà de sa qualité maximale. Place l'arme ou l'armure dans la case en haut à gauche de l'inventaire, puis consomme cet objet."
+
+# Skill Books (suffix tokens — skill name resolved from game's own $skill_* token)
+mwl_skillbook_tier1: "Livre de compétence (1)"
+mwl_skillbook_tier2: "Livre de compétence (2)"
+mwl_skillbook_tier3: "Livre de compétence (3)"
+mwl_skillbook_desc_tier1: Augmente une compétence d'1 niveau.
+mwl_skillbook_desc_tier2: Augmente une compétence de 3 niveaux.
+mwl_skillbook_desc_tier3: Augmente une compétence de 5 niveaux.
+
+# Marble Jail 1
+mwl_marblejail1_key: Clé de la prison de marbre
+mwl_marblejail1_key_desc: Une clé en fer rouillé, usée par le temps. Elle ouvre le bloc des cellules.
+mwl_marblejail1_runestone: Fin sinistre
+mwl_marblejail1_runestone_text: "Ils m'ont oublié ici. Les années sont devenues des décennies. Les créatures d'en bas me sont devenues familières : leurs hurlements, ma seule compagnie. Je vais les rejoindre maintenant. Elles m'attendaient, elles. Personne d'autre ne l'a fait."
+
+# Marble Cliff Altar 1
+mwl_marblecliffaltar1_runestone: Acquisition dangereuse
+mwl_marblecliffaltar1_runestone_text: "Ce qui repose sur l'autel ne t'appartient pas. Il appartient à ceux qui tournoient là-haut, qui attendent en silence. Prends-le, et une corne mortelle brisera le silence de la brume."
+
+# Port Runestones
+mwl_port1_runestone: Le vol de Drelthor
+mwl_port1_runestone_text: "Maudit soit Drelthor le Cupide, roi des Dvergrs à l'Âge d'or. Car c'est lui qui, avide de savoir, déroba l'Œil d'Odin dans le puits de Mímir. Les eaux profanées empoisonnèrent Yggdrasil : ses pousses tombèrent malades sur Valheim, et Odin lui-même entra dans une colère noire."
+
+mwl_port2_runestone: Nous sommes Dvergrs
+mwl_port2_runestone_text: "Maudit soit Drelthor le Cupide ! Nos grandes civilisations ont mis mille ans à s'élever et un instant à tomber. Nos cités, nos comptoirs, nos forteresses et nos fermes, tous ravagés par les réprouvés. Pourquoi, alors, persistons-nous ? À quoi bon entretenir nos petites forteresses et nos campements en ces temps sans espoir ? Parce que nous sommes Dvergrs ! Et même la colère d'Odin n'aura pas raison de nous. Nous survivrons. Nous rebâtirons. Nous regagnerons la faveur d'Odin. Nous ferons naître un nouvel âge d'or."
+
+mwl_port3_runestone: Les graines d'une ère nouvelle
+mwl_port3_runestone_text: "Pourquoi entretenir ces ports, vestiges d'une grande époque révolue ? Ils ne servent à rien, si ce n'est à gagner quelques pièces avec les voyageurs de passage. Parce que nous en aurons besoin quand nous rebâtirons ! Quand les grandes nations dvergrs se relèveront, il nous faudra du commerce et des échanges ! Ce sont les graines d'une ère nouvelle, et elles fleuriront !\n\nAh, et maudit soit Drelthor le Cupide."
+
+mwl_port4_runestone: Royaumes en ruine
+mwl_port4_runestone_text: "Maudit soit Drelthor le Cupide, qui plongea nos prospères nations dvergrs dans la ruine en provoquant Odin. Le Père de tous jeta ses réprouvés les plus infâmes et ses âmes perdues dans notre royaume, pour les punir eux, et nous avec. Nos royaumes s'effondrèrent. Nos terres jadis vibrantes se couvrirent de brume et de feu. Notre peuple fut dispersé, sans chef."
+
+mwl_port5_runestone: La complainte de Drelthor
+mwl_port5_runestone_text: "Je suis Drelthor, jadis roi des Dvergrs. Dans mon arrogance, j'ai volé l'Œil d'Odin et provoqué notre ruine. L'ironie, c'est que l'Œil m'a donné la sagesse de comprendre que je n'aurais jamais dû le voler. Si seulement je pouvais réparer ma faute ! Mais c'est fait. Il ne me reste plus qu'à errer sans fin. Car l'Œil m'a aussi condamné à l'immortalité, pour que je contemple à jamais la souffrance de mon peuple et la destruction de tout ce sur quoi je régnais.\n\nMaudit sois-je."
+
+# Forbidden Catacombs
+mwl_forbiddencatacombs_runestone_text: "Quand les jarls mouraient, on les couchait là-haut, drapés d'or, intouchés par le temps. En bas, les petites gens, les ouvriers, les sans-bouclier, pourrissaient dans l'ombre, leurs tombes marquées par la puanteur et le chagrin. Avec le temps, la pourriture se répandit, et un grand mage intervint : il scella les profondeurs pour arrêter la décomposition. Seule la couronne creuse d'un jarl peut briser le sceau et rouvrir le passage."
+
+# Ports UI
+label_shipment: Expéditions
+label_port: Port
+label_delivery: Livraisons
+label_manifest: Manifeste
+label_open_map: Ouvrir la carte
+label_add_favorite: Favori
+label_remove_favorite: Retirer des favoris
+label_teleport: Téléporter
+label_in_transit: En transit
+label_delivered: Livré
+label_expired: Expiré
+label_open: Ouvrir
+msg_successfully_sent: "Expédition envoyée !"
+msg_failed_to_send: Le manifeste n'est pas valide
+msg_failed_to_load_delivery: Les conteneurs ne sont pas vides !
+label_current_shipments: Expéditions en cours
+label_cost: Coût
+label_nr_of_items: Nombre d'objets
+label_total_weight: Poids total
+label_contents: Contenu
+label_estimated_ship_time: Durée estimée du trajet
+label_origin: Origine
+label_destination: Destination
+tooltip_port: Liste des ports disponibles
+tooltip_shipment: Liste des expéditions en cours
+tooltip_delivery: Liste des livraisons en cours
+tooltip_manifest: Acheter des manifestes
+tooltip_teleport: Se téléporter vers un port
+label_exit: Quitter
+label_purchase: Acheter
+label_open_delivery: Ouvrir la livraison
+msg_max_shipments: Nombre maximum d'expéditions atteint
+msg_send_shipment: "Envoyer l'expédition !"
+label_origin_port: Port de départ
+label_destination_port: Port d'arrivée
+label_state: État
+label_items: Objets
+label_required_to_defeat: Boss requis
+label_capacity: Capacité
+label_cost_to_ship: Coût d'expédition
+msg_delivery_collected: Livraison marquée comme récupérée
+
+# Port trader names
+trader_port_name_1: Halmar
+trader_port_name_2: Halvar
+trader_port_name_3: Halrik
+trader_port_name_4: Halgrim
+trader_port_name_5: Halden
+trader_port_name_6: Halfi
+trader_port_name_7: Halvor
+trader_port_name_8: Halkar
+
+# Port trader dialogue — random talk
+msg_randomPortTalk_1: "Ahh, encore un grand échalas qui veut mes bateaux ? Trébuche pas sur le ponton, l'humain."
+msg_randomPortTalk_2: "Les pièces d'abord, la cargaison ensuite. C'est la loi de la mer, et la loi de ma barbe !"
+msg_randomPortTalk_3: "Des marchandises à transporter ? Mes bateaux filent plus vite que l'odeur d'un troll sous le vent."
+msg_randomPortTalk_4: "Les humains veulent toujours qu'on livre hier. Coup de chance : mes bateaux de demain partent aujourd'hui !"
+msg_randomPortTalk_5: "Tu paies, je transporte. Simple comme un coup de marteau, en moins bruyant."
+msg_randomPortTalk_6: "Pas touche aux tonneaux de rhum ! C'est pour l'équipage, pas pour la cargaison."
+msg_randomPortTalk_7: "Par ma barbe, j'ai transporté plus lourd que toi ! T'en fais pas, ta cargaison arrivera."
+msg_randomPortTalk_8: "Des ports, des manifestes et des pièces. Voilà ma vie. Et la tienne, l'humain ?"
+
+# Port trader dialogue — greets
+msg_randomGreet_1: "Bien le bonjour, grand échalas ! Tu viens envoyer tes trésors de l'autre côté de la mer ?"
+msg_randomGreet_2: "Har ! Encore un client ! Attention aux cordages, ils font trébucher les grands comme toi."
+msg_randomGreet_3: "Un bon vent souffle, et les bonnes affaires aussi... si t'as les pièces."
+msg_randomGreet_4: "Par ma barbe, t'as l'air fourbu. Coup de chance, le voyage, c'est mon métier."
+msg_randomGreet_5: "Remue-toi, l'humain ! Mon quai, c'est pas un endroit pour rêvasser."
+msg_randomGreet_6: "Bonne journée à toi ! T'as de la cargaison ? J'ai des bateaux."
+msg_randomGreet_7: "Ah, l'odeur des pièces dans la brise. T'as des affaires à régler, hein ?"
+msg_randomGreet_8: "Bienvenue dans mon port ! Touche à rien de brillant, sauf si tu l'achètes."
+
+# Port trader dialogue — goodbyes
+msg_randomGoodbye_1: "Bon vent, et coule pas mes bénéfices !"
+msg_randomGoodbye_2: "Allez, file ! Mes bateaux vont pas se charger tout seuls."
+msg_randomGoodbye_3: "Bon voyage, grand échalas. Dépense plus la prochaine fois !"
+msg_randomGoodbye_4: "Méfie-toi de la mer, elle est plus agitée que mon oncle après trois chopes."
+msg_randomGoodbye_5: "La cargaison n'attend personne. Circule !"
+msg_randomGoodbye_6: "À la prochaine marée, et que tes bottes restent sèches."
+msg_randomGoodbye_7: "Reviens nous voir. Mais pas en tant que débiteur."
+msg_randomGoodbye_8: "Au revoir, et que ta barbe pousse aussi fort que ta bourse."

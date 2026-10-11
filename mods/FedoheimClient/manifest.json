@@ -1,0 +1,10 @@
+{
+  "name": "FedoheimClient",
+  "author": "Fedo",
+  "version_number": "1.0.1",
+  "website_url": "",
+  "description": "Small features specific to one community server: lets quest NPCs start an allowed vanilla raid event through a console command, filtered by the server (allowed events, allowed areas, cooldown). Install on both the server and every client.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}

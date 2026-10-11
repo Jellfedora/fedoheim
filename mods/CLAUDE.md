@@ -34,6 +34,24 @@ plat). Copier la DLL dans le profil Gale échoue tant que Valheim est ouvert (fi
 été installé quelque part, même chez soi : deux builds différents sous le même numéro sont
 indiscernables.
 
+## FedoheimClient (privé, jamais publié)
+
+Mod « fourre-tout » des fonctionnalités propres au serveur Fedoheim — à utiliser plutôt que
+d'ajouter du spécifique Fedoheim à un mod public (FedoHud, FedoSignColor... sont publiés). Même DLL
+chez tous les joueurs du modpack **et** sur le serveur (rôle selon `ZNet.IsServer()`), donc présent
+dans la Whitelist AzuAntiCheat (recopier la DLL à chaque version).
+- `QuestEvents.cs` : commande console non triche `fedoevent <event>` (lancée par un dialogue
+  Marketplace) → RPC `ZRoutedRpc.Everybody` → le serveur valide (liste blanche, zones, délai, aucun
+  event en cours) puis `RandEventSystem.SetRandomEventByName`. Pourquoi : la commande vanilla `event`
+  est triche + serveur seulement, et `Terminal.ConsoleCommand.RunAction` refuse toute triche tant
+  que le joueur n'a jamais activé les triches. `ZRoutedRpc.GetServerPeerID()` n'existe pas dans la
+  version de `assembly_valheim` du PC (Marketplace l'a dans une autre version) → `Everybody` + garde
+  `IsServer` côté handler.
+- `MwlTutorialTranslation.cs` : remplace les pages d'aide de l'interface des ports de
+  More_World_Locations_AIO (`.md` embarqués dans son DLL, hors de sa localisation YAML) par
+  `config/FedoheimClient/mwl_tutorials/<page>.md`. Dépendance douce (`AccessTools.TypeByName`), patch
+  posé depuis `FejdStartup.Awake` (tous les plugins chargés) sur `PortUI.LoadTutorials`.
+
 ## Notes techniques de modding (assembly_valheim / ZNetScene)
 
 - **Jamais `?.` (ni `??`) sur un objet Unity** (`GameObject`, `Component`...) : un objet
